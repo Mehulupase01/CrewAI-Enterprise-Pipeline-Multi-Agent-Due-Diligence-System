@@ -1,0 +1,2 @@
+# CrewAI Enterprise Pipeline: Multi-Agent Due Diligence System
+Built a multi-agent due diligence system using CrewAI with 4 agents: Researcher, Financial Analyst, Risk Assessor, Report Writer. Use CrewAI Flows for orchestration with error handling and human-in-the-loop approval. Each agent outputs Pydantic-structured data. Include cost tracking per report and a Streamlit dashboard to view generated reports. Deploy with Docker.
