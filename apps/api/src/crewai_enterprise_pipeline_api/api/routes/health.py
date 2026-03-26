@@ -33,7 +33,10 @@ def health() -> AppHealth:
         auth_required=settings.auth_required,
         default_actor_role=UserRole(settings.default_actor_role),
         request_id_header_name=settings.request_id_header_name,
-        enabled_motion_packs=[MotionPack.BUY_SIDE_DILIGENCE],
+        enabled_motion_packs=[
+            MotionPack.BUY_SIDE_DILIGENCE,
+            MotionPack.CREDIT_LENDING,
+        ],
         enabled_sector_packs=[SectorPack.TECH_SAAS_SERVICES],
     )
 
@@ -70,7 +73,7 @@ async def readiness(session: DbSession) -> ReadinessReport:
         )
     )
 
-    artifacts = sorted(EVALUATION_ROOT.glob("phase5-first-slice-*.json"))
+    artifacts = sorted(EVALUATION_ROOT.glob("*.json"))
     if artifacts:
         latest_artifact = artifacts[-1]
         evaluation_status = "ok"

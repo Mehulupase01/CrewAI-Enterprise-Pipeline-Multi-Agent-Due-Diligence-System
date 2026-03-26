@@ -96,6 +96,82 @@ BUY_SIDE_BASE_TEMPLATE: tuple[ChecklistTemplateItem, ...] = (
 )
 
 
+CREDIT_LENDING_BASE_TEMPLATE: tuple[ChecklistTemplateItem, ...] = (
+    ChecklistTemplateItem(
+        template_key="financial_qoe.borrower_statements",
+        title="Collect borrower financial statements and monthly MIS",
+        detail=(
+            "Validate the last three to five years of financial statements, monthly MIS, "
+            "budget versus actuals, and management adjustments used for underwriting."
+        ),
+        workstream_domain=WorkstreamDomain.FINANCIAL_QOE,
+    ),
+    ChecklistTemplateItem(
+        template_key="financial_qoe.debt_service_capacity",
+        title="Assess debt-service capacity and cash flow resilience",
+        detail=(
+            "Compute EBITDA to debt-service coverage, free cash flow, repayment "
+            "seasonality, and downside capacity under stress scenarios."
+        ),
+        workstream_domain=WorkstreamDomain.FINANCIAL_QOE,
+    ),
+    ChecklistTemplateItem(
+        template_key="financial_qoe.working_capital_behaviour",
+        title="Review working-capital behaviour and collections quality",
+        detail=(
+            "Analyse receivables aging, inventory turns where relevant, creditor stretch, "
+            "cash conversion, and concentration in collections."
+        ),
+        workstream_domain=WorkstreamDomain.FINANCIAL_QOE,
+    ),
+    ChecklistTemplateItem(
+        template_key="legal_corporate.security_package",
+        title="Validate security package and collateral perfection",
+        detail=(
+            "Review charge filings, collateral coverage, guarantee structure, perfection "
+            "steps, pari-passu exposures, and enforcement dependencies."
+        ),
+        workstream_domain=WorkstreamDomain.LEGAL_CORPORATE,
+    ),
+    ChecklistTemplateItem(
+        template_key="tax.compliance_borrower_status",
+        title="Confirm tax and statutory compliance status",
+        detail=(
+            "Check GST, TDS, income-tax, PF, ESI, and other statutory compliance for "
+            "signals that could impair repayment or create lender exposure."
+        ),
+        workstream_domain=WorkstreamDomain.TAX,
+    ),
+    ChecklistTemplateItem(
+        template_key="regulatory.licensing_and_borrowing_constraints",
+        title="Review licensing, borrowing restrictions, and regulatory triggers",
+        detail=(
+            "Check whether the borrower faces sectoral restrictions, consent "
+            "requirements, FEMA implications, or regulatory approvals tied to financing."
+        ),
+        workstream_domain=WorkstreamDomain.REGULATORY,
+    ),
+    ChecklistTemplateItem(
+        template_key="forensic.end_use_and_fund_flow",
+        title="Test end-use of funds and diversion risk",
+        detail=(
+            "Review bank statements, related-party flows, unusual round-tripping, "
+            "promoter withdrawals, and deviations from stated end-use."
+        ),
+        workstream_domain=WorkstreamDomain.FORENSIC_COMPLIANCE,
+    ),
+    ChecklistTemplateItem(
+        template_key="commercial.counterparty_concentration",
+        title="Assess counterparty concentration and renewal dependence",
+        detail=(
+            "Measure customer, dealer, distributor, or platform concentration that could "
+            "impair collections and repayment continuity."
+        ),
+        workstream_domain=WorkstreamDomain.COMMERCIAL,
+    ),
+)
+
+
 TECH_SAAS_TEMPLATE: tuple[ChecklistTemplateItem, ...] = (
     ChecklistTemplateItem(
         template_key="commercial.customer_concentration",
@@ -266,6 +342,8 @@ class ChecklistService:
 
         if motion_pack == MotionPack.BUY_SIDE_DILIGENCE:
             template.extend(BUY_SIDE_BASE_TEMPLATE)
+        elif motion_pack == MotionPack.CREDIT_LENDING:
+            template.extend(CREDIT_LENDING_BASE_TEMPLATE)
 
         if sector_pack == SectorPack.TECH_SAAS_SERVICES:
             template.extend(TECH_SAAS_TEMPLATE)

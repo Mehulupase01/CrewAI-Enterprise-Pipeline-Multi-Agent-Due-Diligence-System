@@ -112,6 +112,48 @@ HEURISTIC_RULES: tuple[HeuristicIssueRule, ...] = (
         patterns=("customer concentration", "top customer", "single customer"),
         workstream_override=WorkstreamDomain.COMMERCIAL,
     ),
+    HeuristicIssueRule(
+        title="Debt-service or covenant stress",
+        severity=FlagSeverity.HIGH,
+        business_impact=(
+            "Weak debt-service coverage or covenant pressure can impair repayment capacity "
+            "and trigger lender intervention."
+        ),
+        recommended_action=(
+            "Recompute debt-service ratios, test covenant headroom, and obtain lender-side "
+            "waiver or cure details."
+        ),
+        patterns=("covenant breach", "default", "dscr", "debt service", "days past due"),
+        workstream_override=WorkstreamDomain.FINANCIAL_QOE,
+    ),
+    HeuristicIssueRule(
+        title="Fund diversion or end-use deviation risk",
+        severity=FlagSeverity.HIGH,
+        business_impact=(
+            "Potential diversion of funds or end-use deviation can change the lending risk "
+            "profile and create governance or enforcement exposure."
+        ),
+        recommended_action=(
+            "Trace bank flows, related-party transactions, and end-use documentation before "
+            "credit approval."
+        ),
+        patterns=("fund diversion", "end use deviation", "end-use deviation", "round tripping"),
+        workstream_override=WorkstreamDomain.FORENSIC_COMPLIANCE,
+    ),
+    HeuristicIssueRule(
+        title="Collateral perfection gap",
+        severity=FlagSeverity.HIGH,
+        business_impact=(
+            "Unperfected collateral or missing charge filings can weaken enforceability and "
+            "reduce lender recovery."
+        ),
+        recommended_action=(
+            "Validate the charge register, perfection filings, insurance coverage, and any "
+            "third-party consent dependencies."
+        ),
+        patterns=("collateral gap", "security not perfected", "charge not filed", "unperfected"),
+        workstream_override=WorkstreamDomain.LEGAL_CORPORATE,
+    ),
 )
 
 

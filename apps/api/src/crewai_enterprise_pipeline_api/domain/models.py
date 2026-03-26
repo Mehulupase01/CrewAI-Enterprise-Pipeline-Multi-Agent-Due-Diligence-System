@@ -506,6 +506,8 @@ class ExecutiveMemoReport(BaseModel):
     case_id: str
     case_name: str
     target_name: str
+    motion_pack: MotionPack
+    report_title: str
     generated_at: datetime
     report_status: str
     approval_state: ApprovalDecisionKind | None

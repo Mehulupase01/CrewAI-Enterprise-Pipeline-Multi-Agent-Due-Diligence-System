@@ -8,6 +8,7 @@ from crewai_enterprise_pipeline_api.domain.models import (
     ApprovalDecisionKind,
     ExecutiveMemoReport,
     FlagSeverity,
+    MotionPack,
 )
 from crewai_enterprise_pipeline_api.services.case_service import CaseService
 from crewai_enterprise_pipeline_api.services.checklist_service import ChecklistService
@@ -49,13 +50,19 @@ class ReportService:
         open_requests = [
             request for request in case.request_items if request.status != "closed"
         ]
+        motion_pack = MotionPack(case.motion_pack)
+        report_title = self._report_title_for_motion(motion_pack)
 
-        executive_summary = (
-            f"{case.name} for {case.target_name} currently has {len(sorted_issues)} "
-            f"tracked issues, {coverage.open_mandatory_items} open mandatory checklist "
-            f"items, and {len(open_requests)} open diligence requests."
+        executive_summary = self._build_summary(
+            motion_pack,
+            case.name,
+            case.target_name,
+            len(sorted_issues),
+            coverage.open_mandatory_items,
+            len(open_requests),
         )
         next_actions = self._build_next_actions(
+            motion_pack,
             coverage.open_mandatory_items,
             sorted_issues,
             len(open_requests),
@@ -66,6 +73,8 @@ class ReportService:
             case_id=case.id,
             case_name=case.name,
             target_name=case.target_name,
+            motion_pack=motion_pack,
+            report_title=report_title,
             generated_at=datetime.now(UTC),
             report_status=report_status,
             approval_state=approval_state,
@@ -95,9 +104,10 @@ class ReportService:
 
         return "\n".join(
             [
-                f"# Executive Memo: {memo.case_name}",
+                f"# {memo.report_title}: {memo.case_name}",
                 "",
                 f"Target: {memo.target_name}",
+                f"Motion Pack: {memo.motion_pack.value}",
                 f"Generated: {memo.generated_at.isoformat()}",
                 f"Status: {memo.report_status}",
                 "",
@@ -160,20 +170,67 @@ class ReportService:
 
     def _build_next_actions(
         self,
+        motion_pack: MotionPack,
         open_mandatory_items: int,
         issues,
         open_request_count: int,
         approval_state: ApprovalDecisionKind | None,
     ) -> list[str]:
         actions: list[str] = []
+        review_label = (
+            "credit committee review"
+            if motion_pack == MotionPack.CREDIT_LENDING
+            else "final review"
+        )
+        request_label = (
+            "borrower information requests"
+            if motion_pack == MotionPack.CREDIT_LENDING
+            else "data-room requests and management responses"
+        )
         if open_mandatory_items:
             actions.append(
-                f"Close {open_mandatory_items} mandatory checklist items before final review."
+                f"Close {open_mandatory_items} mandatory checklist items before {review_label}."
             )
         if issues:
-            actions.append("Resolve or formally accept the highest-severity open issues.")
+            if motion_pack == MotionPack.CREDIT_LENDING:
+                actions.append(
+                    "Resolve, mitigate, or formally accept the highest-severity open credit risks."
+                )
+            else:
+                actions.append("Resolve or formally accept the highest-severity open issues.")
         if open_request_count:
-            actions.append("Chase outstanding data-room requests and management responses.")
+            actions.append(f"Chase outstanding {request_label}.")
         if approval_state != ApprovalDecisionKind.APPROVED:
-            actions.append("Re-run approval review after blockers are closed.")
+            if motion_pack == MotionPack.CREDIT_LENDING:
+                actions.append("Re-run credit approval after blockers are closed.")
+            else:
+                actions.append("Re-run approval review after blockers are closed.")
         return actions[:4]
+
+    def _build_summary(
+        self,
+        motion_pack: MotionPack,
+        case_name: str,
+        target_name: str,
+        issue_count: int,
+        open_mandatory_items: int,
+        open_request_count: int,
+    ) -> str:
+        if motion_pack == MotionPack.CREDIT_LENDING:
+            return (
+                f"{case_name} for {target_name} currently has {issue_count} tracked credit-risk "
+                f"items, {open_mandatory_items} open mandatory underwriting checklist items, "
+                f"and {open_request_count} open borrower information requests."
+            )
+        return (
+            f"{case_name} for {target_name} currently has {issue_count} tracked issues, "
+            f"{open_mandatory_items} open mandatory checklist items, and "
+            f"{open_request_count} open diligence requests."
+        )
+
+    def _report_title_for_motion(self, motion_pack: MotionPack) -> str:
+        if motion_pack == MotionPack.CREDIT_LENDING:
+            return "Credit Memo"
+        if motion_pack == MotionPack.VENDOR_ONBOARDING:
+            return "Third-Party Risk Memo"
+        return "Executive Memo"
