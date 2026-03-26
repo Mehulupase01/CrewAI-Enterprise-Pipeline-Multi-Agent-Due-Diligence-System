@@ -207,7 +207,7 @@ class WorkflowRunRecord(TimestampedMixin, Base):
         order_by="ReportBundleRecord.created_at",
         lazy="selectin",
     )
-    workstream_syntheses: Mapped[list["WorkstreamSynthesisRecord"]] = relationship(
+    workstream_syntheses: Mapped[list[WorkstreamSynthesisRecord]] = relationship(
         back_populates="run",
         cascade="all, delete-orphan",
         order_by="WorkstreamSynthesisRecord.workstream_domain",

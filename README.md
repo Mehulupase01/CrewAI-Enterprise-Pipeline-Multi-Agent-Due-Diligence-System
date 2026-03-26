@@ -45,8 +45,8 @@ docker-compose.yml
 
 ## Current Phase
 
-The repository has completed the foundation layers and is now in `Phase 2`
-platform operations work:
+The repository has completed the first deterministic `Phase 3` slice and is
+moving into deeper interface and workflow expansion:
 
 - persisted case operations backed by SQLAlchemy
 - document upload, parsing, storage, and evidence extraction
@@ -54,6 +54,7 @@ platform operations work:
 - pack-aware checklist seeding, item updates, and completeness coverage summaries
 - approval review gate plus executive memo report preview endpoint
 - persisted workflow runs with trace events and generated report bundles
+- workstream synthesis for the first diligence slice
 - document, evidence, request-list, and Q&A tracker endpoints
 - source-adapter catalog for uploaded, public, and vendor-backed evidence
 - analyst workbench dashboard aligned to the live platform surface

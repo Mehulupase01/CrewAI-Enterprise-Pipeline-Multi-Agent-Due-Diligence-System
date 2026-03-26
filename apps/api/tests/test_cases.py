@@ -364,8 +364,9 @@ def test_workflow_run_generates_traces_and_report_bundles(client) -> None:
     assert run_response.status_code == 201
     run_payload = run_response.json()
     assert run_payload["run"]["status"] == "completed"
-    assert len(run_payload["run"]["trace_events"]) >= 5
-    assert len(run_payload["run"]["report_bundles"]) == 2
+    assert len(run_payload["run"]["trace_events"]) >= 6
+    assert len(run_payload["run"]["report_bundles"]) == 3
+    assert len(run_payload["run"]["workstream_syntheses"]) >= 4
     assert run_payload["executive_memo"]["case_id"] == case_id
 
     list_response = client.get(f"/api/v1/cases/{case_id}/runs")
@@ -379,3 +380,10 @@ def test_workflow_run_generates_traces_and_report_bundles(client) -> None:
     bundle_kinds = {bundle["bundle_kind"] for bundle in detail_payload["report_bundles"]}
     assert "executive_memo_markdown" in bundle_kinds
     assert "issue_register_markdown" in bundle_kinds
+    assert "workstream_synthesis_markdown" in bundle_kinds
+    synthesis_domains = {
+        synthesis["workstream_domain"]
+        for synthesis in detail_payload["workstream_syntheses"]
+    }
+    assert "financial_qoe" in synthesis_domains
+    assert "commercial" in synthesis_domains

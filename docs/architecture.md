@@ -32,6 +32,7 @@ The first persisted platform entities are now live in the API surface:
 - `WorkflowRun`
 - `RunTraceEvent`
 - `ReportBundle`
+- `WorkstreamSynthesis`
 - `RequestItem`
 - `QaItem`
 
@@ -106,5 +107,6 @@ The current implementation pass adds the first true operations layer:
 - checklist template seeding, item status updates, and coverage summaries
 - approval reviews and executive memo generation from structured case state
 - persisted workflow runs with trace events and bundle generation
+- workstream synthesis records for domain-level diligence views
 - request-list and management Q&A tracking
 - source-adapter contracts for uploaded, public, and vendor-driven evidence

@@ -23,6 +23,7 @@ The current gate now covers both the foundation and the first operations layer:
 - checklist seeding, checklist updates, and completion coverage summaries
 - approval review decisions and executive memo generation
 - workflow run execution with trace events and generated report bundles
+- persisted workstream synthesis outputs per run
 - source-adapter catalog exposure
 - workbench dashboard rendering
 - Docker stack validity
@@ -39,6 +40,7 @@ The current gate now covers both the foundation and the first operations layer:
 - Approval review can block export when mandatory coverage or high-severity issues remain open.
 - Executive memo generation reflects live case state, open requests, top issues, and latest review status.
 - A case can be executed into a persisted run with trace events and bundled markdown outputs.
+- A run produces durable workstream syntheses for the first diligence domains.
 - The workbench reflects the actual platform surface instead of generator boilerplate.
 - The repo contains reproducible scripts for bootstrap, dev, and checks.
 - Docker Compose starts the local backing services cleanly.

@@ -5,7 +5,7 @@ const caseSummary = {
   target: "Nimbus Data Systems",
   motionPack: "Buy-side diligence",
   sectorPack: "Tech / SaaS / Services",
-  phase: "Phase 3 workflow runs + report bundles",
+  phase: "Phase 3 core logic completed for the first slice",
 };
 
 const documentQueue = [
@@ -52,9 +52,32 @@ const approvalSnapshot = [
 ];
 
 const workflowRuns = [
-  ["Current run", "Completed", "5 trace events captured across the workflow"],
-  ["Bundle set", "2 generated", "Executive memo and issue register markdown"],
+  ["Current run", "Completed", "6 trace events captured across the workflow"],
+  ["Bundle set", "3 generated", "Memo, issue register, and synthesis bundle"],
   ["Run summary", "Needs follow-up", "Checklist blockers still visible in output"],
+];
+
+const workstreamSyntheses = [
+  [
+    "Financial QoE",
+    "Needs follow-up",
+    "Open monthly bridge still blocks clean sign-off",
+  ],
+  [
+    "Legal / Corporate",
+    "Needs follow-up",
+    "Charge and contract diligence still need closure",
+  ],
+  [
+    "Tax",
+    "Blocked",
+    "GST exposure remains unresolved",
+  ],
+  [
+    "Commercial",
+    "Needs follow-up",
+    "Customer concentration requires stress testing",
+  ],
 ];
 
 const trackerItems = [
@@ -76,13 +99,14 @@ const completedLayers = [
   "Pack-aware checklist templates and coverage summaries",
   "Deterministic approval review and executive memo generation",
   "Persisted workflow runs, trace events, and report bundles",
+  "Workstream synthesis records for the first diligence slice",
   "Source-adapter catalog shaped for India and vendor readiness",
 ];
 
 const nextBridge = [
-  "Add workstream synthesis records for financial, tax, legal, and commercial domains.",
+  "Expand Phase 4 interfaces with detailed case views, run viewers, and bundle readers.",
   "Introduce agent-orchestrated analysis over the structured case state and persist those outputs into runs.",
-  "Expand report bundles from markdown previews into export-ready memo artifacts.",
+  "Expand report bundles from markdown previews into export-ready memo artifacts and downloads.",
 ];
 
 const roadmap = [
@@ -99,12 +123,13 @@ export default function Home() {
       <main className={styles.main}>
         <section className={styles.hero}>
           <span className={styles.kicker}>CrewAI Enterprise Pipeline</span>
-          <h1>India due diligence, now producing executable case runs.</h1>
+          <h1>India due diligence, now producing executable workstream runs.</h1>
           <p className={styles.lead}>
             The platform now ingests uploaded files, normalizes evidence,
             maintains live request and Q&amp;A trackers, turns risk signals into
             issue-register entries, measures checklist coverage, and generates
-            persisted workflow runs with trace logs and report bundles.
+            persisted workflow runs with trace logs, report bundles, and
+            workstream-specific syntheses.
           </p>
           <div className={styles.heroMeta}>
             <div>
@@ -244,6 +269,24 @@ export default function Home() {
               </div>
               <div className={styles.table}>
                 {workflowRuns.map(([lane, status, note]) => (
+                  <div className={styles.row} key={lane}>
+                    <div>
+                      <strong>{lane}</strong>
+                      <p>{note}</p>
+                    </div>
+                    <span className={styles.status}>{status}</span>
+                  </div>
+                ))}
+              </div>
+            </article>
+
+            <article className={styles.panel}>
+              <div className={styles.panelHeader}>
+                <span className={styles.badge}>Synthesis</span>
+                <h2>First-slice workstream outputs</h2>
+              </div>
+              <div className={styles.table}>
+                {workstreamSyntheses.map(([lane, status, note]) => (
                   <div className={styles.row} key={lane}>
                     <div>
                       <strong>{lane}</strong>
