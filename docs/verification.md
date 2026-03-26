@@ -11,21 +11,23 @@ No phase is considered complete until all of the following exist together:
 5. Verification scripts
 6. A stable baseline for the next phase
 
-## Foundation Checks
+## Current Checks
 
-The current foundation gate focuses on:
+The current gate now covers both the foundation and the first operations layer:
 
-- backend app boot
+- backend app boot and schema lifecycle
 - typed configuration loading
-- basic system endpoints
-- web workbench shell rendering
+- persisted case workflow endpoints
+- source-adapter catalog exposure
+- workbench dashboard rendering
 - Docker stack validity
-- lint and unit test execution
+- lint, type, and unit test execution
 
 ## Initial Acceptance Criteria
 
 - The API boots from the Conda environment without local path hacks.
 - The API exposes environment-aware system endpoints.
-- The workbench reflects the planned product shape instead of generator boilerplate.
+- The API persists case, document, evidence, request, and Q&A records.
+- The workbench reflects the actual platform surface instead of generator boilerplate.
 - The repo contains reproducible scripts for bootstrap, dev, and checks.
 - Docker Compose starts the local backing services cleanly.

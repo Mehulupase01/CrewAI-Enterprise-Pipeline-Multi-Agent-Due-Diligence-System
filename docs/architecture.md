@@ -21,6 +21,14 @@ The FastAPI service owns universal platform concepts:
 - report bundles
 - run traces and cost ledgers
 
+The first persisted platform entities are now live in the API surface:
+
+- `Case`
+- `DocumentArtifact`
+- `EvidenceNode`
+- `RequestItem`
+- `QaItem`
+
 ### 2. Orchestration Layer
 
 CrewAI Flows will coordinate agentic workflows, but the platform will not rely
@@ -79,3 +87,14 @@ Rule packs capture jurisdictional and domain requirements such as:
 
 The first implementation slice only activates the buy-side + tech/service path,
 but the contracts already account for later packs.
+
+## Phase 2 Additions
+
+The current implementation pass adds the first true operations layer:
+
+- SQLAlchemy persistence with startup schema creation for local development
+- case CRUD entry points and detail views
+- document artifact registration
+- evidence ledger entries tied to workstream domains
+- request-list and management Q&A tracking
+- source-adapter contracts for uploaded, public, and vendor-driven evidence

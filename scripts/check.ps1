@@ -20,4 +20,5 @@ Pop-Location
 
 Push-Location (Join-Path $projectRoot "apps\web")
 Invoke-Step { npm run lint }
+Invoke-Step { npm run typecheck }
 Pop-Location

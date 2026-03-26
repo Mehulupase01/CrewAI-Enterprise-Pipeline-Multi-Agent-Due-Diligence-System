@@ -45,13 +45,14 @@ docker-compose.yml
 
 ## Current Phase
 
-The repository is currently in `Phase 0 / Phase 1` foundation work:
+The repository has completed the foundation layers and is now in `Phase 2`
+platform operations work:
 
-- repo structure and conventions
-- backend control-plane skeleton
-- web workbench shell
-- Dockerized local dependencies
-- initial tests and verification scripts
+- persisted case operations backed by SQLAlchemy
+- document, evidence, request-list, and Q&A tracker endpoints
+- source-adapter catalog for uploaded, public, and vendor-backed evidence
+- analyst workbench dashboard aligned to the live platform surface
+- Dockerized local dependencies plus automated checks
 
 ## Local Development
 
@@ -84,7 +85,7 @@ The project uses a dedicated Conda environment named
 
 ## Verification
 
-Run the foundation checks with:
+Run the current platform checks with:
 
 ```powershell
 ./scripts/check.ps1

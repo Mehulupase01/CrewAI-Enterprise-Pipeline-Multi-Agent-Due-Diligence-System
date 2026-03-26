@@ -32,7 +32,7 @@ def health() -> AppHealth:
 def overview() -> PlatformOverview:
     return PlatformOverview(
         product_name="CrewAI Enterprise Pipeline",
-        current_phase="Phase 0 / Phase 1 foundation",
+        current_phase="Phase 2 operations layer",
         country="India",
         motion_packs=list(MotionPack),
         sector_packs=list(SectorPack),

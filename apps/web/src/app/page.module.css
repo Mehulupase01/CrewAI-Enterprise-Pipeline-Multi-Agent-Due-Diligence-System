@@ -40,7 +40,7 @@
   z-index: 1;
   display: grid;
   gap: 28px;
-  width: min(1180px, 100%);
+  width: min(1240px, 100%);
 }
 
 .hero,
@@ -72,27 +72,29 @@
 }
 
 .hero h1 {
-  max-width: 820px;
-  font-size: clamp(2.8rem, 6vw, 5.2rem);
+  max-width: 860px;
+  font-size: clamp(2.8rem, 6vw, 5rem);
   line-height: 0.96;
   letter-spacing: -0.05em;
   color: var(--foreground);
 }
 
 .lead {
-  max-width: 720px;
+  max-width: 760px;
   font-size: 1.08rem;
   line-height: 1.8;
   color: var(--muted);
 }
 
-.heroMeta {
+.heroMeta,
+.summaryCard {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
 }
 
-.heroMeta div {
+.heroMeta div,
+.summaryCard div {
   display: grid;
   gap: 6px;
   padding: 16px 18px;
@@ -103,6 +105,17 @@
 .metaLabel {
   font-size: 11px;
   color: var(--muted);
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 22px;
+}
+
+.column {
+  display: grid;
+  gap: 22px;
 }
 
 .grid {
@@ -133,8 +146,58 @@
 }
 
 .panel h2 {
-  font-size: 1.45rem;
+  font-size: 1.4rem;
   line-height: 1.2;
+}
+
+.table {
+  display: grid;
+  gap: 12px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(20, 36, 51, 0.04);
+}
+
+.row strong {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 1rem;
+}
+
+.row p {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.status,
+.note {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 92px;
+  padding: 8px 11px;
+  border-radius: 999px;
+  font-family: var(--font-ibm-plex-mono), monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.status {
+  color: #fff;
+  background: linear-gradient(135deg, #1f5b66, #2f7d68);
+}
+
+.note {
+  color: var(--accent-dark);
+  background: rgba(201, 102, 52, 0.14);
 }
 
 .list {
@@ -148,8 +211,10 @@
   line-height: 1.65;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 980px) {
   .heroMeta,
+  .summaryCard,
+  .workspace,
   .grid {
     grid-template-columns: 1fr;
   }
@@ -168,5 +233,9 @@
 
   .hero h1 {
     letter-spacing: -0.04em;
+  }
+
+  .row {
+    grid-template-columns: 1fr;
   }
 }
