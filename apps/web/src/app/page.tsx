@@ -5,7 +5,7 @@ const caseSummary = {
   target: "Nimbus Data Systems",
   motionPack: "Buy-side diligence",
   sectorPack: "Tech / SaaS / Services",
-  phase: "Phase 2 evidence layer + completeness controls",
+  phase: "Phase 3 workflow runs + report bundles",
 };
 
 const documentQueue = [
@@ -51,6 +51,12 @@ const approvalSnapshot = [
   ["Memo status", "Draft preview", "Executive memo can be generated for review"],
 ];
 
+const workflowRuns = [
+  ["Current run", "Completed", "5 trace events captured across the workflow"],
+  ["Bundle set", "2 generated", "Executive memo and issue register markdown"],
+  ["Run summary", "Needs follow-up", "Checklist blockers still visible in output"],
+];
+
 const trackerItems = [
   ["Request list", "Monthly churn bridge and customer cohorts", "Open"],
   ["Q&A", "Why implementation revenue spiked in Q3 FY25", "Answered"],
@@ -69,13 +75,14 @@ const completedLayers = [
   "Issue register endpoints and deterministic evidence-to-flag scan",
   "Pack-aware checklist templates and coverage summaries",
   "Deterministic approval review and executive memo generation",
+  "Persisted workflow runs, trace events, and report bundles",
   "Source-adapter catalog shaped for India and vendor readiness",
 ];
 
 const nextBridge = [
-  "Persist richer report bundles and exportable memo artifacts.",
-  "Start the first buy-side diligence vertical slice over the evidence, issue, checklist, and approval core.",
-  "Introduce agent-orchestrated workstream synthesis over the structured case state.",
+  "Add workstream synthesis records for financial, tax, legal, and commercial domains.",
+  "Introduce agent-orchestrated analysis over the structured case state and persist those outputs into runs.",
+  "Expand report bundles from markdown previews into export-ready memo artifacts.",
 ];
 
 const roadmap = [
@@ -92,12 +99,12 @@ export default function Home() {
       <main className={styles.main}>
         <section className={styles.hero}>
           <span className={styles.kicker}>CrewAI Enterprise Pipeline</span>
-          <h1>India due diligence, now tracking evidence, flags, and completeness.</h1>
+          <h1>India due diligence, now producing executable case runs.</h1>
           <p className={styles.lead}>
             The platform now ingests uploaded files, normalizes evidence,
             maintains live request and Q&amp;A trackers, turns risk signals into
-            issue-register entries, and measures checklist coverage before a
-            case can be treated as complete.
+            issue-register entries, measures checklist coverage, and generates
+            persisted workflow runs with trace logs and report bundles.
           </p>
           <div className={styles.heroMeta}>
             <div>
@@ -232,6 +239,24 @@ export default function Home() {
 
             <article className={styles.panel}>
               <div className={styles.panelHeader}>
+                <span className={styles.badge}>Runs</span>
+                <h2>Workflow execution and bundle output</h2>
+              </div>
+              <div className={styles.table}>
+                {workflowRuns.map(([lane, status, note]) => (
+                  <div className={styles.row} key={lane}>
+                    <div>
+                      <strong>{lane}</strong>
+                      <p>{note}</p>
+                    </div>
+                    <span className={styles.status}>{status}</span>
+                  </div>
+                ))}
+              </div>
+            </article>
+
+            <article className={styles.panel}>
+              <div className={styles.panelHeader}>
                 <span className={styles.badge}>Trackers</span>
                 <h2>Request list, Q&amp;A, and approvals</h2>
               </div>
@@ -294,13 +319,13 @@ export default function Home() {
           </article>
 
           <article className={styles.panel}>
-              <div className={styles.panelHeader}>
-                <span className={styles.badge}>Next</span>
-                <h2>Immediate build bridge</h2>
-              </div>
-              <ul className={styles.list}>
-                {nextBridge.map((item) => (
-                  <li key={item}>{item}</li>
+            <div className={styles.panelHeader}>
+              <span className={styles.badge}>Next</span>
+              <h2>Immediate build bridge</h2>
+            </div>
+            <ul className={styles.list}>
+              {nextBridge.map((item) => (
+                <li key={item}>{item}</li>
               ))}
             </ul>
           </article>

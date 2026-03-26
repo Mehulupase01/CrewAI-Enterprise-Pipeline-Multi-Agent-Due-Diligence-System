@@ -36,13 +36,7 @@ class ReportService:
         if coverage is None:
             return None
 
-        sorted_issues = sorted(
-            case.issues,
-            key=lambda issue: (
-                SEVERITY_ORDER.get(issue.severity, 99),
-                issue.created_at,
-            ),
-        )
+        sorted_issues = self._sorted_issues(case.issues)
         latest_approval = case.approvals[-1] if case.approvals else None
         approval_state = None if latest_approval is None else ApprovalDecisionKind(
             latest_approval.decision
@@ -80,6 +74,88 @@ class ReportService:
             open_requests=open_requests[:5],
             checklist_coverage=coverage,
             next_actions=next_actions,
+        )
+
+    async def render_executive_memo_markdown(self, case_id: str) -> str | None:
+        memo = await self.build_executive_memo(case_id)
+        if memo is None:
+            return None
+
+        issue_lines = [
+            f"- [{issue.severity}] {issue.title}: {issue.business_impact}"
+            for issue in memo.top_issues
+        ] or ["- No issues have been recorded yet."]
+        request_lines = [
+            f"- {request.title} ({request.status})"
+            for request in memo.open_requests
+        ] or ["- No open diligence requests."]
+        next_action_lines = [
+            f"- {action}" for action in memo.next_actions
+        ] or ["- No immediate next actions recorded."]
+
+        return "\n".join(
+            [
+                f"# Executive Memo: {memo.case_name}",
+                "",
+                f"Target: {memo.target_name}",
+                f"Generated: {memo.generated_at.isoformat()}",
+                f"Status: {memo.report_status}",
+                "",
+                "## Summary",
+                memo.executive_summary,
+                "",
+                "## Top Issues",
+                *issue_lines,
+                "",
+                "## Checklist Coverage",
+                (
+                    f"- Mandatory open items: "
+                    f"{memo.checklist_coverage.open_mandatory_items}"
+                ),
+                f"- Completion ready: {memo.checklist_coverage.completion_ready}",
+                "",
+                "## Open Requests",
+                *request_lines,
+                "",
+                "## Next Actions",
+                *next_action_lines,
+            ]
+        )
+
+    async def render_issue_register_markdown(self, case_id: str) -> str | None:
+        case = await self.case_service._get_case_record(case_id)
+        if case is None:
+            return None
+
+        sorted_issues = self._sorted_issues(case.issues)
+        issue_lines = [
+            (
+                f"- [{issue.severity}] {issue.title} | "
+                f"{issue.workstream_domain} | {issue.status}\n"
+                f"  Impact: {issue.business_impact}\n"
+                f"  Action: {issue.recommended_action or 'Triage pending'}"
+            )
+            for issue in sorted_issues
+        ] or ["- No issues have been registered."]
+
+        return "\n".join(
+            [
+                f"# Issue Register: {case.name}",
+                "",
+                f"Target: {case.target_name}",
+                "",
+                "## Issues",
+                *issue_lines,
+            ]
+        )
+
+    def _sorted_issues(self, issues):
+        return sorted(
+            issues,
+            key=lambda issue: (
+                SEVERITY_ORDER.get(issue.severity, 99),
+                issue.created_at,
+            ),
         )
 
     def _build_next_actions(

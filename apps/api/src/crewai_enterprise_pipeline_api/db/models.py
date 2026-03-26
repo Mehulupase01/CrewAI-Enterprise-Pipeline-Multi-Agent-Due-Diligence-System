@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 from sqlalchemy import Boolean, ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -57,6 +59,12 @@ class CaseRecord(TimestampedMixin, Base):
         back_populates="case",
         cascade="all, delete-orphan",
         order_by="ApprovalDecisionRecord.created_at",
+        lazy="selectin",
+    )
+    workflow_runs: Mapped[list[WorkflowRunRecord]] = relationship(
+        back_populates="case",
+        cascade="all, delete-orphan",
+        order_by="WorkflowRunRecord.created_at",
         lazy="selectin",
     )
 
@@ -173,3 +181,56 @@ class ApprovalDecisionRecord(TimestampedMixin, Base):
     blocking_issue_count: Mapped[int] = mapped_column(default=0)
 
     case: Mapped[CaseRecord] = relationship(back_populates="approvals")
+
+
+class WorkflowRunRecord(TimestampedMixin, Base):
+    __tablename__ = "workflow_runs"
+
+    case_id: Mapped[str] = mapped_column(ForeignKey("cases.id", ondelete="CASCADE"))
+    requested_by: Mapped[str] = mapped_column(String(255))
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(40), default="queued")
+    summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(nullable=True)
+
+    case: Mapped[CaseRecord] = relationship(back_populates="workflow_runs")
+    trace_events: Mapped[list[RunTraceEventRecord]] = relationship(
+        back_populates="run",
+        cascade="all, delete-orphan",
+        order_by="RunTraceEventRecord.sequence_number",
+        lazy="selectin",
+    )
+    report_bundles: Mapped[list[ReportBundleRecord]] = relationship(
+        back_populates="run",
+        cascade="all, delete-orphan",
+        order_by="ReportBundleRecord.created_at",
+        lazy="selectin",
+    )
+
+
+class RunTraceEventRecord(TimestampedMixin, Base):
+    __tablename__ = "run_trace_events"
+
+    run_id: Mapped[str] = mapped_column(ForeignKey("workflow_runs.id", ondelete="CASCADE"))
+    sequence_number: Mapped[int] = mapped_column(default=1)
+    step_key: Mapped[str] = mapped_column(String(120))
+    title: Mapped[str] = mapped_column(String(255))
+    message: Mapped[str] = mapped_column(Text)
+    level: Mapped[str] = mapped_column(String(40), default="info")
+
+    run: Mapped[WorkflowRunRecord] = relationship(back_populates="trace_events")
+
+
+class ReportBundleRecord(TimestampedMixin, Base):
+    __tablename__ = "report_bundles"
+
+    case_id: Mapped[str] = mapped_column(ForeignKey("cases.id", ondelete="CASCADE"))
+    run_id: Mapped[str] = mapped_column(ForeignKey("workflow_runs.id", ondelete="CASCADE"))
+    bundle_kind: Mapped[str] = mapped_column(String(80))
+    title: Mapped[str] = mapped_column(String(255))
+    format: Mapped[str] = mapped_column(String(40), default="markdown")
+    summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    content: Mapped[str] = mapped_column(Text)
+
+    run: Mapped[WorkflowRunRecord] = relationship(back_populates="report_bundles")

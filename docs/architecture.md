@@ -29,6 +29,9 @@ The first persisted platform entities are now live in the API surface:
 - `EvidenceNode`
 - `IssueRegisterItem`
 - `ApprovalDecision`
+- `WorkflowRun`
+- `RunTraceEvent`
+- `ReportBundle`
 - `RequestItem`
 - `QaItem`
 
@@ -102,5 +105,6 @@ The current implementation pass adds the first true operations layer:
 - issue-register records tied back to evidence with deterministic scan heuristics
 - checklist template seeding, item status updates, and coverage summaries
 - approval reviews and executive memo generation from structured case state
+- persisted workflow runs with trace events and bundle generation
 - request-list and management Q&A tracking
 - source-adapter contracts for uploaded, public, and vendor-driven evidence

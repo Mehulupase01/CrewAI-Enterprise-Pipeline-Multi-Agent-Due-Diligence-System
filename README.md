@@ -53,6 +53,7 @@ platform operations work:
 - issue register endpoints plus deterministic evidence-to-flag scanning
 - pack-aware checklist seeding, item updates, and completeness coverage summaries
 - approval review gate plus executive memo report preview endpoint
+- persisted workflow runs with trace events and generated report bundles
 - document, evidence, request-list, and Q&A tracker endpoints
 - source-adapter catalog for uploaded, public, and vendor-backed evidence
 - analyst workbench dashboard aligned to the live platform surface

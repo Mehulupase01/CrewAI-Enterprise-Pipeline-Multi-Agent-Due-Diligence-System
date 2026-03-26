@@ -103,6 +103,23 @@ class ApprovalDecisionKind(StrEnum):
     CHANGES_REQUESTED = "changes_requested"
 
 
+class WorkflowRunStatus(StrEnum):
+    QUEUED = "queued"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+class RunEventLevel(StrEnum):
+    INFO = "info"
+    WARNING = "warning"
+
+
+class ReportBundleKind(StrEnum):
+    EXECUTIVE_MEMO_MARKDOWN = "executive_memo_markdown"
+    ISSUE_REGISTER_MARKDOWN = "issue_register_markdown"
+
+
 class SourceAdapterCategory(StrEnum):
     UPLOADED = "uploaded"
     PUBLIC = "public"
@@ -220,6 +237,11 @@ class ApprovalDecisionCreate(BaseModel):
     note: str | None = Field(default=None, max_length=4000)
 
 
+class WorkflowRunCreate(BaseModel):
+    requested_by: str = Field(default="Operator", min_length=2, max_length=255)
+    note: str | None = Field(default=None, max_length=4000)
+
+
 class DocumentArtifactSummary(ORMModel):
     id: str
     title: str
@@ -329,6 +351,48 @@ class ApprovalDecisionSummary(ORMModel):
     updated_at: datetime
 
 
+class ReportBundleSummary(ORMModel):
+    id: str
+    run_id: str
+    bundle_kind: ReportBundleKind
+    title: str
+    format: str
+    summary: str | None
+    content: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class RunTraceEventSummary(ORMModel):
+    id: str
+    run_id: str
+    sequence_number: int
+    step_key: str
+    title: str
+    message: str
+    level: RunEventLevel
+    created_at: datetime
+    updated_at: datetime
+
+
+class WorkflowRunSummary(ORMModel):
+    id: str
+    case_id: str
+    requested_by: str
+    note: str | None
+    status: WorkflowRunStatus
+    summary: str | None
+    started_at: datetime | None
+    completed_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class WorkflowRunDetail(WorkflowRunSummary):
+    trace_events: list[RunTraceEventSummary] = Field(default_factory=list)
+    report_bundles: list[ReportBundleSummary] = Field(default_factory=list)
+
+
 class CaseSummary(ORMModel):
     id: str
     name: str
@@ -394,3 +458,8 @@ class ExecutiveMemoReport(BaseModel):
     open_requests: list[RequestItemSummary]
     checklist_coverage: ChecklistCoverageSummary
     next_actions: list[str]
+
+
+class WorkflowRunResult(BaseModel):
+    run: WorkflowRunDetail
+    executive_memo: ExecutiveMemoReport

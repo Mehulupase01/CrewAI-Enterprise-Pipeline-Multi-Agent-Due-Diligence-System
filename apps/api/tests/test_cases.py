@@ -309,3 +309,73 @@ def test_approval_review_and_executive_memo(client) -> None:
     assert report_payload["checklist_coverage"]["open_mandatory_items"] >= 1
     assert len(report_payload["top_issues"]) >= 1
     assert len(report_payload["open_requests"]) >= 1
+
+
+def test_workflow_run_generates_traces_and_report_bundles(client) -> None:
+    case_response = client.post(
+        "/api/v1/cases",
+        json={
+            "name": "Project Horizon",
+            "target_name": "Horizon Analytics Private Limited",
+            "summary": "Workflow execution validation case.",
+            "motion_pack": "buy_side_diligence",
+            "sector_pack": "tech_saas_services",
+            "country": "India",
+        },
+    )
+    case_id = case_response.json()["id"]
+
+    seed_response = client.post(f"/api/v1/cases/{case_id}/checklist/seed")
+    assert seed_response.status_code == 201
+
+    issue_response = client.post(
+        f"/api/v1/cases/{case_id}/issues",
+        json={
+            "title": "Customer concentration exposure",
+            "summary": "One enterprise client contributes 41 percent of ARR.",
+            "severity": "medium",
+            "workstream_domain": "commercial",
+            "business_impact": "Revenue downside is meaningful if renewal slips.",
+            "recommended_action": "Stress test the forecast and review renewal protections.",
+            "confidence": 0.84,
+            "status": "open",
+        },
+    )
+    assert issue_response.status_code == 201
+
+    request_response = client.post(
+        f"/api/v1/cases/{case_id}/requests",
+        json={
+            "title": "Share customer renewal deck",
+            "detail": "Need top ten customer contract terms and renewal history.",
+            "owner": "Commercial Lead",
+            "status": "open",
+        },
+    )
+    assert request_response.status_code == 201
+
+    run_response = client.post(
+        f"/api/v1/cases/{case_id}/runs",
+        json={
+            "requested_by": "Diligence Operator",
+            "note": "Generate current state memo and issue pack.",
+        },
+    )
+    assert run_response.status_code == 201
+    run_payload = run_response.json()
+    assert run_payload["run"]["status"] == "completed"
+    assert len(run_payload["run"]["trace_events"]) >= 5
+    assert len(run_payload["run"]["report_bundles"]) == 2
+    assert run_payload["executive_memo"]["case_id"] == case_id
+
+    list_response = client.get(f"/api/v1/cases/{case_id}/runs")
+    assert list_response.status_code == 200
+    assert len(list_response.json()) == 1
+
+    run_id = run_payload["run"]["id"]
+    detail_response = client.get(f"/api/v1/cases/{case_id}/runs/{run_id}")
+    assert detail_response.status_code == 200
+    detail_payload = detail_response.json()
+    bundle_kinds = {bundle["bundle_kind"] for bundle in detail_payload["report_bundles"]}
+    assert "executive_memo_markdown" in bundle_kinds
+    assert "issue_register_markdown" in bundle_kinds

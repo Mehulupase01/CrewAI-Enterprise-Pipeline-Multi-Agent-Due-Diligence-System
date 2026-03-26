@@ -29,6 +29,10 @@ from crewai_enterprise_pipeline_api.domain.models import (
     QaItemSummary,
     RequestItemCreate,
     RequestItemSummary,
+    WorkflowRunCreate,
+    WorkflowRunDetail,
+    WorkflowRunResult,
+    WorkflowRunSummary,
     WorkstreamDomain,
 )
 from crewai_enterprise_pipeline_api.services.approval_service import ApprovalService
@@ -37,6 +41,7 @@ from crewai_enterprise_pipeline_api.services.checklist_service import ChecklistS
 from crewai_enterprise_pipeline_api.services.ingestion_service import IngestionService
 from crewai_enterprise_pipeline_api.services.issue_service import IssueService
 from crewai_enterprise_pipeline_api.services.report_service import ReportService
+from crewai_enterprise_pipeline_api.services.workflow_service import WorkflowService
 
 router = APIRouter()
 
@@ -259,6 +264,39 @@ async def get_executive_memo(
     if report is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
     return report
+
+
+@router.get("/{case_id}/runs", response_model=list[WorkflowRunSummary])
+async def list_runs(case_id: str, session: DbSession) -> list[WorkflowRunSummary]:
+    return await WorkflowService(session).list_runs(case_id)
+
+
+@router.post(
+    "/{case_id}/runs",
+    response_model=WorkflowRunResult,
+    status_code=status.HTTP_201_CREATED,
+)
+async def execute_run(
+    case_id: str,
+    payload: WorkflowRunCreate,
+    session: DbSession,
+) -> WorkflowRunResult:
+    result = await WorkflowService(session).execute_run(case_id, payload)
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
+    return result
+
+
+@router.get("/{case_id}/runs/{run_id}", response_model=WorkflowRunDetail)
+async def get_run(
+    case_id: str,
+    run_id: str,
+    session: DbSession,
+) -> WorkflowRunDetail:
+    run = await WorkflowService(session).get_run(case_id, run_id)
+    if run is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found")
+    return run
 
 
 @router.get("/{case_id}/requests", response_model=list[RequestItemSummary])
