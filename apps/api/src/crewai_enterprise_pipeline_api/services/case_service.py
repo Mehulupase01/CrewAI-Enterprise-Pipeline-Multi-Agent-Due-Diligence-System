@@ -1,22 +1,32 @@
+import hashlib
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from crewai_enterprise_pipeline_api.db.models import (
     CaseRecord,
+    ChecklistItemRecord,
     DocumentArtifactRecord,
     EvidenceNodeRecord,
+    IssueRegisterItemRecord,
     QaItemRecord,
     RequestItemRecord,
 )
 from crewai_enterprise_pipeline_api.domain.models import (
+    ApprovalDecisionSummary,
     CaseCreate,
     CaseDetail,
     CaseSummary,
+    ChecklistItemCreate,
+    ChecklistItemSummary,
+    ChecklistItemUpdate,
     DocumentArtifactCreate,
     DocumentArtifactSummary,
     EvidenceItemCreate,
     EvidenceItemSummary,
+    IssueRegisterItemCreate,
+    IssueRegisterItemSummary,
     QaItemCreate,
     QaItemSummary,
     RequestItemCreate,
@@ -166,13 +176,138 @@ class CaseService:
         await self.session.refresh(record)
         return QaItemSummary.model_validate(record)
 
+    async def list_issues(self, case_id: str) -> list[IssueRegisterItemSummary]:
+        case = await self._get_case_record(case_id)
+        if case is None:
+            return []
+        return [IssueRegisterItemSummary.model_validate(item) for item in case.issues]
+
+    async def add_issue(
+        self,
+        case_id: str,
+        payload: IssueRegisterItemCreate,
+    ) -> IssueRegisterItemSummary | None:
+        if await self._get_case_record(case_id) is None:
+            return None
+
+        fingerprint = hashlib.sha256(
+            "|".join(
+                [
+                    case_id,
+                    payload.title,
+                    payload.summary,
+                    payload.severity.value,
+                    payload.workstream_domain.value,
+                    payload.source_evidence_id or "",
+                ]
+            ).encode("utf-8")
+        ).hexdigest()
+
+        existing = await self.session.execute(
+            select(IssueRegisterItemRecord).where(
+                IssueRegisterItemRecord.fingerprint == fingerprint
+            )
+        )
+        record = existing.scalar_one_or_none()
+        if record is None:
+            record = IssueRegisterItemRecord(
+                case_id=case_id,
+                source_evidence_id=payload.source_evidence_id,
+                title=payload.title,
+                summary=payload.summary,
+                severity=payload.severity.value,
+                status=payload.status.value,
+                workstream_domain=payload.workstream_domain.value,
+                business_impact=payload.business_impact,
+                recommended_action=payload.recommended_action,
+                confidence=payload.confidence,
+                fingerprint=fingerprint,
+            )
+            self.session.add(record)
+            await self.session.commit()
+            await self.session.refresh(record)
+
+        return IssueRegisterItemSummary.model_validate(record)
+
+    async def list_checklist_items(self, case_id: str) -> list[ChecklistItemSummary]:
+        case = await self._get_case_record(case_id)
+        if case is None:
+            return []
+        return [
+            ChecklistItemSummary.model_validate(item) for item in case.checklist_items
+        ]
+
+    async def add_checklist_item(
+        self,
+        case_id: str,
+        payload: ChecklistItemCreate,
+    ) -> ChecklistItemSummary | None:
+        if await self._get_case_record(case_id) is None:
+            return None
+
+        record = ChecklistItemRecord(
+            case_id=case_id,
+            template_key=payload.template_key,
+            title=payload.title,
+            detail=payload.detail,
+            workstream_domain=payload.workstream_domain.value,
+            mandatory=payload.mandatory,
+            evidence_required=payload.evidence_required,
+            owner=payload.owner,
+            note=payload.note,
+            status=payload.status.value,
+        )
+        self.session.add(record)
+        await self.session.commit()
+        await self.session.refresh(record)
+        return ChecklistItemSummary.model_validate(record)
+
+    async def update_checklist_item(
+        self,
+        case_id: str,
+        item_id: str,
+        payload: ChecklistItemUpdate,
+    ) -> ChecklistItemSummary | None:
+        if await self._get_case_record(case_id) is None:
+            return None
+
+        result = await self.session.execute(
+            select(ChecklistItemRecord).where(
+                ChecklistItemRecord.id == item_id,
+                ChecklistItemRecord.case_id == case_id,
+            )
+        )
+        record = result.scalar_one_or_none()
+        if record is None:
+            return None
+
+        if payload.status is not None:
+            record.status = payload.status.value
+        if payload.owner is not None:
+            record.owner = payload.owner
+        if payload.note is not None:
+            record.note = payload.note
+
+        await self.session.commit()
+        await self.session.refresh(record)
+        return ChecklistItemSummary.model_validate(record)
+
+    async def list_approvals(self, case_id: str) -> list[ApprovalDecisionSummary]:
+        case = await self._get_case_record(case_id)
+        if case is None:
+            return []
+        return [ApprovalDecisionSummary.model_validate(item) for item in case.approvals]
+
     async def _get_case_record(self, case_id: str) -> CaseRecord | None:
         result = await self.session.execute(
             select(CaseRecord)
             .where(CaseRecord.id == case_id)
             .options(
+                selectinload(CaseRecord.approvals),
+                selectinload(CaseRecord.checklist_items),
                 selectinload(CaseRecord.documents),
                 selectinload(CaseRecord.evidence_items),
+                selectinload(CaseRecord.issues),
                 selectinload(CaseRecord.request_items),
                 selectinload(CaseRecord.qa_items),
             )

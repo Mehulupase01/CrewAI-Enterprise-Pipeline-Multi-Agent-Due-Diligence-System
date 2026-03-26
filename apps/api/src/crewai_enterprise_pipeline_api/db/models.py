@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import ForeignKey, String, Text
+from sqlalchemy import Boolean, ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from crewai_enterprise_pipeline_api.db.base import Base, TimestampedMixin
@@ -39,6 +39,24 @@ class CaseRecord(TimestampedMixin, Base):
         back_populates="case",
         cascade="all, delete-orphan",
         order_by="QaItemRecord.created_at",
+        lazy="selectin",
+    )
+    issues: Mapped[list[IssueRegisterItemRecord]] = relationship(
+        back_populates="case",
+        cascade="all, delete-orphan",
+        order_by="IssueRegisterItemRecord.created_at",
+        lazy="selectin",
+    )
+    checklist_items: Mapped[list[ChecklistItemRecord]] = relationship(
+        back_populates="case",
+        cascade="all, delete-orphan",
+        order_by="ChecklistItemRecord.created_at",
+        lazy="selectin",
+    )
+    approvals: Mapped[list[ApprovalDecisionRecord]] = relationship(
+        back_populates="case",
+        cascade="all, delete-orphan",
+        order_by="ApprovalDecisionRecord.created_at",
         lazy="selectin",
     )
 
@@ -101,3 +119,57 @@ class QaItemRecord(TimestampedMixin, Base):
     status: Mapped[str] = mapped_column(String(40), default="open")
 
     case: Mapped[CaseRecord] = relationship(back_populates="qa_items")
+
+
+class IssueRegisterItemRecord(TimestampedMixin, Base):
+    __tablename__ = "issue_register_items"
+
+    case_id: Mapped[str] = mapped_column(ForeignKey("cases.id", ondelete="CASCADE"))
+    source_evidence_id: Mapped[str | None] = mapped_column(
+        ForeignKey("evidence_nodes.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    title: Mapped[str] = mapped_column(String(255))
+    summary: Mapped[str] = mapped_column(Text)
+    severity: Mapped[str] = mapped_column(String(40))
+    status: Mapped[str] = mapped_column(String(40), default="open")
+    workstream_domain: Mapped[str] = mapped_column(String(80))
+    business_impact: Mapped[str] = mapped_column(Text)
+    recommended_action: Mapped[str | None] = mapped_column(Text, nullable=True)
+    confidence: Mapped[float] = mapped_column(default=0.75)
+    fingerprint: Mapped[str] = mapped_column(String(64), unique=True)
+
+    case: Mapped[CaseRecord] = relationship(back_populates="issues")
+
+
+class ChecklistItemRecord(TimestampedMixin, Base):
+    __tablename__ = "checklist_items"
+    __table_args__ = (UniqueConstraint("case_id", "template_key"),)
+
+    case_id: Mapped[str] = mapped_column(ForeignKey("cases.id", ondelete="CASCADE"))
+    template_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    title: Mapped[str] = mapped_column(String(255))
+    detail: Mapped[str] = mapped_column(Text)
+    workstream_domain: Mapped[str] = mapped_column(String(80))
+    mandatory: Mapped[bool] = mapped_column(Boolean, default=True)
+    evidence_required: Mapped[bool] = mapped_column(Boolean, default=True)
+    owner: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(40), default="pending")
+
+    case: Mapped[CaseRecord] = relationship(back_populates="checklist_items")
+
+
+class ApprovalDecisionRecord(TimestampedMixin, Base):
+    __tablename__ = "approval_decisions"
+
+    case_id: Mapped[str] = mapped_column(ForeignKey("cases.id", ondelete="CASCADE"))
+    reviewer: Mapped[str] = mapped_column(String(255))
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    decision: Mapped[str] = mapped_column(String(40))
+    rationale: Mapped[str] = mapped_column(Text)
+    ready_for_export: Mapped[bool] = mapped_column(Boolean, default=False)
+    open_mandatory_items: Mapped[int] = mapped_column(default=0)
+    blocking_issue_count: Mapped[int] = mapped_column(default=0)
+
+    case: Mapped[CaseRecord] = relationship(back_populates="approvals")

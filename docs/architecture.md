@@ -24,8 +24,11 @@ The FastAPI service owns universal platform concepts:
 The first persisted platform entities are now live in the API surface:
 
 - `Case`
+- `ChecklistItem`
 - `DocumentArtifact`
 - `EvidenceNode`
+- `IssueRegisterItem`
+- `ApprovalDecision`
 - `RequestItem`
 - `QaItem`
 
@@ -94,7 +97,10 @@ The current implementation pass adds the first true operations layer:
 
 - SQLAlchemy persistence with startup schema creation for local development
 - case CRUD entry points and detail views
-- document artifact registration
+- document upload, parsing, storage fallback, and artifact registration
 - evidence ledger entries tied to workstream domains
+- issue-register records tied back to evidence with deterministic scan heuristics
+- checklist template seeding, item status updates, and coverage summaries
+- approval reviews and executive memo generation from structured case state
 - request-list and management Q&A tracking
 - source-adapter contracts for uploaded, public, and vendor-driven evidence

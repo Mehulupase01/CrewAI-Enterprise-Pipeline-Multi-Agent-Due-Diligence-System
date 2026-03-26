@@ -49,6 +49,10 @@ The repository has completed the foundation layers and is now in `Phase 2`
 platform operations work:
 
 - persisted case operations backed by SQLAlchemy
+- document upload, parsing, storage, and evidence extraction
+- issue register endpoints plus deterministic evidence-to-flag scanning
+- pack-aware checklist seeding, item updates, and completeness coverage summaries
+- approval review gate plus executive memo report preview endpoint
 - document, evidence, request-list, and Q&A tracker endpoints
 - source-adapter catalog for uploaded, public, and vendor-backed evidence
 - analyst workbench dashboard aligned to the live platform surface

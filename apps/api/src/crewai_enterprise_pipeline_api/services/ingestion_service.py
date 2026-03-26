@@ -12,7 +12,6 @@ from crewai_enterprise_pipeline_api.domain.models import (
     DocumentArtifactSummary,
     DocumentIngestionResult,
     EvidenceKind,
-    StorageBackendKind,
     WorkstreamDomain,
 )
 from crewai_enterprise_pipeline_api.ingestion.parsers import DocumentParser, chunk_text
@@ -65,7 +64,9 @@ class IngestionService:
         artifact.byte_size = stored.byte_size
         artifact.parser_name = parsed.parser_name
         artifact.processing_status = (
-            ArtifactProcessingStatus.PARSED.value if chunks else ArtifactProcessingStatus.STAGED.value
+            ArtifactProcessingStatus.PARSED.value
+            if chunks
+            else ArtifactProcessingStatus.STAGED.value
         )
 
         evidence_records: list[EvidenceNodeRecord] = []

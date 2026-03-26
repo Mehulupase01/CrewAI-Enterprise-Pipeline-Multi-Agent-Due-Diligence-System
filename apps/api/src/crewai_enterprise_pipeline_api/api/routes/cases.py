@@ -4,24 +4,39 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
 
 from crewai_enterprise_pipeline_api.api.dependencies import DbSession
 from crewai_enterprise_pipeline_api.domain.models import (
+    ApprovalDecisionCreate,
+    ApprovalDecisionSummary,
     ArtifactSourceKind,
     CaseCreate,
     CaseDetail,
     CaseSummary,
+    ChecklistCoverageSummary,
+    ChecklistItemCreate,
+    ChecklistItemSummary,
+    ChecklistItemUpdate,
+    ChecklistSeedResult,
     DocumentArtifactCreate,
-    DocumentIngestionResult,
     DocumentArtifactSummary,
-    EvidenceKind,
+    DocumentIngestionResult,
     EvidenceItemCreate,
     EvidenceItemSummary,
+    EvidenceKind,
+    ExecutiveMemoReport,
+    IssueRegisterItemCreate,
+    IssueRegisterItemSummary,
+    IssueScanResult,
     QaItemCreate,
     QaItemSummary,
     RequestItemCreate,
     RequestItemSummary,
     WorkstreamDomain,
 )
+from crewai_enterprise_pipeline_api.services.approval_service import ApprovalService
 from crewai_enterprise_pipeline_api.services.case_service import CaseService
+from crewai_enterprise_pipeline_api.services.checklist_service import ChecklistService
 from crewai_enterprise_pipeline_api.services.ingestion_service import IngestionService
+from crewai_enterprise_pipeline_api.services.issue_service import IssueService
+from crewai_enterprise_pipeline_api.services.report_service import ReportService
 
 router = APIRouter()
 
@@ -113,6 +128,137 @@ async def create_evidence(
     if evidence is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
     return evidence
+
+
+@router.get("/{case_id}/issues", response_model=list[IssueRegisterItemSummary])
+async def list_issues(case_id: str, session: DbSession) -> list[IssueRegisterItemSummary]:
+    return await CaseService(session).list_issues(case_id)
+
+
+@router.post(
+    "/{case_id}/issues",
+    response_model=IssueRegisterItemSummary,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_issue(
+    case_id: str,
+    payload: IssueRegisterItemCreate,
+    session: DbSession,
+) -> IssueRegisterItemSummary:
+    issue = await CaseService(session).add_issue(case_id, payload)
+    if issue is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
+    return issue
+
+
+@router.post(
+    "/{case_id}/issues/scan",
+    response_model=IssueScanResult,
+    status_code=status.HTTP_201_CREATED,
+)
+async def scan_issues(case_id: str, session: DbSession) -> IssueScanResult:
+    result = await IssueService(session).scan_case_evidence(case_id)
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
+    return result
+
+
+@router.get("/{case_id}/checklist", response_model=list[ChecklistItemSummary])
+async def list_checklist_items(
+    case_id: str,
+    session: DbSession,
+) -> list[ChecklistItemSummary]:
+    return await CaseService(session).list_checklist_items(case_id)
+
+
+@router.post(
+    "/{case_id}/checklist",
+    response_model=ChecklistItemSummary,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_checklist_item(
+    case_id: str,
+    payload: ChecklistItemCreate,
+    session: DbSession,
+) -> ChecklistItemSummary:
+    item = await CaseService(session).add_checklist_item(case_id, payload)
+    if item is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
+    return item
+
+
+@router.patch("/{case_id}/checklist/{item_id}", response_model=ChecklistItemSummary)
+async def update_checklist_item(
+    case_id: str,
+    item_id: str,
+    payload: ChecklistItemUpdate,
+    session: DbSession,
+) -> ChecklistItemSummary:
+    item = await CaseService(session).update_checklist_item(case_id, item_id, payload)
+    if item is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Checklist item not found",
+        )
+    return item
+
+
+@router.post(
+    "/{case_id}/checklist/seed",
+    response_model=ChecklistSeedResult,
+    status_code=status.HTTP_201_CREATED,
+)
+async def seed_checklist(case_id: str, session: DbSession) -> ChecklistSeedResult:
+    result = await ChecklistService(session).seed_case_checklist(case_id)
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
+    return result
+
+
+@router.get("/{case_id}/coverage", response_model=ChecklistCoverageSummary)
+async def get_coverage(case_id: str, session: DbSession) -> ChecklistCoverageSummary:
+    summary = await ChecklistService(session).get_coverage_summary(case_id)
+    if summary is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
+    return summary
+
+
+@router.get("/{case_id}/approvals", response_model=list[ApprovalDecisionSummary])
+async def list_approvals(
+    case_id: str,
+    session: DbSession,
+) -> list[ApprovalDecisionSummary]:
+    return await CaseService(session).list_approvals(case_id)
+
+
+@router.post(
+    "/{case_id}/approvals/review",
+    response_model=ApprovalDecisionSummary,
+    status_code=status.HTTP_201_CREATED,
+)
+async def review_case(
+    case_id: str,
+    payload: ApprovalDecisionCreate,
+    session: DbSession,
+) -> ApprovalDecisionSummary:
+    decision = await ApprovalService(session).review_case(case_id, payload)
+    if decision is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
+    return decision
+
+
+@router.get(
+    "/{case_id}/reports/executive-memo",
+    response_model=ExecutiveMemoReport,
+)
+async def get_executive_memo(
+    case_id: str,
+    session: DbSession,
+) -> ExecutiveMemoReport:
+    report = await ReportService(session).build_executive_memo(case_id)
+    if report is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
+    return report
 
 
 @router.get("/{case_id}/requests", response_model=list[RequestItemSummary])
