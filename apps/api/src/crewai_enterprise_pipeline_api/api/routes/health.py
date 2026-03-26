@@ -41,6 +41,7 @@ def health() -> AppHealth:
         enabled_sector_packs=[
             SectorPack.TECH_SAAS_SERVICES,
             SectorPack.MANUFACTURING_INDUSTRIALS,
+            SectorPack.BFSI_NBFC,
         ],
     )
 
@@ -115,7 +116,7 @@ def overview() -> PlatformOverview:
     settings = get_settings()
     return PlatformOverview(
         product_name="CrewAI Enterprise Pipeline",
-        current_phase="Expansion Phase 3: manufacturing / industrials",
+        current_phase="Expansion Phase 4: fintech / nbfc / bfsi",
         country="India",
         auth_required=settings.auth_required,
         motion_packs=list(MotionPack),

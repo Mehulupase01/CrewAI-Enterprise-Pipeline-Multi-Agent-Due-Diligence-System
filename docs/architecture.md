@@ -105,8 +105,7 @@ The currently supported platform surface activates these pack combinations:
 - `credit_lending` + `tech_saas_services`
 - `vendor_onboarding` + `tech_saas_services`
 - manufacturing / industrials as an active sector pack over supported motion packs
-
-`bfsi_nbfc` remains planned, but the contracts already account for it.
+- `bfsi_nbfc` as an active sector pack over supported motion packs
 
 ## Phase 2 Additions
 
@@ -186,3 +185,17 @@ The third expansion pack is now implemented:
 - the evaluation harness now proves that the manufacturing sector pack works
   both on the flagship buy-side flow and in composition with the
   `credit_lending` motion pack
+
+## Expansion Phase 4: Fintech / NBFC / BFSI
+
+The fourth expansion pack is now implemented:
+
+- `bfsi_nbfc` now seeds sector-specific checklist templates for asset quality,
+  ALM and liquidity, RBI registration and returns, underwriting and
+  collections governance, KYC or AML and data controls, and connected lending
+- issue heuristics now detect supervisory exposure, portfolio-quality
+  deterioration, ALM mismatch, KYC or AML control weakness, connected lending
+  or evergreening, and collections-outsourcing risk
+- the evaluation harness now proves that the BFSI sector pack works both on
+  the flagship buy-side flow and in composition with the `credit_lending`
+  motion pack

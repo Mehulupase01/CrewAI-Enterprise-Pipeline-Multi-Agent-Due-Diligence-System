@@ -714,6 +714,157 @@ MANUFACTURING_INDUSTRIALS_EXPANSION_SCENARIOS: tuple[EvaluationScenario, ...] = 
 )
 
 
+BFSI_NBFC_EXPANSION_SCENARIOS: tuple[EvaluationScenario, ...] = (
+    EvaluationScenario(
+        code="blocked_bfsi_asset_quality_case",
+        name="Blocked BFSI asset-quality case",
+        description=(
+            "Validates that BFSI-sector supervisory, asset-quality, and connected-"
+            "lending red flags block buy-side export readiness."
+        ),
+        case_payload={
+            "name": "Project Prism Acquisition",
+            "target_name": "Prism Finance Private Limited",
+            "summary": "Evaluation scenario for blocked BFSI diligence readiness.",
+            "motion_pack": "buy_side_diligence",
+            "sector_pack": "bfsi_nbfc",
+            "country": "India",
+        },
+        upload_documents=(
+            UploadDocumentFixture(
+                title="RBI supervisory note",
+                filename="rbi_supervisory_note.txt",
+                content=(
+                    "The latest RBI inspection highlighted gaps linked to the certificate "
+                    "of registration conditions and a supervisory action remains under "
+                    "remediation."
+                ),
+                mime_type="text/plain",
+                document_kind="rbi_supervisory_note",
+                source_kind="uploaded_dataroom",
+                workstream_domain="regulatory",
+                evidence_kind="risk",
+            ),
+            UploadDocumentFixture(
+                title="Portfolio quality note",
+                filename="portfolio_quality_note.txt",
+                content=(
+                    "GNPA rose sharply, stage 3 balances widened, and the review "
+                    "identified a provision shortfall in one unsecured cohort."
+                ),
+                mime_type="text/plain",
+                document_kind="portfolio_quality_note",
+                source_kind="uploaded_dataroom",
+                workstream_domain="financial_qoe",
+                evidence_kind="risk",
+            ),
+            UploadDocumentFixture(
+                title="Connected lending review",
+                filename="connected_lending_review.txt",
+                content=(
+                    "The audit trail pointed to evergreening and connected lending in a "
+                    "set of rollover transactions tied to a promoter-linked channel."
+                ),
+                mime_type="text/plain",
+                document_kind="connected_lending_review",
+                source_kind="uploaded_dataroom",
+                workstream_domain="forensic_compliance",
+                evidence_kind="risk",
+            ),
+        ),
+        requests=(
+            RequestFixture(
+                payload={
+                    "title": "Upload RBI remediation and portfolio drill-down",
+                    "detail": (
+                        "Need inspection response, provisioning bridge, and connected-"
+                        "lending review pack."
+                    ),
+                    "owner": "Regulatory Controller",
+                    "status": "open",
+                }
+            ),
+        ),
+        scan_issues=True,
+        expectation=ScenarioExpectation(
+            approval_decision="changes_requested",
+            ready_for_export=False,
+            report_status="not_ready",
+            report_title="Executive Memo",
+            min_syntheses=7,
+            open_mandatory_items=13,
+            min_blocking_issue_count=3,
+            max_blocking_issue_count=3,
+            min_issue_count=3,
+            min_open_request_count=1,
+            min_evidence_count=3,
+            expected_issue_severities=("high",),
+        ),
+    ),
+    EvaluationScenario(
+        code="approved_bfsi_credit_case",
+        name="Approved BFSI credit case",
+        description=(
+            "Validates that the BFSI sector pack composes cleanly with the credit-"
+            "lending motion pack."
+        ),
+        case_payload={
+            "name": "Project Aurora Term Facility",
+            "target_name": "Aurora Lending Services Private Limited",
+            "summary": "Evaluation scenario for an approved BFSI credit case.",
+            "motion_pack": "credit_lending",
+            "sector_pack": "bfsi_nbfc",
+            "country": "India",
+        },
+        upload_documents=(
+            UploadDocumentFixture(
+                title="BFSI underwriting summary",
+                filename="bfsi_underwriting_summary.txt",
+                content=(
+                    "Collections remained stable, liquidity buffers stayed above internal "
+                    "thresholds, and portfolio deterioration stayed within management's "
+                    "tracked tolerance band."
+                ),
+                mime_type="text/plain",
+                document_kind="bfsi_underwriting_summary",
+                source_kind="uploaded_dataroom",
+                workstream_domain="financial_qoe",
+                evidence_kind="metric",
+            ),
+        ),
+        evidence_items=(
+            EvidenceFixture(
+                payload={
+                    "title": "Control governance summary",
+                    "evidence_kind": "fact",
+                    "workstream_domain": "operations",
+                    "citation": "Operating controls review FY26 Q1",
+                    "excerpt": (
+                        "Underwriting overrides, collections governance, and customer "
+                        "complaint escalation remained within approved thresholds."
+                    ),
+                    "confidence": 0.9,
+                }
+            ),
+        ),
+        satisfy_all_checklist_items=True,
+        expectation=ScenarioExpectation(
+            approval_decision="approved",
+            ready_for_export=True,
+            report_status="ready_for_export",
+            report_title="Credit Memo",
+            min_syntheses=7,
+            open_mandatory_items=0,
+            min_blocking_issue_count=0,
+            max_blocking_issue_count=0,
+            min_issue_count=0,
+            min_open_request_count=0,
+            min_evidence_count=2,
+        ),
+    ),
+)
+
+
 EVALUATION_SUITES: dict[str, EvaluationSuiteDefinition] = {
     "phase5_first_slice": EvaluationSuiteDefinition(
         key="phase5_first_slice",
@@ -738,5 +889,11 @@ EVALUATION_SUITES: dict[str, EvaluationSuiteDefinition] = {
         title="Manufacturing Industrials Expansion Evaluation",
         artifact_prefix="manufacturing-industrials-expansion",
         scenarios=MANUFACTURING_INDUSTRIALS_EXPANSION_SCENARIOS,
+    ),
+    "bfsi_nbfc_expansion": EvaluationSuiteDefinition(
+        key="bfsi_nbfc_expansion",
+        title="BFSI NBFC Expansion Evaluation",
+        artifact_prefix="bfsi-nbfc-expansion",
+        scenarios=BFSI_NBFC_EXPANSION_SCENARIOS,
     ),
 }

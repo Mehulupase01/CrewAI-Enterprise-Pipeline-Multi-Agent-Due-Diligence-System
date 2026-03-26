@@ -328,6 +328,64 @@ MANUFACTURING_INDUSTRIALS_TEMPLATE: tuple[ChecklistTemplateItem, ...] = (
 )
 
 
+BFSI_NBFC_TEMPLATE: tuple[ChecklistTemplateItem, ...] = (
+    ChecklistTemplateItem(
+        template_key="financial_qoe.asset_quality_and_provisioning",
+        title="Review asset quality, stage migration, and provisioning adequacy",
+        detail=(
+            "Assess GNPA or NNPA trends, stage migration, write-offs, restructures, "
+            "and provisioning adequacy across key borrower cohorts and products."
+        ),
+        workstream_domain=WorkstreamDomain.FINANCIAL_QOE,
+    ),
+    ChecklistTemplateItem(
+        template_key="financial_qoe.alm_liquidity_profile",
+        title="Assess ALM, liquidity buffers, and borrowing concentration",
+        detail=(
+            "Review maturity mismatches, liquidity buffers, funding concentration, "
+            "asset-liability gaps, and refinancing dependence under stress."
+        ),
+        workstream_domain=WorkstreamDomain.FINANCIAL_QOE,
+    ),
+    ChecklistTemplateItem(
+        template_key="regulatory.rbi_registration_and_returns",
+        title="Validate RBI registration, product perimeter, and regulatory returns",
+        detail=(
+            "Confirm registration status, product or licence perimeter, supervisory "
+            "history, and completeness of required RBI or statutory returns."
+        ),
+        workstream_domain=WorkstreamDomain.REGULATORY,
+    ),
+    ChecklistTemplateItem(
+        template_key="operations.underwriting_and_collections_governance",
+        title="Review underwriting exceptions and collections governance",
+        detail=(
+            "Assess policy exceptions, scorecard overrides, collections conduct, "
+            "outsourced collections oversight, and grievance escalation controls."
+        ),
+        workstream_domain=WorkstreamDomain.OPERATIONS,
+    ),
+    ChecklistTemplateItem(
+        template_key="cyber_privacy.kyc_aml_and_data_controls",
+        title="Assess KYC, AML-monitoring, and customer-data controls",
+        detail=(
+            "Review onboarding controls, CKYC or KYC hygiene, AML monitoring, "
+            "customer consent handling, and privileged access over borrower data."
+        ),
+        workstream_domain=WorkstreamDomain.CYBER_PRIVACY,
+    ),
+    ChecklistTemplateItem(
+        template_key="forensic.connected_lending_and_evergreening",
+        title="Test connected lending, evergreening, and unusual fund flows",
+        detail=(
+            "Trace connected lending, loan evergreening indicators, related-party "
+            "exposure, rollovers, and round-tripped fund movements."
+        ),
+        workstream_domain=WorkstreamDomain.FORENSIC_COMPLIANCE,
+    ),
+)
+
+
 COMPLETED_STATUSES = {
     ChecklistItemStatus.SATISFIED.value,
     ChecklistItemStatus.NOT_APPLICABLE.value,
@@ -476,5 +534,7 @@ class ChecklistService:
             template.extend(TECH_SAAS_TEMPLATE)
         elif sector_pack == SectorPack.MANUFACTURING_INDUSTRIALS:
             template.extend(MANUFACTURING_INDUSTRIALS_TEMPLATE)
+        elif sector_pack == SectorPack.BFSI_NBFC:
+            template.extend(BFSI_NBFC_TEMPLATE)
 
         return tuple(template)

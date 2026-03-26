@@ -221,7 +221,7 @@ async function fetchJson<T>(path: string): Promise<T | null> {
 
 const demoOverview: PlatformOverview = {
   product_name: "CrewAI Enterprise Pipeline",
-  current_phase: "Expansion Phase 3: manufacturing / industrials",
+  current_phase: "Expansion Phase 4: fintech / nbfc / bfsi",
   country: "India",
   motion_packs: ["buy_side_diligence", "credit_lending", "vendor_onboarding"],
   sector_packs: ["tech_saas_services", "manufacturing_industrials", "bfsi_nbfc"],

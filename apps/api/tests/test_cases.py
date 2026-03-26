@@ -657,3 +657,105 @@ def test_manufacturing_issue_scan_detects_sector_risks(client) -> None:
     rerun_payload = rerun_response.json()
     assert rerun_payload["created_count"] == 0
     assert rerun_payload["reused_count"] == 3
+
+
+def test_bfsi_sector_checklist_composes_with_credit_motion_pack(client) -> None:
+    case_response = client.post(
+        "/api/v1/cases",
+        json={
+            "name": "Project Aurora Term Facility",
+            "target_name": "Aurora Lending Services Private Limited",
+            "summary": "BFSI credit pack checklist validation case.",
+            "motion_pack": "credit_lending",
+            "sector_pack": "bfsi_nbfc",
+            "country": "India",
+        },
+    )
+    case_id = case_response.json()["id"]
+
+    seed_response = client.post(f"/api/v1/cases/{case_id}/checklist/seed")
+    assert seed_response.status_code == 201
+    seed_payload = seed_response.json()
+    template_keys = {
+        item["template_key"] for item in seed_payload["checklist_items"] if item["template_key"]
+    }
+    assert seed_payload["created_count"] >= 14
+    assert "financial_qoe.debt_service_capacity" in template_keys
+    assert "legal_corporate.security_package" in template_keys
+    assert "financial_qoe.asset_quality_and_provisioning" in template_keys
+    assert "regulatory.rbi_registration_and_returns" in template_keys
+    assert "cyber_privacy.kyc_aml_and_data_controls" in template_keys
+    assert "forensic.connected_lending_and_evergreening" in template_keys
+
+
+def test_bfsi_issue_scan_detects_sector_risks(client) -> None:
+    case_response = client.post(
+        "/api/v1/cases",
+        json={
+            "name": "Project Prism Acquisition",
+            "target_name": "Prism Finance Private Limited",
+            "summary": "BFSI issue scan validation case.",
+            "motion_pack": "buy_side_diligence",
+            "sector_pack": "bfsi_nbfc",
+            "country": "India",
+        },
+    )
+    case_id = case_response.json()["id"]
+
+    evidence_payloads = (
+        {
+            "title": "RBI supervisory note",
+            "evidence_kind": "risk",
+            "workstream_domain": "regulatory",
+            "citation": "RBI inspection file FY26",
+            "excerpt": (
+                "The latest RBI inspection highlighted certificate of registration "
+                "condition breaches and a supervisory action remains open."
+            ),
+            "confidence": 0.92,
+        },
+        {
+            "title": "Portfolio quality note",
+            "evidence_kind": "risk",
+            "workstream_domain": "financial_qoe",
+            "citation": "Portfolio review pack FY26",
+            "excerpt": (
+                "GNPA increased, stage 3 balances widened, and the review identified a "
+                "provision shortfall in one unsecured product cohort."
+            ),
+            "confidence": 0.91,
+        },
+        {
+            "title": "Connected lending review",
+            "evidence_kind": "risk",
+            "workstream_domain": "forensic_compliance",
+            "citation": "Internal audit review FY26",
+            "excerpt": (
+                "The audit trail pointed to evergreening and connected lending in a set "
+                "of rollover transactions."
+            ),
+            "confidence": 0.89,
+        },
+    )
+
+    for payload in evidence_payloads:
+        response = client.post(f"/api/v1/cases/{case_id}/evidence", json=payload)
+        assert response.status_code == 201
+
+    scan_response = client.post(f"/api/v1/cases/{case_id}/issues/scan")
+    assert scan_response.status_code == 201
+    scan_payload = scan_response.json()
+    assert scan_payload["created_count"] == 3
+
+    severities = {issue["severity"] for issue in scan_payload["issues"]}
+    workstreams = {issue["workstream_domain"] for issue in scan_payload["issues"]}
+    assert severities == {"high"}
+    assert "regulatory" in workstreams
+    assert "financial_qoe" in workstreams
+    assert "forensic_compliance" in workstreams
+
+    rerun_response = client.post(f"/api/v1/cases/{case_id}/issues/scan")
+    assert rerun_response.status_code == 201
+    rerun_payload = rerun_response.json()
+    assert rerun_payload["created_count"] == 0
+    assert rerun_payload["reused_count"] == 3

@@ -6,8 +6,8 @@ This repository is the production build-out of an India-focused due diligence
 operating system. It combines a FastAPI control plane, a Next.js analyst
 workbench, CrewAI orchestration, structured evidence tracking, and a modular
 pack model that lets the platform grow from buy-side M&A diligence into
-credit/lending, vendor onboarding, manufacturing/industrials, and future BFSI
-workflows.
+credit/lending, vendor onboarding, manufacturing/industrials, and
+fintech/NBFC/BFSI workflows.
 
 ## What We Are Building
 
@@ -46,11 +46,11 @@ docker-compose.yml
 
 ## Current Phase
 
-The repository has completed the third post-flagship expansion phase:
-`ManufacturingIndustrialsPack` now runs alongside the existing motion-pack
+The repository has completed the fourth post-flagship expansion phase:
+`BFSINBFCPack` now runs alongside the existing motion-pack and sector-pack
 expansions on the same hardened platform spine. The current build includes the
-first flagship buy-side slice plus two additional motion packs and one
-additional supported sector pack:
+first flagship buy-side slice plus two additional motion packs and two
+additional supported sector packs:
 
 - persisted case operations backed by SQLAlchemy
 - document upload, parsing, storage, and evidence extraction
@@ -77,8 +77,14 @@ additional supported sector pack:
   EHS and factory compliance, order-book review, and procurement leakage
 - manufacturing-specific issue heuristics for environmental notices, inventory
   obsolescence, single-site dependence, and raw-material concentration
+- a supported `BFSINBFCPack` with sector-specific checklist templates for asset
+  quality, ALM and liquidity, RBI registration and returns, underwriting and
+  collections governance, KYC or AML and data controls, and connected lending
+- BFSI-specific issue heuristics for supervisory exposure, portfolio-quality
+  deterioration, ALM stress, KYC or AML control weakness, connected lending or
+  evergreening, and collections-outsourcing risk
 - multi-suite evaluation coverage across buy-side, credit-lending,
-  vendor-onboarding, and manufacturing-enabled flows
+  vendor-onboarding, manufacturing-enabled, and BFSI-enabled flows
 - Dockerized local dependencies plus automated checks
 
 ## Local Development
@@ -143,6 +149,12 @@ To run only the manufacturing / industrials expansion suite:
 
 ```powershell
 ./scripts/evaluate.ps1 -Suite manufacturing_industrials_expansion
+```
+
+To run only the BFSI / NBFC expansion suite:
+
+```powershell
+./scripts/evaluate.ps1 -Suite bfsi_nbfc_expansion
 ```
 
 To run a live API smoke check after the stack is up:

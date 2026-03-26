@@ -1,4 +1,5 @@
 from crewai_enterprise_pipeline_api.evaluation.scenarios import (
+    BFSI_NBFC_EXPANSION_SCENARIOS,
     CREDIT_LENDING_EXPANSION_SCENARIOS,
     EVALUATION_SUITES,
     MANUFACTURING_INDUSTRIALS_EXPANSION_SCENARIOS,
@@ -18,6 +19,7 @@ def test_evaluation_scenarios_are_unique_and_well_formed() -> None:
             "manufacturing_industrials_expansion",
             MANUFACTURING_INDUSTRIALS_EXPANSION_SCENARIOS,
         ),
+        ("bfsi_nbfc_expansion", BFSI_NBFC_EXPANSION_SCENARIOS),
     ):
         assert suite_key in EVALUATION_SUITES
         for scenario in scenarios:
@@ -38,6 +40,8 @@ def test_evaluation_scenarios_are_unique_and_well_formed() -> None:
                 assert scenario.case_payload["motion_pack"] == "vendor_onboarding"
             if suite_key == "manufacturing_industrials_expansion":
                 assert scenario.case_payload["sector_pack"] == "manufacturing_industrials"
+            if suite_key == "bfsi_nbfc_expansion":
+                assert scenario.case_payload["sector_pack"] == "bfsi_nbfc"
             for upload in scenario.upload_documents:
                 assert upload.filename
                 assert upload.content.strip()

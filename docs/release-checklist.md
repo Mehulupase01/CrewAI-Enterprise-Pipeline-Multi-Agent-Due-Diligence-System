@@ -8,6 +8,7 @@
 - credit-lending suite passes if that pack is in release scope
 - vendor-onboarding suite passes if that pack is in release scope
 - manufacturing / industrials suite passes if that sector pack is in release scope
+- BFSI / NBFC suite passes if that sector pack is in release scope
 - `GET /api/v1/system/readiness` returns `ready`
 - auth mode is confirmed for the target environment
 - default credentials are removed from shared environments

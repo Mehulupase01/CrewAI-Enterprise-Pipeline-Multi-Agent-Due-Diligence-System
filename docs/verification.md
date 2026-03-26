@@ -33,6 +33,7 @@ The current gate now covers both the foundation and the first operations layer:
 - vendor-onboarding checklist, memo, and evaluation coverage
 - manufacturing / industrials checklist composition, issue-heuristic, and
   evaluation coverage
+- BFSI / NBFC checklist composition, issue-heuristic, and evaluation coverage
 - source-adapter catalog exposure
 - workbench dashboard rendering
 - case workspace and run viewer rendering
@@ -59,7 +60,7 @@ The current gate now covers both the foundation and the first operations layer:
 - The API returns a request ID header on responses.
 - The repo includes deployment, runbook, smoke-check, and release-checklist assets.
 - The evaluation runner passes all supported suites, including credit lending
-  vendor onboarding, and manufacturing / industrials.
+  vendor onboarding, manufacturing / industrials, and BFSI / NBFC.
 - The web app exposes a dashboard, case workspace, and run viewer over the shared case model.
 - The workbench reflects the actual platform surface instead of generator boilerplate.
 - The repo contains reproducible scripts for bootstrap, dev, and checks.

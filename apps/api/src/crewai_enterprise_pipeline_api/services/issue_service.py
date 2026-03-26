@@ -249,6 +249,105 @@ HEURISTIC_RULES: tuple[HeuristicIssueRule, ...] = (
         ),
         workstream_override=WorkstreamDomain.OPERATIONS,
     ),
+    HeuristicIssueRule(
+        title="RBI registration or supervisory exposure",
+        severity=FlagSeverity.HIGH,
+        business_impact=(
+            "Registration gaps or supervisory action can impair product continuity, "
+            "investor confidence, and regulatory standing."
+        ),
+        recommended_action=(
+            "Validate registration status, inspection findings, remediation plan, and "
+            "any operating restrictions before sign-off."
+        ),
+        patterns=(
+            "certificate of registration",
+            "rbi inspection",
+            "licence cancelled",
+            "supervisory action",
+        ),
+        workstream_override=WorkstreamDomain.REGULATORY,
+    ),
+    HeuristicIssueRule(
+        title="Asset-quality or provisioning deterioration",
+        severity=FlagSeverity.HIGH,
+        business_impact=(
+            "Weak asset quality or provisioning shortfalls can reduce capital, distort "
+            "earnings quality, and increase loss expectations."
+        ),
+        recommended_action=(
+            "Review vintage delinquency, stage migration, provisioning coverage, and "
+            "management overlays across key product cohorts."
+        ),
+        patterns=("gnpa", "nnpa", "stage 3", "provision shortfall", "credit cost spike"),
+        workstream_override=WorkstreamDomain.FINANCIAL_QOE,
+    ),
+    HeuristicIssueRule(
+        title="ALM or liquidity mismatch risk",
+        severity=FlagSeverity.HIGH,
+        business_impact=(
+            "Funding mismatches or liquidity stress can constrain growth, elevate "
+            "refinancing risk, and trigger regulatory concern."
+        ),
+        recommended_action=(
+            "Assess maturity gaps, buffer adequacy, borrowing concentration, and "
+            "contingency funding plans under stress."
+        ),
+        patterns=(
+            "alm mismatch",
+            "negative cumulative mismatch",
+            "liquidity shortfall",
+            "maturity mismatch",
+        ),
+        workstream_override=WorkstreamDomain.FINANCIAL_QOE,
+    ),
+    HeuristicIssueRule(
+        title="KYC or AML control weakness",
+        severity=FlagSeverity.HIGH,
+        business_impact=(
+            "Weak onboarding or AML controls can create regulatory, fraud, and "
+            "reputational exposure for a regulated financial entity."
+        ),
+        recommended_action=(
+            "Review KYC exception logs, AML monitoring backlog, STR governance, and "
+            "remediation ownership before approval."
+        ),
+        patterns=("kyc lapse", "ckyc gap", "suspicious transaction", "aml monitoring backlog"),
+        workstream_override=WorkstreamDomain.REGULATORY,
+    ),
+    HeuristicIssueRule(
+        title="Connected lending or evergreening concern",
+        severity=FlagSeverity.HIGH,
+        business_impact=(
+            "Connected lending or evergreening can distort true portfolio quality and "
+            "create governance, fraud, and regulatory exposure."
+        ),
+        recommended_action=(
+            "Trace borrower rollovers, connected-party exposure, approval history, and "
+            "repayment-source quality for the flagged portfolio."
+        ),
+        patterns=("evergreening", "connected lending", "evergreen loan", "round tripping loan"),
+        workstream_override=WorkstreamDomain.FORENSIC_COMPLIANCE,
+    ),
+    HeuristicIssueRule(
+        title="Collections conduct or outsourcing risk",
+        severity=FlagSeverity.MEDIUM,
+        business_impact=(
+            "Weak collections governance or outsourcing dependence can drive customer "
+            "harm, complaints, and regulator attention."
+        ),
+        recommended_action=(
+            "Review call scripts, grievance volumes, collection-agency oversight, and "
+            "outsourcing controls for field and digital collections."
+        ),
+        patterns=(
+            "collection agency misconduct",
+            "outsourcing dependency",
+            "mis-selling complaint",
+            "lsp dependency",
+        ),
+        workstream_override=WorkstreamDomain.OPERATIONS,
+    ),
 )
 
 

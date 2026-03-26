@@ -14,6 +14,7 @@ def test_health_endpoint_returns_ok(client) -> None:
     assert payload["enabled_sector_packs"] == [
         "tech_saas_services",
         "manufacturing_industrials",
+        "bfsi_nbfc",
     ]
 
 
