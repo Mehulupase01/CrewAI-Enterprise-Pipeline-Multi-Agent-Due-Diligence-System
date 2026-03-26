@@ -45,8 +45,8 @@ docker-compose.yml
 
 ## Current Phase
 
-The repository has completed the first deterministic `Phase 3` slice and is
-moving into deeper interface and workflow expansion:
+The repository has completed the first deterministic `Phase 4` interface slice
+for the flagship path:
 
 - persisted case operations backed by SQLAlchemy
 - document upload, parsing, storage, and evidence extraction
@@ -55,9 +55,9 @@ moving into deeper interface and workflow expansion:
 - approval review gate plus executive memo report preview endpoint
 - persisted workflow runs with trace events and generated report bundles
 - workstream synthesis for the first diligence slice
+- analyst workbench dashboard, case workspace, and run viewer with live API support
 - document, evidence, request-list, and Q&A tracker endpoints
 - source-adapter catalog for uploaded, public, and vendor-backed evidence
-- analyst workbench dashboard aligned to the live platform surface
 - Dockerized local dependencies plus automated checks
 
 ## Local Development

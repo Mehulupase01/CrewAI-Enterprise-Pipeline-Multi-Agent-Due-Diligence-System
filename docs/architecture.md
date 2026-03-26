@@ -59,6 +59,13 @@ The Next.js app is the analyst and reviewer surface. It will eventually expose:
 - approval workflows
 - report export
 
+The first interface slice now includes:
+
+- dashboard-level case overview
+- detailed case workspace pages
+- run-detail views for traces, syntheses, and report bundles
+- live API loading with a safe local demo fallback
+
 ### 4. Platform Infrastructure
 
 The local-first dev stack uses:

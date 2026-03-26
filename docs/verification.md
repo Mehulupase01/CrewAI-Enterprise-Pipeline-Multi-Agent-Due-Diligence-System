@@ -26,6 +26,7 @@ The current gate now covers both the foundation and the first operations layer:
 - persisted workstream synthesis outputs per run
 - source-adapter catalog exposure
 - workbench dashboard rendering
+- case workspace and run viewer rendering
 - Docker stack validity
 - lint, type, and unit test execution
 
@@ -41,6 +42,7 @@ The current gate now covers both the foundation and the first operations layer:
 - Executive memo generation reflects live case state, open requests, top issues, and latest review status.
 - A case can be executed into a persisted run with trace events and bundled markdown outputs.
 - A run produces durable workstream syntheses for the first diligence domains.
+- The web app exposes a dashboard, case workspace, and run viewer over the shared case model.
 - The workbench reflects the actual platform surface instead of generator boilerplate.
 - The repo contains reproducible scripts for bootstrap, dev, and checks.
 - Docker Compose starts the local backing services cleanly.
