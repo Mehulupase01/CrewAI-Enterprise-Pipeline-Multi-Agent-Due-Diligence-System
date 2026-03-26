@@ -143,6 +143,24 @@ export type ReportBundleSummary = {
   updated_at: string;
 };
 
+export type RunExportPackageSummary = {
+  id: string;
+  case_id: string;
+  run_id: string;
+  export_kind: string;
+  title: string;
+  format: string;
+  file_name: string;
+  summary: string | null;
+  requested_by: string;
+  storage_path: string;
+  sha256_digest: string;
+  byte_size: number;
+  included_files: string[];
+  created_at: string;
+  updated_at: string;
+};
+
 export type WorkstreamSynthesisSummary = {
   id: string;
   run_id: string;
@@ -174,6 +192,7 @@ export type WorkflowRunSummary = {
 export type WorkflowRunDetail = WorkflowRunSummary & {
   trace_events: RunTraceEventSummary[];
   report_bundles: ReportBundleSummary[];
+  export_packages: RunExportPackageSummary[];
   workstream_syntheses: WorkstreamSynthesisSummary[];
 };
 
@@ -221,7 +240,7 @@ async function fetchJson<T>(path: string): Promise<T | null> {
 
 const demoOverview: PlatformOverview = {
   product_name: "CrewAI Enterprise Pipeline",
-  current_phase: "Expansion Phase 4: fintech / nbfc / bfsi",
+  current_phase: "Post-roadmap enhancement 1: run export packages",
   country: "India",
   motion_packs: ["buy_side_diligence", "credit_lending", "vendor_onboarding"],
   sector_packs: ["tech_saas_services", "manufacturing_industrials", "bfsi_nbfc"],
@@ -613,6 +632,33 @@ const demoRun: WorkflowRunDetail = {
       updated_at: "2026-03-26T09:10:47Z",
     },
   ],
+  export_packages: [
+    {
+      id: "export-1",
+      case_id: "alpha-nimbus-acquisition",
+      run_id: "run-20260326-001",
+      export_kind: "run_report_archive",
+      title: "Board Pack Export",
+      format: "zip",
+      file_name: "alpha-nimbus-acquisition-run-20260326-001-export.zip",
+      summary: "Archive package for workflow run run-20260326-001 with 7 generated files.",
+      requested_by: "Diligence Operator",
+      storage_path: "file:///cases/alpha/exports/alpha-nimbus-acquisition-run-20260326-001-export.zip",
+      sha256_digest: "demo-export-sha256",
+      byte_size: 18432,
+      included_files: [
+        "README.txt",
+        "manifest.json",
+        "reports/executive_memo.md",
+        "reports/issue_register.md",
+        "reports/workstream_syntheses.md",
+        "data/run_trace.json",
+        "data/case_snapshot.json",
+      ],
+      created_at: "2026-03-26T09:11:00Z",
+      updated_at: "2026-03-26T09:11:00Z",
+    },
+  ],
   workstream_syntheses: [
     {
       id: "syn-financial",
@@ -791,6 +837,7 @@ export function summarizeRun(run: WorkflowRunDetail) {
   return {
     traceCount: run.trace_events.length,
     bundleCount: run.report_bundles.length,
+    exportCount: run.export_packages.length,
     synthesisCount: run.workstream_syntheses.length,
   };
 }

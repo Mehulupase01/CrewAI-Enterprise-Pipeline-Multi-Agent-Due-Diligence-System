@@ -199,3 +199,13 @@ The fourth expansion pack is now implemented:
 - the evaluation harness now proves that the BFSI sector pack works both on
   the flagship buy-side flow and in composition with the `credit_lending`
   motion pack
+
+## Post-Roadmap Enhancement 1: Run Export Packages
+
+The first post-roadmap enhancement adds durable report delivery:
+
+- workflow runs can now generate a persisted zip export package
+- export archives include a manifest, markdown report bundles, run-trace data,
+  workstream-synthesis data, and optional JSON case snapshots
+- export artifacts are stored through the existing storage abstraction so they
+  work in local storage or S3-compatible object storage

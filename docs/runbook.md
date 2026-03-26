@@ -6,6 +6,7 @@
 - `GET /api/v1/system/readiness`
 - `GET /api/v1/system/overview`
 - `GET /api/v1/source-adapters`
+- `POST /api/v1/cases/{case_id}/runs/{run_id}/export-package`
 
 ## Standard Checks
 

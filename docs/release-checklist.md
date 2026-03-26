@@ -22,4 +22,5 @@
 - run issue scan and confirm no duplicate issue creation on rerun
 - execute reviewer approval
 - execute a workflow run and inspect report bundles
+- generate a run export package and inspect the stored zip contents
 - open the case and run views in the web workbench

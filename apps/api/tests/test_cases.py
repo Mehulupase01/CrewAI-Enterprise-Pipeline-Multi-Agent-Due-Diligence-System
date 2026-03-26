@@ -1,3 +1,13 @@
+from pathlib import Path
+from urllib.parse import unquote, urlparse
+from zipfile import ZipFile
+
+
+def _file_uri_to_path(uri: str) -> Path:
+    parsed = urlparse(uri)
+    return Path(unquote(parsed.path.lstrip("/")))
+
+
 def test_case_workflow_persists_documents_evidence_and_trackers(client) -> None:
     case_response = client.post(
         "/api/v1/cases",
@@ -759,3 +769,100 @@ def test_bfsi_issue_scan_detects_sector_risks(client) -> None:
     rerun_payload = rerun_response.json()
     assert rerun_payload["created_count"] == 0
     assert rerun_payload["reused_count"] == 3
+
+
+def test_run_export_package_creates_zip_artifact(client) -> None:
+    case_response = client.post(
+        "/api/v1/cases",
+        json={
+            "name": "Project Export Validation",
+            "target_name": "Export Validation Private Limited",
+            "summary": "Run export package validation case.",
+            "motion_pack": "buy_side_diligence",
+            "sector_pack": "tech_saas_services",
+            "country": "India",
+        },
+    )
+    case_id = case_response.json()["id"]
+
+    seed_response = client.post(f"/api/v1/cases/{case_id}/checklist/seed")
+    assert seed_response.status_code == 201
+    for item in seed_response.json()["checklist_items"]:
+        update_response = client.patch(
+            f"/api/v1/cases/{case_id}/checklist/{item['id']}",
+            json={
+                "status": "satisfied",
+                "owner": "Diligence Lead",
+                "note": "Satisfied for export-package validation.",
+            },
+        )
+        assert update_response.status_code == 200
+
+    evidence_response = client.post(
+        f"/api/v1/cases/{case_id}/evidence",
+        json={
+            "title": "Commercial quality summary",
+            "evidence_kind": "metric",
+            "workstream_domain": "commercial",
+            "citation": "Commercial review pack FY26",
+            "excerpt": (
+                "Retention remained strong and no material concentration concerns were "
+                "escalated."
+            ),
+            "confidence": 0.9,
+        },
+    )
+    assert evidence_response.status_code == 201
+
+    approval_response = client.post(
+        f"/api/v1/cases/{case_id}/approvals/review",
+        json={
+            "reviewer": "IC Reviewer",
+            "note": "Case is ready for export-package generation.",
+        },
+    )
+    assert approval_response.status_code == 201
+    assert approval_response.json()["decision"] == "approved"
+
+    run_response = client.post(
+        f"/api/v1/cases/{case_id}/runs",
+        json={
+            "requested_by": "Operator",
+            "note": "Generate a full exportable report package.",
+        },
+    )
+    assert run_response.status_code == 201
+    run_payload = run_response.json()["run"]
+
+    export_response = client.post(
+        f"/api/v1/cases/{case_id}/runs/{run_payload['id']}/export-package",
+        json={
+            "requested_by": "Operator",
+            "title": "Board Pack Export",
+            "include_json_snapshot": True,
+        },
+    )
+    assert export_response.status_code == 201
+    export_payload = export_response.json()
+    assert export_payload["export_kind"] == "run_report_archive"
+    assert export_payload["format"] == "zip"
+    assert export_payload["file_name"].endswith(".zip")
+    assert export_payload["byte_size"] > 0
+    assert "manifest.json" in export_payload["included_files"]
+    assert "reports/executive_memo.md" in export_payload["included_files"]
+    assert "data/case_snapshot.json" in export_payload["included_files"]
+
+    archive_path = _file_uri_to_path(export_payload["storage_path"])
+    assert archive_path.exists()
+    with ZipFile(archive_path) as archive:
+        names = set(archive.namelist())
+        assert "README.txt" in names
+        assert "manifest.json" in names
+        assert "reports/issue_register.md" in names
+        assert "data/run_trace.json" in names
+
+    detail_response = client.get(f"/api/v1/cases/{case_id}/runs/{run_payload['id']}")
+    assert detail_response.status_code == 200
+    detail_payload = detail_response.json()
+    assert len(detail_payload["export_packages"]) == 1
+    assert detail_payload["export_packages"][0]["title"] == "Board Pack Export"

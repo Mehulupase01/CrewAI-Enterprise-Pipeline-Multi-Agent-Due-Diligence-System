@@ -69,6 +69,10 @@ export default async function RunPage({ params }: PageProps) {
               <span className={styles.metaLabel}>Report bundles</span>
               <strong>{runSummary.bundleCount}</strong>
             </div>
+            <div className={styles.metaCard}>
+              <span className={styles.metaLabel}>Export packages</span>
+              <strong>{runSummary.exportCount}</strong>
+            </div>
           </div>
         </section>
 
@@ -146,6 +150,40 @@ export default async function RunPage({ params }: PageProps) {
                     </pre>
                   </article>
                 ))}
+              </div>
+            </article>
+
+            <article className={styles.panel}>
+              <div className={styles.panelHeader}>
+                <span className={styles.badge}>Export</span>
+                <h2>Durable export packages</h2>
+              </div>
+              <div className={styles.stack}>
+                {run.export_packages.length === 0 ? (
+                  <p className={styles.empty}>No export package has been created for this run yet.</p>
+                ) : (
+                  run.export_packages.map((exportPackage) => (
+                    <article className={styles.previewCard} key={exportPackage.id}>
+                      <header>
+                        <div>
+                          <strong>{exportPackage.title}</strong>
+                          <p className={styles.caption}>
+                            {exportPackage.summary ?? "No export summary available."}
+                          </p>
+                        </div>
+                        <span className={styles.note}>{labelize(exportPackage.export_kind)}</span>
+                      </header>
+                      <p className={styles.caption}>
+                        File: {exportPackage.file_name} | Format: {exportPackage.format} | Size:{" "}
+                        {exportPackage.byte_size} bytes
+                      </p>
+                      <p className={styles.caption}>Storage: {exportPackage.storage_path}</p>
+                      <pre className={styles.codePreview}>
+                        {exportPackage.included_files.join("\n")}
+                      </pre>
+                    </article>
+                  ))
+                )}
               </div>
             </article>
 

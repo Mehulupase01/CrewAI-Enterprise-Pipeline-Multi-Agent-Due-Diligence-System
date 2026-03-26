@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, ForeignKey, String, Text, UniqueConstraint
+from sqlalchemy import JSON, Boolean, ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from crewai_enterprise_pipeline_api.db.base import Base, TimestampedMixin
@@ -207,6 +207,12 @@ class WorkflowRunRecord(TimestampedMixin, Base):
         order_by="ReportBundleRecord.created_at",
         lazy="selectin",
     )
+    export_packages: Mapped[list[RunExportPackageRecord]] = relationship(
+        back_populates="run",
+        cascade="all, delete-orphan",
+        order_by="RunExportPackageRecord.created_at",
+        lazy="selectin",
+    )
     workstream_syntheses: Mapped[list[WorkstreamSynthesisRecord]] = relationship(
         back_populates="run",
         cascade="all, delete-orphan",
@@ -240,6 +246,25 @@ class ReportBundleRecord(TimestampedMixin, Base):
     content: Mapped[str] = mapped_column(Text)
 
     run: Mapped[WorkflowRunRecord] = relationship(back_populates="report_bundles")
+
+
+class RunExportPackageRecord(TimestampedMixin, Base):
+    __tablename__ = "run_export_packages"
+
+    case_id: Mapped[str] = mapped_column(ForeignKey("cases.id", ondelete="CASCADE"))
+    run_id: Mapped[str] = mapped_column(ForeignKey("workflow_runs.id", ondelete="CASCADE"))
+    export_kind: Mapped[str] = mapped_column(String(80))
+    title: Mapped[str] = mapped_column(String(255))
+    format: Mapped[str] = mapped_column(String(40), default="zip")
+    file_name: Mapped[str] = mapped_column(String(255))
+    summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    requested_by: Mapped[str] = mapped_column(String(255))
+    storage_path: Mapped[str] = mapped_column(String(500))
+    sha256_digest: Mapped[str] = mapped_column(String(64))
+    byte_size: Mapped[int] = mapped_column(default=0)
+    included_files: Mapped[list[str]] = mapped_column(JSON, default=list)
+
+    run: Mapped[WorkflowRunRecord] = relationship(back_populates="export_packages")
 
 
 class WorkstreamSynthesisRecord(TimestampedMixin, Base):

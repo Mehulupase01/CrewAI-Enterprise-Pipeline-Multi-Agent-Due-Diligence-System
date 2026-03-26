@@ -121,6 +121,10 @@ class ReportBundleKind(StrEnum):
     WORKSTREAM_SYNTHESIS_MARKDOWN = "workstream_synthesis_markdown"
 
 
+class RunExportPackageKind(StrEnum):
+    RUN_REPORT_ARCHIVE = "run_report_archive"
+
+
 class WorkstreamSynthesisStatus(StrEnum):
     READY_FOR_REVIEW = "ready_for_review"
     NEEDS_FOLLOW_UP = "needs_follow_up"
@@ -282,6 +286,12 @@ class WorkflowRunCreate(BaseModel):
     note: str | None = Field(default=None, max_length=4000)
 
 
+class RunExportPackageCreate(BaseModel):
+    requested_by: str = Field(default="Operator", min_length=2, max_length=255)
+    title: str | None = Field(default=None, max_length=255)
+    include_json_snapshot: bool = True
+
+
 class DocumentArtifactSummary(ORMModel):
     id: str
     title: str
@@ -403,6 +413,24 @@ class ReportBundleSummary(ORMModel):
     updated_at: datetime
 
 
+class RunExportPackageSummary(ORMModel):
+    id: str
+    case_id: str
+    run_id: str
+    export_kind: RunExportPackageKind
+    title: str
+    format: str
+    file_name: str
+    summary: str | None
+    requested_by: str
+    storage_path: str
+    sha256_digest: str
+    byte_size: int
+    included_files: list[str] = Field(default_factory=list)
+    created_at: datetime
+    updated_at: datetime
+
+
 class RunTraceEventSummary(ORMModel):
     id: str
     run_id: str
@@ -446,6 +474,7 @@ class WorkstreamSynthesisSummary(ORMModel):
 class WorkflowRunDetail(WorkflowRunSummary):
     trace_events: list[RunTraceEventSummary] = Field(default_factory=list)
     report_bundles: list[ReportBundleSummary] = Field(default_factory=list)
+    export_packages: list[RunExportPackageSummary] = Field(default_factory=list)
     workstream_syntheses: list[WorkstreamSynthesisSummary] = Field(default_factory=list)
 
 

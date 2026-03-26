@@ -50,6 +50,7 @@ class WorkflowService:
             .options(
                 selectinload(WorkflowRunRecord.trace_events),
                 selectinload(WorkflowRunRecord.report_bundles),
+                selectinload(WorkflowRunRecord.export_packages),
                 selectinload(WorkflowRunRecord.workstream_syntheses),
             )
         )

@@ -34,6 +34,8 @@ from crewai_enterprise_pipeline_api.domain.models import (
     QaItemSummary,
     RequestItemCreate,
     RequestItemSummary,
+    RunExportPackageCreate,
+    RunExportPackageSummary,
     WorkflowRunCreate,
     WorkflowRunDetail,
     WorkflowRunResult,
@@ -43,6 +45,7 @@ from crewai_enterprise_pipeline_api.domain.models import (
 from crewai_enterprise_pipeline_api.services.approval_service import ApprovalService
 from crewai_enterprise_pipeline_api.services.case_service import CaseService
 from crewai_enterprise_pipeline_api.services.checklist_service import ChecklistService
+from crewai_enterprise_pipeline_api.services.export_service import ExportService
 from crewai_enterprise_pipeline_api.services.ingestion_service import IngestionService
 from crewai_enterprise_pipeline_api.services.issue_service import IssueService
 from crewai_enterprise_pipeline_api.services.report_service import ReportService
@@ -320,6 +323,28 @@ async def get_run(
     if run is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found")
     return run
+
+
+@router.post(
+    "/{case_id}/runs/{run_id}/export-package",
+    response_model=RunExportPackageSummary,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_write_access)],
+)
+async def create_run_export_package(
+    case_id: str,
+    run_id: str,
+    payload: RunExportPackageCreate,
+    session: DbSession,
+) -> RunExportPackageSummary:
+    export_package = await ExportService(session).create_run_export_package(
+        case_id,
+        run_id,
+        payload,
+    )
+    if export_package is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found")
+    return export_package
 
 
 @router.get("/{case_id}/requests", response_model=list[RequestItemSummary])

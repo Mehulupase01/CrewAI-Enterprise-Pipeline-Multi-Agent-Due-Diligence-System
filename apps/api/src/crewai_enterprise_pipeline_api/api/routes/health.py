@@ -116,7 +116,7 @@ def overview() -> PlatformOverview:
     settings = get_settings()
     return PlatformOverview(
         product_name="CrewAI Enterprise Pipeline",
-        current_phase="Expansion Phase 4: fintech / nbfc / bfsi",
+        current_phase="Post-roadmap enhancement 1: run export packages",
         country="India",
         auth_required=settings.auth_required,
         motion_packs=list(MotionPack),

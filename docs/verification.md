@@ -23,6 +23,7 @@ The current gate now covers both the foundation and the first operations layer:
 - checklist seeding, checklist updates, and completion coverage summaries
 - approval review decisions and executive memo generation
 - workflow run execution with trace events and generated report bundles
+- durable run export-package generation with stored zip artifacts
 - persisted workstream synthesis outputs per run
 - deterministic end-to-end evaluation scenarios with saved JSON scorecards
 - repeat-scan regression checks for issue fingerprint reuse
@@ -51,6 +52,8 @@ The current gate now covers both the foundation and the first operations layer:
 - Approval review can block export when mandatory coverage or high-severity issues remain open.
 - Executive memo generation reflects live case state, open requests, top issues, and latest review status.
 - A case can be executed into a persisted run with trace events and bundled markdown outputs.
+- A workflow run can be exported into a durable archive package with manifest,
+  markdown bundles, and JSON snapshots.
 - A run produces durable workstream syntheses for the first diligence domains.
 - The first-slice evaluation suite passes blocked, clean-approved, and
   approved-nonblocking-risk scenarios.

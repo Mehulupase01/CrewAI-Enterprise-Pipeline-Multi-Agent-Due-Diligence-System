@@ -46,11 +46,11 @@ docker-compose.yml
 
 ## Current Phase
 
-The repository has completed the fourth post-flagship expansion phase:
-`BFSINBFCPack` now runs alongside the existing motion-pack and sector-pack
-expansions on the same hardened platform spine. The current build includes the
-first flagship buy-side slice plus two additional motion packs and two
-additional supported sector packs:
+The repository has completed the planned roadmap phases and is now in its
+first post-roadmap enhancement slice: durable run export packages. The current
+build includes the first flagship buy-side slice, all planned motion and
+sector expansions, and analyst-ready export archives on top of the existing
+hardened platform spine:
 
 - persisted case operations backed by SQLAlchemy
 - document upload, parsing, storage, and evidence extraction
@@ -65,6 +65,8 @@ additional supported sector packs:
 - deterministic evaluation scenarios with saved JSON scorecards
 - a repeatable quality gate that exercises blocked, approved-clean, and
   approved-nonblocking-risk diligence runs
+- run-level export-package generation that writes zip archives with markdown
+  reports, manifest metadata, execution trace data, and JSON case snapshots
 - role-based internal auth that can be enforced outside local dev and test
 - request ID propagation plus a readiness endpoint for operations checks
 - deployment, runbook, release-checklist, and smoke-check assets
@@ -161,6 +163,12 @@ To run a live API smoke check after the stack is up:
 
 ```powershell
 ./scripts/smoke.ps1
+```
+
+Workflow runs can now also produce durable export packages through the API at:
+
+```text
+POST /api/v1/cases/{case_id}/runs/{run_id}/export-package
 ```
 
 The project is only considered complete phase-by-phase when the code, tests,
