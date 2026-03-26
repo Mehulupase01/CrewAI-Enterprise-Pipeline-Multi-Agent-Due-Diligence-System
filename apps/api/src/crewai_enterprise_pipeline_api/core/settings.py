@@ -12,6 +12,12 @@ class Settings(BaseSettings):
     api_prefix: str = "/api/v1"
     auto_create_schema: bool = True
     default_country: str = "India"
+    enforce_auth: bool = False
+    default_actor_id: str = "local-operator"
+    default_actor_name: str = "Local Operator"
+    default_actor_email: str = "local-operator@local.invalid"
+    default_actor_role: str = "admin"
+    request_id_header_name: str = "X-Request-ID"
     database_url_override: str | None = Field(default=None, alias="DATABASE_URL")
     postgres_host: str = "localhost"
     postgres_port: int = 5432
@@ -48,6 +54,10 @@ class Settings(BaseSettings):
     @property
     def redis_url(self) -> str:
         return f"redis://{self.redis_host}:{self.redis_port}/0"
+
+    @property
+    def auth_required(self) -> bool:
+        return self.enforce_auth or self.app_env not in {"development", "test"}
 
 
 @lru_cache

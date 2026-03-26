@@ -1,8 +1,13 @@
 from typing import Annotated
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 
 from crewai_enterprise_pipeline_api.api.dependencies import DbSession
+from crewai_enterprise_pipeline_api.api.security import (
+    require_read_access,
+    require_reviewer_access,
+    require_write_access,
+)
 from crewai_enterprise_pipeline_api.domain.models import (
     ApprovalDecisionCreate,
     ApprovalDecisionSummary,
@@ -43,7 +48,7 @@ from crewai_enterprise_pipeline_api.services.issue_service import IssueService
 from crewai_enterprise_pipeline_api.services.report_service import ReportService
 from crewai_enterprise_pipeline_api.services.workflow_service import WorkflowService
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_read_access)])
 
 
 @router.get("", response_model=list[CaseSummary])
@@ -51,7 +56,12 @@ async def list_cases(session: DbSession) -> list[CaseSummary]:
     return await CaseService(session).list_cases()
 
 
-@router.post("", response_model=CaseDetail, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=CaseDetail,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_write_access)],
+)
 async def create_case(payload: CaseCreate, session: DbSession) -> CaseDetail:
     return await CaseService(session).create_case(payload)
 
@@ -73,6 +83,7 @@ async def list_documents(case_id: str, session: DbSession) -> list[DocumentArtif
     "/{case_id}/documents",
     response_model=DocumentArtifactSummary,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_write_access)],
 )
 async def create_document(
     case_id: str,
@@ -89,6 +100,7 @@ async def create_document(
     "/{case_id}/documents/upload",
     response_model=DocumentIngestionResult,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_write_access)],
 )
 async def upload_document(
     case_id: str,
@@ -123,6 +135,7 @@ async def list_evidence(case_id: str, session: DbSession) -> list[EvidenceItemSu
     "/{case_id}/evidence",
     response_model=EvidenceItemSummary,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_write_access)],
 )
 async def create_evidence(
     case_id: str,
@@ -144,6 +157,7 @@ async def list_issues(case_id: str, session: DbSession) -> list[IssueRegisterIte
     "/{case_id}/issues",
     response_model=IssueRegisterItemSummary,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_write_access)],
 )
 async def create_issue(
     case_id: str,
@@ -160,6 +174,7 @@ async def create_issue(
     "/{case_id}/issues/scan",
     response_model=IssueScanResult,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_write_access)],
 )
 async def scan_issues(case_id: str, session: DbSession) -> IssueScanResult:
     result = await IssueService(session).scan_case_evidence(case_id)
@@ -180,6 +195,7 @@ async def list_checklist_items(
     "/{case_id}/checklist",
     response_model=ChecklistItemSummary,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_write_access)],
 )
 async def create_checklist_item(
     case_id: str,
@@ -192,7 +208,11 @@ async def create_checklist_item(
     return item
 
 
-@router.patch("/{case_id}/checklist/{item_id}", response_model=ChecklistItemSummary)
+@router.patch(
+    "/{case_id}/checklist/{item_id}",
+    response_model=ChecklistItemSummary,
+    dependencies=[Depends(require_write_access)],
+)
 async def update_checklist_item(
     case_id: str,
     item_id: str,
@@ -212,6 +232,7 @@ async def update_checklist_item(
     "/{case_id}/checklist/seed",
     response_model=ChecklistSeedResult,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_write_access)],
 )
 async def seed_checklist(case_id: str, session: DbSession) -> ChecklistSeedResult:
     result = await ChecklistService(session).seed_case_checklist(case_id)
@@ -240,6 +261,7 @@ async def list_approvals(
     "/{case_id}/approvals/review",
     response_model=ApprovalDecisionSummary,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_reviewer_access)],
 )
 async def review_case(
     case_id: str,
@@ -275,6 +297,7 @@ async def list_runs(case_id: str, session: DbSession) -> list[WorkflowRunSummary
     "/{case_id}/runs",
     response_model=WorkflowRunResult,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_write_access)],
 )
 async def execute_run(
     case_id: str,
@@ -308,6 +331,7 @@ async def list_requests(case_id: str, session: DbSession) -> list[RequestItemSum
     "/{case_id}/requests",
     response_model=RequestItemSummary,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_write_access)],
 )
 async def create_request_item(
     case_id: str,
@@ -329,6 +353,7 @@ async def list_qa_items(case_id: str, session: DbSession) -> list[QaItemSummary]
     "/{case_id}/qa",
     response_model=QaItemSummary,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_write_access)],
 )
 async def create_qa_item(
     case_id: str,

@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
+from uuid import uuid4
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 
 from crewai_enterprise_pipeline_api.api.router import api_router
 from crewai_enterprise_pipeline_api.core.logging import configure_logging
@@ -32,6 +33,15 @@ def create_app() -> FastAPI:
         openapi_url=f"{settings.api_prefix}/openapi.json",
         lifespan=lifespan,
     )
+
+    @app.middleware("http")
+    async def attach_request_context(request: Request, call_next):
+        request_id = request.headers.get(settings.request_id_header_name) or str(uuid4())
+        request.state.request_id = request_id
+        response = await call_next(request)
+        response.headers[settings.request_id_header_name] = request_id
+        return response
+
     app.include_router(api_router, prefix=settings.api_prefix)
     return app
 

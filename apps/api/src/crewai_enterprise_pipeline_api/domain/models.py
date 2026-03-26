@@ -138,6 +138,13 @@ class StorageBackendKind(StrEnum):
     S3 = "s3"
 
 
+class UserRole(StrEnum):
+    VIEWER = "viewer"
+    ANALYST = "analyst"
+    REVIEWER = "reviewer"
+    ADMIN = "admin"
+
+
 class ORMModel(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -147,6 +154,9 @@ class AppHealth(ORMModel):
     environment: str
     version: str
     timestamp: datetime
+    auth_required: bool
+    default_actor_role: UserRole
+    request_id_header_name: str
     enabled_motion_packs: list[MotionPack]
     enabled_sector_packs: list[SectorPack]
 
@@ -155,12 +165,35 @@ class PlatformOverview(ORMModel):
     product_name: str
     current_phase: str
     country: str
+    auth_required: bool
     motion_packs: list[MotionPack]
     sector_packs: list[SectorPack]
     workstream_domains: list[WorkstreamDomain]
     severity_scale: list[FlagSeverity] = Field(
         description="The shared severity scale for issue and red-flag records."
     )
+
+
+class AuthenticatedPrincipal(BaseModel):
+    user_id: str
+    name: str
+    email: str
+    role: UserRole
+    auth_required: bool
+
+
+class ReadinessComponent(BaseModel):
+    name: str
+    status: str
+    detail: str
+
+
+class ReadinessReport(BaseModel):
+    status: str
+    environment: str
+    timestamp: datetime
+    auth_required: bool
+    components: list[ReadinessComponent]
 
 
 class CaseCreate(BaseModel):
