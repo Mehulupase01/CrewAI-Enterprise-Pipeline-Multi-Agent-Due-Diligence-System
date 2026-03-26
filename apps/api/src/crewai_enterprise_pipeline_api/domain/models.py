@@ -118,6 +118,13 @@ class RunEventLevel(StrEnum):
 class ReportBundleKind(StrEnum):
     EXECUTIVE_MEMO_MARKDOWN = "executive_memo_markdown"
     ISSUE_REGISTER_MARKDOWN = "issue_register_markdown"
+    WORKSTREAM_SYNTHESIS_MARKDOWN = "workstream_synthesis_markdown"
+
+
+class WorkstreamSynthesisStatus(StrEnum):
+    READY_FOR_REVIEW = "ready_for_review"
+    NEEDS_FOLLOW_UP = "needs_follow_up"
+    BLOCKED = "blocked"
 
 
 class SourceAdapterCategory(StrEnum):
@@ -388,9 +395,25 @@ class WorkflowRunSummary(ORMModel):
     updated_at: datetime
 
 
+class WorkstreamSynthesisSummary(ORMModel):
+    id: str
+    run_id: str
+    workstream_domain: WorkstreamDomain
+    status: WorkstreamSynthesisStatus
+    headline: str
+    narrative: str
+    finding_count: int
+    blocker_count: int
+    confidence: float
+    recommended_next_action: str
+    created_at: datetime
+    updated_at: datetime
+
+
 class WorkflowRunDetail(WorkflowRunSummary):
     trace_events: list[RunTraceEventSummary] = Field(default_factory=list)
     report_bundles: list[ReportBundleSummary] = Field(default_factory=list)
+    workstream_syntheses: list[WorkstreamSynthesisSummary] = Field(default_factory=list)
 
 
 class CaseSummary(ORMModel):

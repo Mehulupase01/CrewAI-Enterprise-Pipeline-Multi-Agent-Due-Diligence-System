@@ -207,6 +207,12 @@ class WorkflowRunRecord(TimestampedMixin, Base):
         order_by="ReportBundleRecord.created_at",
         lazy="selectin",
     )
+    workstream_syntheses: Mapped[list["WorkstreamSynthesisRecord"]] = relationship(
+        back_populates="run",
+        cascade="all, delete-orphan",
+        order_by="WorkstreamSynthesisRecord.workstream_domain",
+        lazy="selectin",
+    )
 
 
 class RunTraceEventRecord(TimestampedMixin, Base):
@@ -234,3 +240,20 @@ class ReportBundleRecord(TimestampedMixin, Base):
     content: Mapped[str] = mapped_column(Text)
 
     run: Mapped[WorkflowRunRecord] = relationship(back_populates="report_bundles")
+
+
+class WorkstreamSynthesisRecord(TimestampedMixin, Base):
+    __tablename__ = "workstream_syntheses"
+
+    case_id: Mapped[str] = mapped_column(ForeignKey("cases.id", ondelete="CASCADE"))
+    run_id: Mapped[str] = mapped_column(ForeignKey("workflow_runs.id", ondelete="CASCADE"))
+    workstream_domain: Mapped[str] = mapped_column(String(80))
+    status: Mapped[str] = mapped_column(String(40))
+    headline: Mapped[str] = mapped_column(String(255))
+    narrative: Mapped[str] = mapped_column(Text)
+    finding_count: Mapped[int] = mapped_column(default=0)
+    blocker_count: Mapped[int] = mapped_column(default=0)
+    confidence: Mapped[float] = mapped_column(default=0.6)
+    recommended_next_action: Mapped[str] = mapped_column(Text)
+
+    run: Mapped[WorkflowRunRecord] = relationship(back_populates="workstream_syntheses")
