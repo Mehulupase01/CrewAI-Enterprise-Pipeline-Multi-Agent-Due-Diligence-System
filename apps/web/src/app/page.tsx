@@ -1,377 +1,209 @@
-import styles from "./page.module.css";
+import Link from "next/link";
 
-const caseSummary = {
-  name: "Alpha Nimbus Acquisition",
-  target: "Nimbus Data Systems",
-  motionPack: "Buy-side diligence",
-  sectorPack: "Tech / SaaS / Services",
-  phase: "Phase 3 core logic completed for the first slice",
-};
+import styles from "./workbench.module.css";
+import {
+  getDashboardData,
+  labelize,
+  summarizeCase,
+  summarizeRun,
+} from "../lib/workbench-data";
 
-const documentQueue = [
-  ["FY25 audited financials", "Received", "Uploaded data room"],
-  ["Board minutes Q4 FY25", "Staged", "Management response"],
-  ["MCA filing export", "Ready", "Public registry"],
-];
+export default async function Home() {
+  const { overview, cases, featuredCase, latestRun, isFallback } =
+    await getDashboardData();
+  const caseSummary = summarizeCase(featuredCase);
+  const runSummary = summarizeRun(latestRun);
 
-const evidenceLedger = [
-  ["Deferred revenue reconciliation", "Financial QoE", "0.91 confidence"],
-  ["Director charge filing note", "Legal / Corporate", "Registry-linked"],
-  ["GST notice summary", "Tax", "Flag candidate detected"],
-];
-
-const issueRegister = [
-  [
-    "Outstanding tax or GST exposure",
-    "High severity",
-    "Created from evidence scan",
-  ],
-  [
-    "Unreconciled deferred revenue movement",
-    "High severity",
-    "Analyst-authored issue",
-  ],
-  [
-    "Customer concentration risk",
-    "Medium severity",
-    "Awaiting commercial review",
-  ],
-];
-
-const checklistCoverage = [
-  ["Financial QoE", "2 of 3 complete", "Open monthly bridge follow-up"],
-  ["Legal / Corporate", "1 of 2 complete", "Charge release still pending"],
-  ["Tax", "1 of 1 complete", "GST notice triaged"],
-  ["Cyber / Privacy", "0 of 1 complete", "DPDP controls review queued"],
-];
-
-const approvalSnapshot = [
-  ["Latest review", "Changes requested", "High-severity tax issue still open"],
-  ["Export readiness", "Blocked", "Mandatory checklist still incomplete"],
-  ["Memo status", "Draft preview", "Executive memo can be generated for review"],
-];
-
-const workflowRuns = [
-  ["Current run", "Completed", "6 trace events captured across the workflow"],
-  ["Bundle set", "3 generated", "Memo, issue register, and synthesis bundle"],
-  ["Run summary", "Needs follow-up", "Checklist blockers still visible in output"],
-];
-
-const workstreamSyntheses = [
-  [
-    "Financial QoE",
-    "Needs follow-up",
-    "Open monthly bridge still blocks clean sign-off",
-  ],
-  [
-    "Legal / Corporate",
-    "Needs follow-up",
-    "Charge and contract diligence still need closure",
-  ],
-  [
-    "Tax",
-    "Blocked",
-    "GST exposure remains unresolved",
-  ],
-  [
-    "Commercial",
-    "Needs follow-up",
-    "Customer concentration requires stress testing",
-  ],
-];
-
-const trackerItems = [
-  ["Request list", "Monthly churn bridge and customer cohorts", "Open"],
-  ["Q&A", "Why implementation revenue spiked in Q3 FY25", "Answered"],
-  ["Reviewer gate", "Approval not yet opened", "Pending"],
-];
-
-const adapterCatalog = [
-  ["Uploaded data room", "Primary intake path", "Live"],
-  ["MCA public records", "India corporate enrichment", "Fallback / exports"],
-  ["Vendor connector", "Commercial data slot", "Fixture-backed"],
-];
-
-const completedLayers = [
-  "Database-backed case operations and relationship models",
-  "Document upload, parsing, storage, and evidence extraction",
-  "Issue register endpoints and deterministic evidence-to-flag scan",
-  "Pack-aware checklist templates and coverage summaries",
-  "Deterministic approval review and executive memo generation",
-  "Persisted workflow runs, trace events, and report bundles",
-  "Workstream synthesis records for the first diligence slice",
-  "Source-adapter catalog shaped for India and vendor readiness",
-];
-
-const nextBridge = [
-  "Expand Phase 4 interfaces with detailed case views, run viewers, and bundle readers.",
-  "Introduce agent-orchestrated analysis over the structured case state and persist those outputs into runs.",
-  "Expand report bundles from markdown previews into export-ready memo artifacts and downloads.",
-];
-
-const roadmap = [
-  "Credit / lending pack reuses the same evidence, issue, and approval core.",
-  "Vendor onboarding adds third-party risk and continuous screening workflows.",
-  "Manufacturing and BFSI sector packs extend the rule layer, not the database core.",
-];
-
-export default function Home() {
   return (
     <div className={styles.page}>
       <div className={styles.auraLeft} />
       <div className={styles.auraRight} />
       <main className={styles.main}>
+        <section className={styles.topBar}>
+          <div className={styles.brandBlock}>
+            <span className={styles.eyebrow}>CrewAI Enterprise Pipeline</span>
+            <p className={styles.subtle}>
+              Analyst workbench for the India diligence operating system.
+            </p>
+          </div>
+          <div className={styles.pillRow}>
+            <span className={styles.pill}>
+              {labelize(overview.current_phase)}
+            </span>
+            <span className={styles.pillMuted}>{overview.country}</span>
+            {isFallback ? (
+              <span className={styles.pillWarning}>Demo fallback</span>
+            ) : (
+              <span className={styles.pillMuted}>Live API</span>
+            )}
+          </div>
+        </section>
+
         <section className={styles.hero}>
-          <span className={styles.kicker}>CrewAI Enterprise Pipeline</span>
-          <h1>India due diligence, now producing executable workstream runs.</h1>
+          <span className={styles.eyebrow}>Phase 4 Workbench</span>
+          <h1>Case operations, reviews, and run outputs in one workspace.</h1>
           <p className={styles.lead}>
-            The platform now ingests uploaded files, normalizes evidence,
-            maintains live request and Q&amp;A trackers, turns risk signals into
-            issue-register entries, measures checklist coverage, and generates
-            persisted workflow runs with trace logs, report bundles, and
-            workstream-specific syntheses.
+            The first flagship interface slice now moves beyond a summary
+            dashboard. Analysts can step into a case, inspect the issue and
+            checklist state, and follow workflow runs all the way through trace
+            events, report bundles, and workstream syntheses.
           </p>
           <div className={styles.heroMeta}>
-            <div>
-              <span className={styles.metaLabel}>Active case</span>
-              <strong>{caseSummary.name}</strong>
+            <div className={styles.metaCard}>
+              <span className={styles.metaLabel}>Featured case</span>
+              <strong>{featuredCase.name}</strong>
             </div>
-            <div>
-              <span className={styles.metaLabel}>Target</span>
-              <strong>{caseSummary.target}</strong>
+            <div className={styles.metaCard}>
+              <span className={styles.metaLabel}>Latest run</span>
+              <strong>{labelize(latestRun.status)}</strong>
             </div>
-            <div>
-              <span className={styles.metaLabel}>Current build</span>
-              <strong>{caseSummary.phase}</strong>
+            <div className={styles.metaCard}>
+              <span className={styles.metaLabel}>Report bundles</span>
+              <strong>{runSummary.bundleCount}</strong>
             </div>
           </div>
         </section>
 
         <section className={styles.workspace}>
-          <div className={styles.column}>
+          <div className={styles.stack}>
             <article className={styles.panel}>
               <div className={styles.panelHeader}>
-                <span className={styles.badge}>Case record</span>
-                <h2>Pack-aware control plane</h2>
+                <span className={styles.badge}>Cases</span>
+                <h2>Case workspace entry points</h2>
               </div>
-              <div className={styles.summaryCard}>
-                <div>
-                  <span className={styles.metaLabel}>Motion pack</span>
-                  <strong>{caseSummary.motionPack}</strong>
-                </div>
-                <div>
-                  <span className={styles.metaLabel}>Sector pack</span>
-                  <strong>{caseSummary.sectorPack}</strong>
-                </div>
-                <div>
-                  <span className={styles.metaLabel}>Country</span>
-                  <strong>India</strong>
-                </div>
-              </div>
-            </article>
-
-            <article className={styles.panel}>
-              <div className={styles.panelHeader}>
-                <span className={styles.badge}>Artifacts</span>
-                <h2>Document intake and processing queue</h2>
-              </div>
-              <div className={styles.table}>
-                {documentQueue.map(([title, status, source]) => (
-                  <div className={styles.row} key={title}>
+              <div className={styles.cardGrid}>
+                {cases.map((caseItem) => (
+                  <Link
+                    className={styles.rowLink}
+                    href={`/cases/${caseItem.id}`}
+                    key={caseItem.id}
+                  >
                     <div>
-                      <strong>{title}</strong>
-                      <p>{source}</p>
+                      <strong>{caseItem.name}</strong>
+                      <p>{caseItem.target_name}</p>
+                      <p>{caseItem.summary ?? "No summary available yet."}</p>
                     </div>
-                    <span className={styles.status}>{status}</span>
-                  </div>
+                    <span className={styles.status}>
+                      {labelize(caseItem.status)}
+                    </span>
+                  </Link>
                 ))}
               </div>
             </article>
 
             <article className={styles.panel}>
               <div className={styles.panelHeader}>
-                <span className={styles.badge}>Evidence</span>
-                <h2>Normalized diligence ledger</h2>
+                <span className={styles.badge}>Featured</span>
+                <h2>Current case pulse</h2>
               </div>
-              <div className={styles.table}>
-                {evidenceLedger.map(([title, workstream, note]) => (
-                  <div className={styles.row} key={title}>
-                    <div>
-                      <strong>{title}</strong>
-                      <p>{workstream}</p>
-                    </div>
-                    <span className={styles.note}>{note}</span>
-                  </div>
-                ))}
+              <div className={styles.kpiGrid}>
+                <div className={styles.kpiCard}>
+                  <span className={styles.metaLabel}>Issues</span>
+                  <strong>{caseSummary.issueCount}</strong>
+                  <p className={styles.caption}>Tracked items in the issue register</p>
+                </div>
+                <div className={styles.kpiCard}>
+                  <span className={styles.metaLabel}>High blockers</span>
+                  <strong>{caseSummary.blockingIssueCount}</strong>
+                  <p className={styles.caption}>Critical or high-severity items</p>
+                </div>
+                <div className={styles.kpiCard}>
+                  <span className={styles.metaLabel}>Evidence</span>
+                  <strong>{caseSummary.evidenceCount}</strong>
+                  <p className={styles.caption}>Normalized evidence ledger items</p>
+                </div>
+                <div className={styles.kpiCard}>
+                  <span className={styles.metaLabel}>Open requests</span>
+                  <strong>{caseSummary.openRequestCount}</strong>
+                  <p className={styles.caption}>Outstanding diligence asks</p>
+                </div>
               </div>
-            </article>
-
-            <article className={styles.panel}>
-              <div className={styles.panelHeader}>
-                <span className={styles.badge}>Flags</span>
-                <h2>Issue register and red-flag queue</h2>
-              </div>
-              <div className={styles.table}>
-                {issueRegister.map(([title, severity, note]) => (
-                  <div className={styles.row} key={title}>
-                    <div>
-                      <strong>{title}</strong>
-                      <p>{note}</p>
-                    </div>
-                    <span className={styles.status}>{severity}</span>
-                  </div>
-                ))}
-              </div>
+              <Link
+                className={styles.rowLink}
+                href={`/cases/${featuredCase.id}`}
+              >
+                <div>
+                  <strong>Open case workspace</strong>
+                  <p>
+                    Review documents, issues, checklist coverage, approvals,
+                    and run history for {featuredCase.target_name}.
+                  </p>
+                </div>
+                <span className={styles.note}>Go to case</span>
+              </Link>
             </article>
           </div>
 
-          <div className={styles.column}>
+          <div className={styles.stack}>
             <article className={styles.panel}>
               <div className={styles.panelHeader}>
-                <span className={styles.badge}>Coverage</span>
-                <h2>Mandatory checklist completion</h2>
+                <span className={styles.badge}>Platform</span>
+                <h2>Pack-aware operating surface</h2>
               </div>
-              <div className={styles.table}>
-                {checklistCoverage.map(([workstream, progress, note]) => (
-                  <div className={styles.row} key={workstream}>
-                    <div>
-                      <strong>{workstream}</strong>
-                      <p>{note}</p>
-                    </div>
-                    <span className={styles.status}>{progress}</span>
-                  </div>
-                ))}
-              </div>
-            </article>
-
-            <article className={styles.panel}>
-              <div className={styles.panelHeader}>
-                <span className={styles.badge}>Review</span>
-                <h2>Approval gate and memo readiness</h2>
-              </div>
-              <div className={styles.table}>
-                {approvalSnapshot.map(([lane, status, note]) => (
-                  <div className={styles.row} key={lane}>
-                    <div>
-                      <strong>{lane}</strong>
-                      <p>{note}</p>
-                    </div>
-                    <span className={styles.status}>{status}</span>
-                  </div>
-                ))}
+              <div className={styles.summaryGrid}>
+                <div className={styles.summaryCard}>
+                  <span className={styles.metaLabel}>Motion packs</span>
+                  <strong>{overview.motion_packs.length}</strong>
+                  <p>{overview.motion_packs.map(labelize).join(", ")}</p>
+                </div>
+                <div className={styles.summaryCard}>
+                  <span className={styles.metaLabel}>Sector packs</span>
+                  <strong>{overview.sector_packs.length}</strong>
+                  <p>{overview.sector_packs.map(labelize).join(", ")}</p>
+                </div>
+                <div className={styles.summaryCard}>
+                  <span className={styles.metaLabel}>Workstreams</span>
+                  <strong>{overview.workstream_domains.length}</strong>
+                  <p>{overview.workstream_domains.map(labelize).join(", ")}</p>
+                </div>
               </div>
             </article>
 
             <article className={styles.panel}>
               <div className={styles.panelHeader}>
                 <span className={styles.badge}>Runs</span>
-                <h2>Workflow execution and bundle output</h2>
+                <h2>Latest workflow execution</h2>
               </div>
               <div className={styles.table}>
-                {workflowRuns.map(([lane, status, note]) => (
-                  <div className={styles.row} key={lane}>
-                    <div>
-                      <strong>{lane}</strong>
-                      <p>{note}</p>
-                    </div>
-                    <span className={styles.status}>{status}</span>
+                <div className={styles.row}>
+                  <div>
+                    <strong>Run status</strong>
+                    <p>{latestRun.summary ?? "No run summary available."}</p>
                   </div>
-                ))}
-              </div>
-            </article>
-
-            <article className={styles.panel}>
-              <div className={styles.panelHeader}>
-                <span className={styles.badge}>Synthesis</span>
-                <h2>First-slice workstream outputs</h2>
-              </div>
-              <div className={styles.table}>
-                {workstreamSyntheses.map(([lane, status, note]) => (
-                  <div className={styles.row} key={lane}>
-                    <div>
-                      <strong>{lane}</strong>
-                      <p>{note}</p>
-                    </div>
-                    <span className={styles.status}>{status}</span>
+                  <span className={styles.status}>
+                    {labelize(latestRun.status)}
+                  </span>
+                </div>
+                <div className={styles.row}>
+                  <div>
+                    <strong>Trace events</strong>
+                    <p>Execution audit trail stored for this run.</p>
                   </div>
-                ))}
-              </div>
-            </article>
-
-            <article className={styles.panel}>
-              <div className={styles.panelHeader}>
-                <span className={styles.badge}>Trackers</span>
-                <h2>Request list, Q&amp;A, and approvals</h2>
-              </div>
-              <div className={styles.table}>
-                {trackerItems.map(([lane, item, status]) => (
-                  <div className={styles.row} key={lane}>
-                    <div>
-                      <strong>{lane}</strong>
-                      <p>{item}</p>
-                    </div>
-                    <span className={styles.status}>{status}</span>
+                  <span className={styles.note}>{runSummary.traceCount}</span>
+                </div>
+                <div className={styles.row}>
+                  <div>
+                    <strong>Workstream syntheses</strong>
+                    <p>Persisted domain-level diligence summaries.</p>
                   </div>
-                ))}
+                  <span className={styles.note}>{runSummary.synthesisCount}</span>
+                </div>
               </div>
-            </article>
-
-            <article className={styles.panel}>
-              <div className={styles.panelHeader}>
-                <span className={styles.badge}>Adapters</span>
-                <h2>India evidence sources and expansion contracts</h2>
-              </div>
-              <div className={styles.table}>
-                {adapterCatalog.map(([title, purpose, mode]) => (
-                  <div className={styles.row} key={title}>
-                    <div>
-                      <strong>{title}</strong>
-                      <p>{purpose}</p>
-                    </div>
-                    <span className={styles.note}>{mode}</span>
-                  </div>
-                ))}
-              </div>
-            </article>
-
-            <article className={styles.panel}>
-              <div className={styles.panelHeader}>
-                <span className={styles.badge}>Roadmap</span>
-                <h2>Expansion-ready by design</h2>
-              </div>
-              <ul className={styles.list}>
-                {roadmap.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
+              <Link
+                className={styles.rowLink}
+                href={`/cases/${featuredCase.id}/runs/${latestRun.id}`}
+              >
+                <div>
+                  <strong>Open run viewer</strong>
+                  <p>
+                    Inspect trace events, report bundles, and workstream
+                    syntheses for the latest execution.
+                  </p>
+                </div>
+                <span className={styles.note}>Go to run</span>
+              </Link>
             </article>
           </div>
-        </section>
-
-        <section className={styles.grid}>
-          <article className={styles.panel}>
-            <div className={styles.panelHeader}>
-              <span className={styles.badge}>Completed</span>
-              <h2>Verified platform layers</h2>
-            </div>
-            <ul className={styles.list}>
-              {completedLayers.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-          </article>
-
-          <article className={styles.panel}>
-            <div className={styles.panelHeader}>
-              <span className={styles.badge}>Next</span>
-              <h2>Immediate build bridge</h2>
-            </div>
-            <ul className={styles.list}>
-              {nextBridge.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-          </article>
         </section>
       </main>
     </div>
