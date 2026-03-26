@@ -45,9 +45,10 @@ docker-compose.yml
 
 ## Current Phase
 
-The repository has completed `Phase 6` for the first flagship slice. The
-current build now includes the interface layer, the evaluation gate, and the
-first operational hardening layer:
+The repository has completed the second post-flagship expansion phase:
+`VendorOnboardingPack` now runs alongside `CreditLendingPack` on the same
+hardened platform spine. The current build includes the first flagship
+buy-side slice plus two additional motion packs:
 
 - persisted case operations backed by SQLAlchemy
 - document upload, parsing, storage, and evidence extraction
@@ -65,6 +66,12 @@ first operational hardening layer:
 - role-based internal auth that can be enforced outside local dev and test
 - request ID propagation plus a readiness endpoint for operations checks
 - deployment, runbook, release-checklist, and smoke-check assets
+- a supported `CreditLendingPack` with underwriting checklist templates,
+  credit-risk heuristics, and motion-aware memo generation
+- a supported `VendorOnboardingPack` with third-party onboarding templates,
+  integrity-risk heuristics, and `Third-Party Risk Memo` generation
+- multi-suite evaluation coverage across buy-side, credit-lending, and
+  vendor-onboarding flows
 - Dockerized local dependencies plus automated checks
 
 ## Local Development
@@ -111,6 +118,18 @@ To run the evaluation suite directly:
 
 ```powershell
 ./scripts/evaluate.ps1
+```
+
+To run only the credit-lending expansion suite:
+
+```powershell
+./scripts/evaluate.ps1 -Suite credit_lending_expansion
+```
+
+To run only the vendor-onboarding expansion suite:
+
+```powershell
+./scripts/evaluate.ps1 -Suite vendor_onboarding_expansion
 ```
 
 To run a live API smoke check after the stack is up:

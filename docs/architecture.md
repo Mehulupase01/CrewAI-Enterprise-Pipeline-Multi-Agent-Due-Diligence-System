@@ -141,3 +141,28 @@ The first hardening layer is now in place:
   evaluation baseline
 - operations assets covering deployment, runbook steps, smoke checks, and
   release criteria
+
+## Expansion Phase 1: Credit Lending
+
+The first expansion pack is now implemented:
+
+- `credit_lending` now seeds underwriting-specific checklist templates
+- report generation is motion-aware and emits a `Credit Memo` instead of
+  reusing buy-side wording
+- issue heuristics now catch covenant stress, fund diversion, and collateral
+  perfection gaps
+- evaluation is suite-based, so the repo can grow from one flagship slice into
+  multiple supported operating modes without losing repeatability
+
+## Expansion Phase 2: Vendor Onboarding
+
+The second expansion pack is now implemented:
+
+- `vendor_onboarding` now seeds third-party onboarding and integrity checklist
+  templates
+- report generation emits a `Third-Party Risk Memo` with onboarding-specific
+  summary and action language
+- issue heuristics now catch sanctions, watchlist, and anti-bribery risk
+  signals
+- the evaluation harness now exercises all three supported motion packs under
+  one repeatable quality gate

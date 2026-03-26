@@ -11,7 +11,8 @@
 
 1. Run `./scripts/check.ps1`
 2. Inspect the latest file under `artifacts/evaluations/`
-3. Run `./scripts/smoke.ps1` against the live API
+3. Run `./scripts/evaluate.ps1 -Suite all` if you want a fresh multi-suite artifact
+4. Run `./scripts/smoke.ps1` against the live API
 
 ## What Readiness Means Right Now
 

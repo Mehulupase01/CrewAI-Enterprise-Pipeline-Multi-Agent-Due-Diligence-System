@@ -154,6 +154,34 @@ HEURISTIC_RULES: tuple[HeuristicIssueRule, ...] = (
         patterns=("collateral gap", "security not perfected", "charge not filed", "unperfected"),
         workstream_override=WorkstreamDomain.LEGAL_CORPORATE,
     ),
+    HeuristicIssueRule(
+        title="Third-party integrity or bribery concern",
+        severity=FlagSeverity.HIGH,
+        business_impact=(
+            "Integrity concerns can create bribery, fraud, reputational, and onboarding "
+            "approval risk."
+        ),
+        recommended_action=(
+            "Collect diligence responses, beneficial-owner details, and integrity "
+            "supporting evidence before approval."
+        ),
+        patterns=("bribery", "kickback", "integrity concern", "conflict of interest"),
+        workstream_override=WorkstreamDomain.FORENSIC_COMPLIANCE,
+    ),
+    HeuristicIssueRule(
+        title="Sanctions or watchlist screening concern",
+        severity=FlagSeverity.HIGH,
+        business_impact=(
+            "Sanctions or watchlist alerts can block onboarding and require legal or "
+            "compliance escalation."
+        ),
+        recommended_action=(
+            "Validate screening results, escalate false-positive review, and confirm "
+            "onboarding restrictions before proceeding."
+        ),
+        patterns=("sanctions", "watchlist", "pep", "aml alert"),
+        workstream_override=WorkstreamDomain.REGULATORY,
+    ),
 )
 
 

@@ -180,11 +180,15 @@ class ReportService:
         review_label = (
             "credit committee review"
             if motion_pack == MotionPack.CREDIT_LENDING
+            else "vendor approval"
+            if motion_pack == MotionPack.VENDOR_ONBOARDING
             else "final review"
         )
         request_label = (
             "borrower information requests"
             if motion_pack == MotionPack.CREDIT_LENDING
+            else "vendor follow-up requests and attestations"
+            if motion_pack == MotionPack.VENDOR_ONBOARDING
             else "data-room requests and management responses"
         )
         if open_mandatory_items:
@@ -196,6 +200,10 @@ class ReportService:
                 actions.append(
                     "Resolve, mitigate, or formally accept the highest-severity open credit risks."
                 )
+            elif motion_pack == MotionPack.VENDOR_ONBOARDING:
+                actions.append(
+                    "Resolve, mitigate, or escalate the highest-severity third-party risks."
+                )
             else:
                 actions.append("Resolve or formally accept the highest-severity open issues.")
         if open_request_count:
@@ -203,6 +211,8 @@ class ReportService:
         if approval_state != ApprovalDecisionKind.APPROVED:
             if motion_pack == MotionPack.CREDIT_LENDING:
                 actions.append("Re-run credit approval after blockers are closed.")
+            elif motion_pack == MotionPack.VENDOR_ONBOARDING:
+                actions.append("Re-run vendor approval after blockers are closed.")
             else:
                 actions.append("Re-run approval review after blockers are closed.")
         return actions[:4]
@@ -221,6 +231,12 @@ class ReportService:
                 f"{case_name} for {target_name} currently has {issue_count} tracked credit-risk "
                 f"items, {open_mandatory_items} open mandatory underwriting checklist items, "
                 f"and {open_request_count} open borrower information requests."
+            )
+        if motion_pack == MotionPack.VENDOR_ONBOARDING:
+            return (
+                f"{case_name} for {target_name} currently has {issue_count} tracked "
+                f"third-party risk items, {open_mandatory_items} open mandatory onboarding "
+                f"checklist items, and {open_request_count} open vendor follow-up requests."
             )
         return (
             f"{case_name} for {target_name} currently has {issue_count} tracked issues, "

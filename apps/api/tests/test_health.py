@@ -6,7 +6,11 @@ def test_health_endpoint_returns_ok(client) -> None:
     payload = response.json()
     assert payload["status"] == "ok"
     assert payload["auth_required"] is False
-    assert payload["enabled_motion_packs"] == ["buy_side_diligence", "credit_lending"]
+    assert payload["enabled_motion_packs"] == [
+        "buy_side_diligence",
+        "credit_lending",
+        "vendor_onboarding",
+    ]
     assert payload["enabled_sector_packs"] == ["tech_saas_services"]
 
 

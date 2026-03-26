@@ -36,6 +36,7 @@ def health() -> AppHealth:
         enabled_motion_packs=[
             MotionPack.BUY_SIDE_DILIGENCE,
             MotionPack.CREDIT_LENDING,
+            MotionPack.VENDOR_ONBOARDING,
         ],
         enabled_sector_packs=[SectorPack.TECH_SAAS_SERVICES],
     )
@@ -111,7 +112,7 @@ def overview() -> PlatformOverview:
     settings = get_settings()
     return PlatformOverview(
         product_name="CrewAI Enterprise Pipeline",
-        current_phase="Phase 6 hardening",
+        current_phase="Expansion Phase 2: vendor onboarding",
         country="India",
         auth_required=settings.auth_required,
         motion_packs=list(MotionPack),

@@ -29,6 +29,8 @@ The current gate now covers both the foundation and the first operations layer:
 - enforced-auth and role-guard tests
 - request ID propagation on API responses
 - readiness endpoint coverage
+- credit-lending checklist, memo, and evaluation coverage
+- vendor-onboarding checklist, memo, and evaluation coverage
 - source-adapter catalog exposure
 - workbench dashboard rendering
 - case workspace and run viewer rendering
@@ -54,6 +56,8 @@ The current gate now covers both the foundation and the first operations layer:
 - Secured routes reject missing or under-privileged callers when auth is enforced.
 - The API returns a request ID header on responses.
 - The repo includes deployment, runbook, smoke-check, and release-checklist assets.
+- The evaluation runner passes all supported suites, including credit lending
+  and vendor onboarding.
 - The web app exposes a dashboard, case workspace, and run viewer over the shared case model.
 - The workbench reflects the actual platform surface instead of generator boilerplate.
 - The repo contains reproducible scripts for bootstrap, dev, and checks.

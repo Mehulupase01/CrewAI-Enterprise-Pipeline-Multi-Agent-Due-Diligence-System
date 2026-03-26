@@ -471,3 +471,87 @@ def test_credit_lending_report_uses_credit_memo_language(client) -> None:
     assert report_payload["report_title"] == "Credit Memo"
     assert report_payload["motion_pack"] == "credit_lending"
     assert "underwriting checklist items" in report_payload["executive_summary"]
+
+
+def test_vendor_onboarding_checklist_seed_uses_vendor_templates(client) -> None:
+    case_response = client.post(
+        "/api/v1/cases",
+        json={
+            "name": "Project Copper Vendor Onboarding",
+            "target_name": "Copper Cloud Services Private Limited",
+            "summary": "Vendor onboarding checklist validation case.",
+            "motion_pack": "vendor_onboarding",
+            "sector_pack": "tech_saas_services",
+            "country": "India",
+        },
+    )
+    case_id = case_response.json()["id"]
+
+    seed_response = client.post(f"/api/v1/cases/{case_id}/checklist/seed")
+    assert seed_response.status_code == 201
+    seed_payload = seed_response.json()
+    template_keys = {
+        item["template_key"] for item in seed_payload["checklist_items"] if item["template_key"]
+    }
+    assert "legal_corporate.vendor_registration" in template_keys
+    assert "regulatory.vendor_restrictions" in template_keys
+    assert "forensic.third_party_integrity" in template_keys
+    assert "cyber_privacy.vendor_security_posture" in template_keys
+
+
+def test_vendor_onboarding_report_uses_third_party_risk_memo_language(client) -> None:
+    case_response = client.post(
+        "/api/v1/cases",
+        json={
+            "name": "Project Delta Vendor Approval",
+            "target_name": "Delta Automation Services Private Limited",
+            "summary": "Third-party risk memo validation case.",
+            "motion_pack": "vendor_onboarding",
+            "sector_pack": "tech_saas_services",
+            "country": "India",
+        },
+    )
+    case_id = case_response.json()["id"]
+
+    seed_response = client.post(f"/api/v1/cases/{case_id}/checklist/seed")
+    assert seed_response.status_code == 201
+    for item in seed_response.json()["checklist_items"]:
+        update_response = client.patch(
+            f"/api/v1/cases/{case_id}/checklist/{item['id']}",
+            json={
+                "status": "satisfied",
+                "owner": "Third-Party Risk Analyst",
+                "note": "Validated for the vendor memo test case.",
+            },
+        )
+        assert update_response.status_code == 200
+
+    evidence_response = client.post(
+        f"/api/v1/cases/{case_id}/evidence",
+        json={
+            "title": "Vendor security questionnaire summary",
+            "evidence_kind": "fact",
+            "workstream_domain": "cyber_privacy",
+            "citation": "Vendor security questionnaire v3",
+            "excerpt": "No material security control gaps or sanctions alerts were identified.",
+            "confidence": 0.9,
+        },
+    )
+    assert evidence_response.status_code == 201
+
+    approval_response = client.post(
+        f"/api/v1/cases/{case_id}/approvals/review",
+        json={
+            "reviewer": "Vendor Approval Board",
+            "note": "Third-party risk memo should now be export ready.",
+        },
+    )
+    assert approval_response.status_code == 201
+    assert approval_response.json()["decision"] == "approved"
+
+    report_response = client.get(f"/api/v1/cases/{case_id}/reports/executive-memo")
+    assert report_response.status_code == 200
+    report_payload = report_response.json()
+    assert report_payload["report_title"] == "Third-Party Risk Memo"
+    assert report_payload["motion_pack"] == "vendor_onboarding"
+    assert "third-party risk items" in report_payload["executive_summary"]

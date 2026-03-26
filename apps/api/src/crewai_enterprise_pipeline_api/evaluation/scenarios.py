@@ -440,6 +440,129 @@ CREDIT_LENDING_EXPANSION_SCENARIOS: tuple[EvaluationScenario, ...] = (
 )
 
 
+VENDOR_ONBOARDING_EXPANSION_SCENARIOS: tuple[EvaluationScenario, ...] = (
+    EvaluationScenario(
+        code="blocked_vendor_integrity_case",
+        name="Blocked vendor integrity case",
+        description=(
+            "Validates that integrity and sanctions concerns block third-party "
+            "approval while onboarding checklist items remain open."
+        ),
+        case_payload={
+            "name": "Project Copper Vendor Onboarding",
+            "target_name": "Copper Cloud Services Private Limited",
+            "summary": "Evaluation scenario for blocked vendor onboarding readiness.",
+            "motion_pack": "vendor_onboarding",
+            "sector_pack": "tech_saas_services",
+            "country": "India",
+        },
+        upload_documents=(
+            UploadDocumentFixture(
+                title="Integrity screening summary",
+                filename="integrity_screening_summary.txt",
+                content=(
+                    "Integrity concern surfaced after an aml alert and sanctions "
+                    "watchlist hit involving a beneficial owner."
+                ),
+                mime_type="text/plain",
+                document_kind="integrity_screening",
+                source_kind="uploaded_dataroom",
+                workstream_domain="forensic_compliance",
+                evidence_kind="risk",
+            ),
+        ),
+        requests=(
+            RequestFixture(
+                payload={
+                    "title": "Upload beneficial-owner clarification",
+                    "detail": (
+                        "Need ownership clarification, screening evidence, and "
+                        "compliance sign-off notes."
+                    ),
+                    "owner": "Third-Party Risk Lead",
+                    "status": "open",
+                }
+            ),
+        ),
+        scan_issues=True,
+        expectation=ScenarioExpectation(
+            approval_decision="changes_requested",
+            ready_for_export=False,
+            report_status="not_ready",
+            report_title="Third-Party Risk Memo",
+            min_syntheses=7,
+            open_mandatory_items=10,
+            min_blocking_issue_count=1,
+            max_blocking_issue_count=1,
+            min_issue_count=1,
+            min_open_request_count=1,
+            min_evidence_count=1,
+            expected_issue_severities=("high",),
+        ),
+    ),
+    EvaluationScenario(
+        code="approved_vendor_case",
+        name="Approved vendor case",
+        description=(
+            "Validates an approved vendor onboarding path when checklist coverage is "
+            "complete and no blocking third-party risks remain open."
+        ),
+        case_payload={
+            "name": "Project Delta Vendor Approval",
+            "target_name": "Delta Automation Services Private Limited",
+            "summary": "Evaluation scenario for a clean vendor onboarding case.",
+            "motion_pack": "vendor_onboarding",
+            "sector_pack": "tech_saas_services",
+            "country": "India",
+        },
+        upload_documents=(
+            UploadDocumentFixture(
+                title="Vendor profile summary",
+                filename="vendor_profile_summary.txt",
+                content=(
+                    "The vendor maintains current registrations, no sanctions alerts, "
+                    "and no integrity or cyber incident red flags were identified."
+                ),
+                mime_type="text/plain",
+                document_kind="vendor_profile",
+                source_kind="uploaded_dataroom",
+                workstream_domain="legal_corporate",
+                evidence_kind="fact",
+            ),
+        ),
+        evidence_items=(
+            EvidenceFixture(
+                payload={
+                    "title": "Security questionnaire summary",
+                    "evidence_kind": "fact",
+                    "workstream_domain": "cyber_privacy",
+                    "citation": "Vendor security questionnaire v3",
+                    "excerpt": (
+                        "The vendor completed the security questionnaire with no "
+                        "material control gaps requiring escalation."
+                    ),
+                    "confidence": 0.9,
+                }
+            ),
+        ),
+        satisfy_all_checklist_items=True,
+        expectation=ScenarioExpectation(
+            approval_decision="approved",
+            ready_for_export=True,
+            report_status="ready_for_export",
+            report_title="Third-Party Risk Memo",
+            min_syntheses=7,
+            open_mandatory_items=0,
+            min_blocking_issue_count=0,
+            max_blocking_issue_count=0,
+            min_issue_count=0,
+            min_open_request_count=0,
+            min_evidence_count=2,
+        ),
+    ),
+)
+
+
 EVALUATION_SUITES: dict[str, EvaluationSuiteDefinition] = {
     "phase5_first_slice": EvaluationSuiteDefinition(
         key="phase5_first_slice",
@@ -452,5 +575,11 @@ EVALUATION_SUITES: dict[str, EvaluationSuiteDefinition] = {
         title="Credit Lending Expansion Evaluation",
         artifact_prefix="credit-lending-expansion",
         scenarios=CREDIT_LENDING_EXPANSION_SCENARIOS,
+    ),
+    "vendor_onboarding_expansion": EvaluationSuiteDefinition(
+        key="vendor_onboarding_expansion",
+        title="Vendor Onboarding Expansion Evaluation",
+        artifact_prefix="vendor-onboarding-expansion",
+        scenarios=VENDOR_ONBOARDING_EXPANSION_SCENARIOS,
     ),
 }

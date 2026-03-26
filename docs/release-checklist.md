@@ -5,6 +5,8 @@
 - `./scripts/check.ps1` passes
 - `./scripts/smoke.ps1` passes against the running API
 - latest evaluation artifact exists under `artifacts/evaluations/`
+- credit-lending suite passes if that pack is in release scope
+- vendor-onboarding suite passes if that pack is in release scope
 - `GET /api/v1/system/readiness` returns `ready`
 - auth mode is confirmed for the target environment
 - default credentials are removed from shared environments

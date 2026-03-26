@@ -172,6 +172,73 @@ CREDIT_LENDING_BASE_TEMPLATE: tuple[ChecklistTemplateItem, ...] = (
 )
 
 
+VENDOR_ONBOARDING_BASE_TEMPLATE: tuple[ChecklistTemplateItem, ...] = (
+    ChecklistTemplateItem(
+        template_key="legal_corporate.vendor_registration",
+        title="Validate vendor registration, ownership, and contracting authority",
+        detail=(
+            "Confirm incorporation details, beneficial ownership, contracting authority, "
+            "and whether any material corporate changes are pending."
+        ),
+        workstream_domain=WorkstreamDomain.LEGAL_CORPORATE,
+    ),
+    ChecklistTemplateItem(
+        template_key="legal_corporate.contractual_risk",
+        title="Review contracting model, liability caps, and subcontracting rights",
+        detail=(
+            "Check standard terms, limitation of liability, indemnities, confidentiality, "
+            "termination rights, and subcontracting permissions."
+        ),
+        workstream_domain=WorkstreamDomain.LEGAL_CORPORATE,
+    ),
+    ChecklistTemplateItem(
+        template_key="tax.vendor_statutory_profile",
+        title="Confirm GST, PAN, and statutory compliance standing",
+        detail=(
+            "Validate GST registration, return filing posture, withholding-tax readiness, "
+            "and whether open statutory defaults could impair onboarding."
+        ),
+        workstream_domain=WorkstreamDomain.TAX,
+    ),
+    ChecklistTemplateItem(
+        template_key="regulatory.vendor_restrictions",
+        title="Screen regulatory restrictions, sanctions, and licensing triggers",
+        detail=(
+            "Check whether the vendor or its principals face sanctions, licensing gaps, "
+            "watchlist alerts, or sector-specific onboarding restrictions."
+        ),
+        workstream_domain=WorkstreamDomain.REGULATORY,
+    ),
+    ChecklistTemplateItem(
+        template_key="cyber_privacy.vendor_security_posture",
+        title="Assess cyber, privacy, and access-control posture",
+        detail=(
+            "Review security controls, data-handling obligations, incident history, "
+            "sub-processor use, and privacy commitments relevant to onboarding."
+        ),
+        workstream_domain=WorkstreamDomain.CYBER_PRIVACY,
+    ),
+    ChecklistTemplateItem(
+        template_key="forensic.third_party_integrity",
+        title="Review third-party integrity and anti-bribery risk",
+        detail=(
+            "Check integrity red flags, beneficial-owner concerns, conflicts of interest, "
+            "anti-bribery controls, and whistleblower or misconduct signals."
+        ),
+        workstream_domain=WorkstreamDomain.FORENSIC_COMPLIANCE,
+    ),
+    ChecklistTemplateItem(
+        template_key="operations.service_continuity",
+        title="Test operational resilience and dependency concentration",
+        detail=(
+            "Review delivery resilience, key-person dependence, single-location exposure, "
+            "and any concentration that could disrupt service continuity."
+        ),
+        workstream_domain=WorkstreamDomain.OPERATIONS,
+    ),
+)
+
+
 TECH_SAAS_TEMPLATE: tuple[ChecklistTemplateItem, ...] = (
     ChecklistTemplateItem(
         template_key="commercial.customer_concentration",
@@ -344,6 +411,8 @@ class ChecklistService:
             template.extend(BUY_SIDE_BASE_TEMPLATE)
         elif motion_pack == MotionPack.CREDIT_LENDING:
             template.extend(CREDIT_LENDING_BASE_TEMPLATE)
+        elif motion_pack == MotionPack.VENDOR_ONBOARDING:
+            template.extend(VENDOR_ONBOARDING_BASE_TEMPLATE)
 
         if sector_pack == SectorPack.TECH_SAAS_SERVICES:
             template.extend(TECH_SAAS_TEMPLATE)
