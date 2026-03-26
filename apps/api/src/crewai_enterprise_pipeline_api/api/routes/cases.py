@@ -1,20 +1,27 @@
-from fastapi import APIRouter, HTTPException, status
+from typing import Annotated
+
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
 
 from crewai_enterprise_pipeline_api.api.dependencies import DbSession
 from crewai_enterprise_pipeline_api.domain.models import (
+    ArtifactSourceKind,
     CaseCreate,
     CaseDetail,
     CaseSummary,
     DocumentArtifactCreate,
+    DocumentIngestionResult,
     DocumentArtifactSummary,
+    EvidenceKind,
     EvidenceItemCreate,
     EvidenceItemSummary,
     QaItemCreate,
     QaItemSummary,
     RequestItemCreate,
     RequestItemSummary,
+    WorkstreamDomain,
 )
 from crewai_enterprise_pipeline_api.services.case_service import CaseService
+from crewai_enterprise_pipeline_api.services.ingestion_service import IngestionService
 
 router = APIRouter()
 
@@ -56,6 +63,35 @@ async def create_document(
     if artifact is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
     return artifact
+
+
+@router.post(
+    "/{case_id}/documents/upload",
+    response_model=DocumentIngestionResult,
+    status_code=status.HTTP_201_CREATED,
+)
+async def upload_document(
+    case_id: str,
+    session: DbSession,
+    file: Annotated[UploadFile, File(...)],
+    document_kind: Annotated[str, Form(...)],
+    source_kind: Annotated[ArtifactSourceKind, Form(...)],
+    workstream_domain: Annotated[WorkstreamDomain, Form(...)],
+    title: Annotated[str | None, Form()] = None,
+    evidence_kind: Annotated[EvidenceKind, Form()] = EvidenceKind.FACT,
+) -> DocumentIngestionResult:
+    result = await IngestionService(session).upload_document(
+        case_id=case_id,
+        file=file,
+        document_kind=document_kind,
+        source_kind=source_kind,
+        workstream_domain=workstream_domain,
+        title=title,
+        evidence_kind=evidence_kind,
+    )
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
+    return result
 
 
 @router.get("/{case_id}/evidence", response_model=list[EvidenceItemSummary])

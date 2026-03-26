@@ -70,11 +70,15 @@ class CaseService:
         record = DocumentArtifactRecord(
             case_id=case_id,
             title=payload.title,
+            original_filename=payload.original_filename,
             source_kind=payload.source_kind.value,
             document_kind=payload.document_kind,
             mime_type=payload.mime_type,
             processing_status=payload.processing_status.value,
             storage_path=payload.storage_path,
+            parser_name=payload.parser_name,
+            sha256_digest=payload.sha256_digest,
+            byte_size=payload.byte_size,
         )
         self.session.add(record)
         await self.session.commit()

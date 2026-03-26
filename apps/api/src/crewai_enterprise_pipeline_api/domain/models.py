@@ -88,6 +88,11 @@ class SourceAdapterCategory(StrEnum):
     VENDOR = "vendor"
 
 
+class StorageBackendKind(StrEnum):
+    LOCAL = "local"
+    S3 = "s3"
+
+
 class ORMModel(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -126,9 +131,13 @@ class DocumentArtifactCreate(BaseModel):
     title: str = Field(min_length=2, max_length=255)
     source_kind: ArtifactSourceKind
     document_kind: str = Field(min_length=2, max_length=120)
+    original_filename: str | None = Field(default=None, max_length=255)
     mime_type: str | None = Field(default=None, max_length=120)
     processing_status: ArtifactProcessingStatus = ArtifactProcessingStatus.RECEIVED
     storage_path: str | None = Field(default=None, max_length=500)
+    parser_name: str | None = Field(default=None, max_length=80)
+    sha256_digest: str | None = Field(default=None, max_length=64)
+    byte_size: int | None = Field(default=None, ge=0)
 
 
 class EvidenceItemCreate(BaseModel):
@@ -158,11 +167,15 @@ class QaItemCreate(BaseModel):
 class DocumentArtifactSummary(ORMModel):
     id: str
     title: str
+    original_filename: str | None
     source_kind: ArtifactSourceKind
     document_kind: str
     mime_type: str | None
     processing_status: ArtifactProcessingStatus
     storage_path: str | None
+    parser_name: str | None
+    sha256_digest: str | None
+    byte_size: int | None
     created_at: datetime
     updated_at: datetime
 
@@ -228,3 +241,11 @@ class SourceAdapterSummary(BaseModel):
     supports_india: bool
     supports_live_credentials: bool
     fallback_mode: str
+
+
+class DocumentIngestionResult(BaseModel):
+    artifact: DocumentArtifactSummary
+    evidence_items_created: int
+    extracted_character_count: int
+    parser_name: str
+    storage_backend: StorageBackendKind

@@ -88,3 +88,52 @@ def test_case_workflow_persists_documents_evidence_and_trackers(client) -> None:
 def test_case_detail_returns_404_for_unknown_case(client) -> None:
     response = client.get("/api/v1/cases/non-existent-case")
     assert response.status_code == 404
+
+
+def test_document_upload_stores_file_and_generates_evidence(client) -> None:
+    case_response = client.post(
+        "/api/v1/cases",
+        json={
+            "name": "Project Cedar",
+            "target_name": "CedarWorks Private Limited",
+            "summary": "Upload flow validation case.",
+            "motion_pack": "buy_side_diligence",
+            "sector_pack": "tech_saas_services",
+            "country": "India",
+        },
+    )
+    case_id = case_response.json()["id"]
+
+    upload_response = client.post(
+        f"/api/v1/cases/{case_id}/documents/upload",
+        data={
+            "document_kind": "management_memo",
+            "source_kind": "uploaded_dataroom",
+            "workstream_domain": "financial_qoe",
+            "title": "Management memo",
+            "evidence_kind": "fact",
+        },
+        files={
+            "file": (
+                "memo.txt",
+                (
+                    "Revenue grew 32 percent year over year.\n\n"
+                    "Gross margin improved to 71 percent after cloud optimization."
+                ).encode("utf-8"),
+                "text/plain",
+            )
+        },
+    )
+
+    assert upload_response.status_code == 201
+    payload = upload_response.json()
+    assert payload["artifact"]["processing_status"] == "parsed"
+    assert payload["artifact"]["storage_path"].startswith("file:///")
+    assert payload["artifact"]["sha256_digest"]
+    assert payload["evidence_items_created"] >= 1
+    assert payload["parser_name"] == "plaintext"
+    assert payload["storage_backend"] == "local"
+
+    evidence_response = client.get(f"/api/v1/cases/{case_id}/evidence")
+    assert evidence_response.status_code == 200
+    assert len(evidence_response.json()) >= 1

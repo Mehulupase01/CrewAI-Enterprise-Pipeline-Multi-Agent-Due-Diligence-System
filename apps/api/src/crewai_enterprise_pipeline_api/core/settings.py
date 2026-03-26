@@ -1,4 +1,5 @@
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -22,6 +23,11 @@ class Settings(BaseSettings):
     minio_endpoint: str = "http://localhost:9000"
     minio_root_user: str = "minioadmin"
     minio_root_password: str = "minioadmin"
+    minio_bucket_name: str = "crewai-pipeline"
+    storage_backend: str = "auto"
+    local_storage_root: str = Field(
+        default_factory=lambda: str((Path(__file__).resolve().parents[5] / "storage").resolve())
+    )
 
     model_config = SettingsConfigDict(
         env_file=".env",

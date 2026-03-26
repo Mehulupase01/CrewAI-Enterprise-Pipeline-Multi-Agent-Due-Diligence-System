@@ -48,11 +48,15 @@ class DocumentArtifactRecord(TimestampedMixin, Base):
 
     case_id: Mapped[str] = mapped_column(ForeignKey("cases.id", ondelete="CASCADE"))
     title: Mapped[str] = mapped_column(String(255))
+    original_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
     source_kind: Mapped[str] = mapped_column(String(80))
     document_kind: Mapped[str] = mapped_column(String(120))
     mime_type: Mapped[str | None] = mapped_column(String(120), nullable=True)
     processing_status: Mapped[str] = mapped_column(String(40), default="received")
     storage_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    parser_name: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    sha256_digest: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    byte_size: Mapped[int | None] = mapped_column(nullable=True)
 
     case: Mapped[CaseRecord] = relationship(back_populates="documents")
 

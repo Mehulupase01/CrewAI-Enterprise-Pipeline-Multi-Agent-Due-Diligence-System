@@ -15,6 +15,8 @@ def client(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> TestClient:
     monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{database_path.as_posix()}")
     monkeypatch.setenv("APP_ENV", "test")
     monkeypatch.setenv("AUTO_CREATE_SCHEMA", "true")
+    monkeypatch.setenv("STORAGE_BACKEND", "local")
+    monkeypatch.setenv("LOCAL_STORAGE_ROOT", str((tmp_path / "storage").resolve()))
     get_settings.cache_clear()
 
     with TestClient(create_app()) as test_client:
