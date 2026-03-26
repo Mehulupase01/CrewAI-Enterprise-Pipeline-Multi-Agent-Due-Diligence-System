@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "crewai-enterprise-pipeline-api"
+version = "0.1.0"
+description = "FastAPI control plane for the CrewAI Enterprise Pipeline flagship build."
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "alembic==1.18.4",
+  "asyncpg==0.31.0",
+  "crewai==1.12.2",
+  "fastapi==0.135.2",
+  "httpx==0.28.1",
+  "pydantic==2.11.9",
+  "pydantic-settings==2.10.1",
+  "redis==7.4.0",
+  "sqlalchemy==2.0.48",
+  "uvicorn[standard]==0.42.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest==9.0.2",
+  "ruff==0.15.7",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["B", "E", "F", "I", "N", "UP"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
