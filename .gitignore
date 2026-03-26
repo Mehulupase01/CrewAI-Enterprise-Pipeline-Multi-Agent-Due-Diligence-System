@@ -24,3 +24,5 @@ Thumbs.db
 data/
 storage/
 tmp/
+artifacts/evaluations/*.json
+!artifacts/evaluations/.gitkeep

@@ -45,8 +45,9 @@ docker-compose.yml
 
 ## Current Phase
 
-The repository has completed the first deterministic `Phase 4` interface slice
-for the flagship path:
+The repository has completed `Phase 5` for the first flagship slice. The
+current build now includes the interface layer plus a reproducible evaluation
+gate:
 
 - persisted case operations backed by SQLAlchemy
 - document upload, parsing, storage, and evidence extraction
@@ -58,6 +59,9 @@ for the flagship path:
 - analyst workbench dashboard, case workspace, and run viewer with live API support
 - document, evidence, request-list, and Q&A tracker endpoints
 - source-adapter catalog for uploaded, public, and vendor-backed evidence
+- deterministic evaluation scenarios with saved JSON scorecards
+- a repeatable quality gate that exercises blocked, approved-clean, and
+  approved-nonblocking-risk diligence runs
 - Dockerized local dependencies plus automated checks
 
 ## Local Development
@@ -97,5 +101,15 @@ Run the current platform checks with:
 ./scripts/check.ps1
 ```
 
+`check.ps1` now also writes a fresh evaluation artifact under
+`artifacts/evaluations/`.
+
+To run the evaluation suite directly:
+
+```powershell
+./scripts/evaluate.ps1
+```
+
 The project is only considered complete phase-by-phase when the code, tests,
-docs, demo workflow, and regression baseline all exist together.
+docs, demo workflow, evaluation artifacts, and regression baseline all exist
+together.

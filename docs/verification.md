@@ -24,6 +24,8 @@ The current gate now covers both the foundation and the first operations layer:
 - approval review decisions and executive memo generation
 - workflow run execution with trace events and generated report bundles
 - persisted workstream synthesis outputs per run
+- deterministic end-to-end evaluation scenarios with saved JSON scorecards
+- repeat-scan regression checks for issue fingerprint reuse
 - source-adapter catalog exposure
 - workbench dashboard rendering
 - case workspace and run viewer rendering
@@ -42,6 +44,10 @@ The current gate now covers both the foundation and the first operations layer:
 - Executive memo generation reflects live case state, open requests, top issues, and latest review status.
 - A case can be executed into a persisted run with trace events and bundled markdown outputs.
 - A run produces durable workstream syntheses for the first diligence domains.
+- The first-slice evaluation suite passes blocked, clean-approved, and
+  approved-nonblocking-risk scenarios.
+- Every quality-gate run writes a machine-readable artifact under
+  `artifacts/evaluations/`.
 - The web app exposes a dashboard, case workspace, and run viewer over the shared case model.
 - The workbench reflects the actual platform surface instead of generator boilerplate.
 - The repo contains reproducible scripts for bootstrap, dev, and checks.

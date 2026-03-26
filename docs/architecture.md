@@ -117,3 +117,15 @@ The current implementation pass adds the first true operations layer:
 - workstream synthesis records for domain-level diligence views
 - request-list and management Q&A tracking
 - source-adapter contracts for uploaded, public, and vendor-driven evidence
+
+## Phase 5 Additions
+
+The first quality-gate layer is now part of the product:
+
+- a deterministic evaluation harness that runs end-to-end against the live API
+- named diligence scenarios for blocked-tax, clean-approved, and
+  nonblocking-commercial-risk cases
+- isolated temporary databases and storage roots for repeatable evaluation runs
+- saved JSON scorecards under `artifacts/evaluations/`
+- tighter repo verification so `scripts/check.ps1` now includes the evaluation
+  suite in addition to lint, tests, and web checks
