@@ -387,3 +387,87 @@ def test_workflow_run_generates_traces_and_report_bundles(client) -> None:
     }
     assert "financial_qoe" in synthesis_domains
     assert "commercial" in synthesis_domains
+
+
+def test_credit_lending_checklist_seed_uses_credit_templates(client) -> None:
+    case_response = client.post(
+        "/api/v1/cases",
+        json={
+            "name": "Project Monsoon Credit Review",
+            "target_name": "Monsoon Commerce Private Limited",
+            "summary": "Credit pack checklist validation case.",
+            "motion_pack": "credit_lending",
+            "sector_pack": "tech_saas_services",
+            "country": "India",
+        },
+    )
+    case_id = case_response.json()["id"]
+
+    seed_response = client.post(f"/api/v1/cases/{case_id}/checklist/seed")
+    assert seed_response.status_code == 201
+    seed_payload = seed_response.json()
+    template_keys = {
+        item["template_key"] for item in seed_payload["checklist_items"] if item["template_key"]
+    }
+    assert "financial_qoe.debt_service_capacity" in template_keys
+    assert "legal_corporate.security_package" in template_keys
+    assert "forensic.end_use_and_fund_flow" in template_keys
+    assert "commercial.customer_concentration" in template_keys
+
+
+def test_credit_lending_report_uses_credit_memo_language(client) -> None:
+    case_response = client.post(
+        "/api/v1/cases",
+        json={
+            "name": "Project Banyan Working Capital Line",
+            "target_name": "Banyan Workflow Systems Private Limited",
+            "summary": "Credit memo report validation case.",
+            "motion_pack": "credit_lending",
+            "sector_pack": "tech_saas_services",
+            "country": "India",
+        },
+    )
+    case_id = case_response.json()["id"]
+
+    seed_response = client.post(f"/api/v1/cases/{case_id}/checklist/seed")
+    assert seed_response.status_code == 201
+    for item in seed_response.json()["checklist_items"]:
+        update_response = client.patch(
+            f"/api/v1/cases/{case_id}/checklist/{item['id']}",
+            json={
+                "status": "satisfied",
+                "owner": "Credit Analyst",
+                "note": "Validated for the credit memo test case.",
+            },
+        )
+        assert update_response.status_code == 200
+
+    evidence_response = client.post(
+        f"/api/v1/cases/{case_id}/evidence",
+        json={
+            "title": "Debt service coverage summary",
+            "evidence_kind": "metric",
+            "workstream_domain": "financial_qoe",
+            "citation": "Underwriting model FY26 base case",
+            "excerpt": "Debt service coverage remained above 1.8x with stable collections.",
+            "confidence": 0.89,
+        },
+    )
+    assert evidence_response.status_code == 201
+
+    approval_response = client.post(
+        f"/api/v1/cases/{case_id}/approvals/review",
+        json={
+            "reviewer": "Credit Committee",
+            "note": "Credit pack should now be export ready.",
+        },
+    )
+    assert approval_response.status_code == 201
+    assert approval_response.json()["decision"] == "approved"
+
+    report_response = client.get(f"/api/v1/cases/{case_id}/reports/executive-memo")
+    assert report_response.status_code == 200
+    report_payload = report_response.json()
+    assert report_payload["report_title"] == "Credit Memo"
+    assert report_payload["motion_pack"] == "credit_lending"
+    assert "underwriting checklist items" in report_payload["executive_summary"]

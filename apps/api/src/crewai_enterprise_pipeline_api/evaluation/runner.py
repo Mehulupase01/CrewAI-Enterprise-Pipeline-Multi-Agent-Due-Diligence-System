@@ -16,9 +16,10 @@ from fastapi.testclient import TestClient
 from crewai_enterprise_pipeline_api.core.settings import get_settings
 from crewai_enterprise_pipeline_api.db.session import close_database
 from crewai_enterprise_pipeline_api.evaluation.scenarios import (
-    PHASE5_FIRST_SLICE_SCENARIOS,
+    EVALUATION_SUITES,
     ChecklistUpdateFixture,
     EvaluationScenario,
+    EvaluationSuiteDefinition,
 )
 
 DEFAULT_BUNDLE_KINDS = {
@@ -101,7 +102,7 @@ def _update_all_checklist_items(client: TestClient, case_id: str, checklist_item
             json={
                 "status": "satisfied",
                 "owner": "Evaluation Runner",
-                "note": "Satisfied by the automated first-slice evaluation harness.",
+                "note": "Satisfied by the automated evaluation harness.",
             },
         )
         _ensure_success(
@@ -302,7 +303,7 @@ def _evaluate_scenario(scenario: EvaluationScenario) -> dict[str, Any]:
         passed=executive_memo["report_status"] == expectation.report_status,
         actual=executive_memo["report_status"],
         expected=expectation.report_status,
-        detail="Executive memo status should reflect approval readiness.",
+        detail="Memo status should reflect approval readiness.",
     )
     _append_check(
         checks,
@@ -334,7 +335,7 @@ def _evaluate_scenario(scenario: EvaluationScenario) -> dict[str, Any]:
         passed=metrics["workstream_synthesis_count"] >= expectation.min_syntheses,
         actual=metrics["workstream_synthesis_count"],
         expected=f">= {expectation.min_syntheses}",
-        detail="The first-slice workstream syntheses should be persisted.",
+        detail="The relevant workstream syntheses should be persisted.",
     )
     _append_check(
         checks,
@@ -369,6 +370,15 @@ def _evaluate_scenario(scenario: EvaluationScenario) -> dict[str, Any]:
         detail="Core markdown bundle types should always be present.",
     )
 
+    if expectation.report_title is not None:
+        _append_check(
+            checks,
+            name="report_title",
+            passed=executive_memo["report_title"] == expectation.report_title,
+            actual=executive_memo["report_title"],
+            expected=expectation.report_title,
+            detail="Motion-specific memo title should match the scenario expectation.",
+        )
     if expectation.open_mandatory_items is not None:
         _append_check(
             checks,
@@ -438,9 +448,28 @@ def _evaluate_scenario(scenario: EvaluationScenario) -> dict[str, Any]:
     }
 
 
-def run_evaluation_suite(output_dir: Path | None = None) -> tuple[Path, dict[str, Any]]:
+def _aggregate_metrics(results: list[dict[str, Any]]) -> dict[str, Any]:
+    return {
+        "total_documents": sum(result["metrics"].get("document_count", 0) for result in results),
+        "total_evidence": sum(result["metrics"].get("evidence_count", 0) for result in results),
+        "total_issues": sum(result["metrics"].get("issue_count", 0) for result in results),
+        "average_trace_event_count": (
+            sum(result["metrics"].get("trace_event_count", 0) for result in results) / len(results)
+            if results
+            else 0
+        ),
+        "average_report_bundle_count": (
+            sum(result["metrics"].get("report_bundle_count", 0) for result in results)
+            / len(results)
+            if results
+            else 0
+        ),
+    }
+
+
+def _run_suite_definition(suite: EvaluationSuiteDefinition) -> dict[str, Any]:
     results: list[dict[str, Any]] = []
-    for scenario in PHASE5_FIRST_SLICE_SCENARIOS:
+    for scenario in suite.scenarios:
         try:
             results.append(_evaluate_scenario(scenario))
         except Exception as exc:  # noqa: BLE001
@@ -465,62 +494,89 @@ def run_evaluation_suite(output_dir: Path | None = None) -> tuple[Path, dict[str
                         "case_payload": scenario.case_payload,
                         "satisfy_all_checklist_items": scenario.satisfy_all_checklist_items,
                         "scan_issues": scenario.scan_issues,
-                        "checklist_updates": [asdict(item) for item in scenario.checklist_updates],
+                        "checklist_updates": [
+                            asdict(item) for item in scenario.checklist_updates
+                        ],
                     },
                 }
             )
 
     passed_count = sum(1 for result in results if result["passed"])
-    aggregate_metrics = {
-        "total_documents": sum(result["metrics"].get("document_count", 0) for result in results),
-        "total_evidence": sum(result["metrics"].get("evidence_count", 0) for result in results),
-        "total_issues": sum(result["metrics"].get("issue_count", 0) for result in results),
-        "average_trace_event_count": (
-            sum(result["metrics"].get("trace_event_count", 0) for result in results) / len(results)
-            if results
-            else 0
-        ),
-        "average_report_bundle_count": (
-            sum(result["metrics"].get("report_bundle_count", 0) for result in results)
-            / len(results)
-            if results
-            else 0
-        ),
-    }
-
-    report = {
-        "suite": "phase5_first_slice_evaluation",
+    return {
+        "suite": suite.key,
+        "title": suite.title,
         "generated_at": datetime.now(UTC).isoformat(),
         "scenario_count": len(results),
         "passed_count": passed_count,
         "failed_count": len(results) - passed_count,
         "success_rate": round((passed_count / len(results)) if results else 0.0, 4),
         "bundle_kinds_required": sorted(DEFAULT_BUNDLE_KINDS),
-        "aggregate_metrics": aggregate_metrics,
+        "aggregate_metrics": _aggregate_metrics(results),
         "scenarios": results,
     }
 
-    output_root = (output_dir or DEFAULT_OUTPUT_DIR).resolve()
+
+def _write_report(
+    output_root: Path,
+    artifact_prefix: str,
+    report: dict[str, Any],
+) -> Path:
     output_root.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-    report_path = output_root / f"phase5-first-slice-{timestamp}.json"
+    report_path = output_root / f"{artifact_prefix}-{timestamp}.json"
     report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
-    return report_path, report
+    return report_path
+
+
+def run_evaluation_suite(
+    output_dir: Path | None = None,
+    suite_key: str = "all",
+) -> tuple[Path, dict[str, Any]]:
+    output_root = (output_dir or DEFAULT_OUTPUT_DIR).resolve()
+
+    if suite_key != "all":
+        suite = EVALUATION_SUITES[suite_key]
+        report = _run_suite_definition(suite)
+        return _write_report(output_root, suite.artifact_prefix, report), report
+
+    suite_reports: list[dict[str, Any]] = []
+    for suite in EVALUATION_SUITES.values():
+        suite_reports.append(_run_suite_definition(suite))
+
+    total_scenarios = sum(report["scenario_count"] for report in suite_reports)
+    passed_scenarios = sum(report["passed_count"] for report in suite_reports)
+    combined_report = {
+        "suite": "all_supported_suites",
+        "generated_at": datetime.now(UTC).isoformat(),
+        "suite_count": len(suite_reports),
+        "scenario_count": total_scenarios,
+        "passed_count": passed_scenarios,
+        "failed_count": total_scenarios - passed_scenarios,
+        "success_rate": round((passed_scenarios / total_scenarios) if total_scenarios else 0.0, 4),
+        "suites": suite_reports,
+    }
+    return _write_report(output_root, "all-supported-suites", combined_report), combined_report
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Run the first-slice evaluation suite for the CrewAI Enterprise Pipeline."
+        description="Run the evaluation suites for the CrewAI Enterprise Pipeline."
     )
     parser.add_argument(
         "--output-dir",
         type=Path,
         default=DEFAULT_OUTPUT_DIR,
-        help="Directory where the evaluation JSON artifact should be written.",
+        help="Directory where evaluation JSON artifacts should be written.",
+    )
+    parser.add_argument(
+        "--suite",
+        choices=["all", *EVALUATION_SUITES.keys()],
+        default="all",
+        help="Run a specific evaluation suite or all supported suites.",
     )
     args = parser.parse_args()
 
-    report_path, report = run_evaluation_suite(args.output_dir)
+    report_path, report = run_evaluation_suite(args.output_dir, suite_key=args.suite)
     print(
         json.dumps(
             {
