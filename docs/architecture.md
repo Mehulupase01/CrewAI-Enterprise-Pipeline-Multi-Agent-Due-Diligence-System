@@ -129,3 +129,15 @@ The first quality-gate layer is now part of the product:
 - saved JSON scorecards under `artifacts/evaluations/`
 - tighter repo verification so `scripts/check.ps1` now includes the evaluation
   suite in addition to lint, tests, and web checks
+
+## Phase 6 Additions
+
+The first hardening layer is now in place:
+
+- internal role-aware auth that can be enforced in production-shaped
+  environments while keeping local development friction low
+- request ID middleware for basic request correlation across API calls
+- readiness reporting that validates database access and surfaces the latest
+  evaluation baseline
+- operations assets covering deployment, runbook steps, smoke checks, and
+  release criteria

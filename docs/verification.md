@@ -26,6 +26,9 @@ The current gate now covers both the foundation and the first operations layer:
 - persisted workstream synthesis outputs per run
 - deterministic end-to-end evaluation scenarios with saved JSON scorecards
 - repeat-scan regression checks for issue fingerprint reuse
+- enforced-auth and role-guard tests
+- request ID propagation on API responses
+- readiness endpoint coverage
 - source-adapter catalog exposure
 - workbench dashboard rendering
 - case workspace and run viewer rendering
@@ -48,6 +51,9 @@ The current gate now covers both the foundation and the first operations layer:
   approved-nonblocking-risk scenarios.
 - Every quality-gate run writes a machine-readable artifact under
   `artifacts/evaluations/`.
+- Secured routes reject missing or under-privileged callers when auth is enforced.
+- The API returns a request ID header on responses.
+- The repo includes deployment, runbook, smoke-check, and release-checklist assets.
 - The web app exposes a dashboard, case workspace, and run viewer over the shared case model.
 - The workbench reflects the actual platform surface instead of generator boilerplate.
 - The repo contains reproducible scripts for bootstrap, dev, and checks.

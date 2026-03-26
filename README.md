@@ -45,9 +45,9 @@ docker-compose.yml
 
 ## Current Phase
 
-The repository has completed `Phase 5` for the first flagship slice. The
-current build now includes the interface layer plus a reproducible evaluation
-gate:
+The repository has completed `Phase 6` for the first flagship slice. The
+current build now includes the interface layer, the evaluation gate, and the
+first operational hardening layer:
 
 - persisted case operations backed by SQLAlchemy
 - document upload, parsing, storage, and evidence extraction
@@ -62,6 +62,9 @@ gate:
 - deterministic evaluation scenarios with saved JSON scorecards
 - a repeatable quality gate that exercises blocked, approved-clean, and
   approved-nonblocking-risk diligence runs
+- role-based internal auth that can be enforced outside local dev and test
+- request ID propagation plus a readiness endpoint for operations checks
+- deployment, runbook, release-checklist, and smoke-check assets
 - Dockerized local dependencies plus automated checks
 
 ## Local Development
@@ -110,6 +113,18 @@ To run the evaluation suite directly:
 ./scripts/evaluate.ps1
 ```
 
+To run a live API smoke check after the stack is up:
+
+```powershell
+./scripts/smoke.ps1
+```
+
 The project is only considered complete phase-by-phase when the code, tests,
 docs, demo workflow, evaluation artifacts, and regression baseline all exist
 together.
+
+## Operations Docs
+
+- `docs/deployment.md`
+- `docs/runbook.md`
+- `docs/release-checklist.md`
