@@ -38,5 +38,8 @@ src = ["src", "tests"]
 [tool.ruff.lint]
 select = ["B", "E", "F", "I", "N", "UP"]
 
+[tool.ruff.lint.isort]
+known-first-party = ["crewai_enterprise_pipeline_api"]
+
 [tool.setuptools.packages.find]
 where = ["src"]

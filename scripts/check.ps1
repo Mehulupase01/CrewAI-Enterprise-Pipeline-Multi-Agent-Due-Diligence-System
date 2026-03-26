@@ -4,11 +4,20 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 $conda = "C:\Users\Mehul-PC\anaconda3\Scripts\conda.exe"
 $envName = "crewai-enterprise-pipeline"
 
+function Invoke-Step {
+    param([scriptblock]$Command)
+
+    & $Command
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+}
+
 Push-Location (Join-Path $projectRoot "apps\api")
-& $conda run -n $envName python -m ruff check src tests
-& $conda run -n $envName python -m pytest
+Invoke-Step { & $conda run -n $envName python -m ruff check src tests }
+Invoke-Step { & $conda run -n $envName python -m pytest }
 Pop-Location
 
 Push-Location (Join-Path $projectRoot "apps\web")
-npm run lint
+Invoke-Step { npm run lint }
 Pop-Location

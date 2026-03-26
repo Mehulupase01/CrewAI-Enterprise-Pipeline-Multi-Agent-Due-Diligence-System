@@ -2,7 +2,6 @@ from fastapi.testclient import TestClient
 
 from crewai_enterprise_pipeline_api.main import create_app
 
-
 client = TestClient(create_app())
 
 
