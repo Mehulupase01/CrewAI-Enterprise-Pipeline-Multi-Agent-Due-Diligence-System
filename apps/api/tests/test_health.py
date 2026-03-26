@@ -11,7 +11,10 @@ def test_health_endpoint_returns_ok(client) -> None:
         "credit_lending",
         "vendor_onboarding",
     ]
-    assert payload["enabled_sector_packs"] == ["tech_saas_services"]
+    assert payload["enabled_sector_packs"] == [
+        "tech_saas_services",
+        "manufacturing_industrials",
+    ]
 
 
 def test_overview_endpoint_exposes_pack_strategy(client) -> None:

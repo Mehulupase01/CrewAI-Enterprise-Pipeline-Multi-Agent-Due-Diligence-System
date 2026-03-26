@@ -241,7 +241,12 @@ HEURISTIC_RULES: tuple[HeuristicIssueRule, ...] = (
             "Quantify supplier concentration, substitution ability, inventory buffers, "
             "and pass-through protections."
         ),
-        patterns=("supplier concentration", "single supplier", "sole supplier", "raw material shortage"),
+        patterns=(
+            "supplier concentration",
+            "single supplier",
+            "sole supplier",
+            "raw material shortage",
+        ),
         workstream_override=WorkstreamDomain.OPERATIONS,
     ),
 )

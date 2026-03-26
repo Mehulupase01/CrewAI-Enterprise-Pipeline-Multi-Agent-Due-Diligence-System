@@ -563,6 +563,157 @@ VENDOR_ONBOARDING_EXPANSION_SCENARIOS: tuple[EvaluationScenario, ...] = (
 )
 
 
+MANUFACTURING_INDUSTRIALS_EXPANSION_SCENARIOS: tuple[EvaluationScenario, ...] = (
+    EvaluationScenario(
+        code="blocked_manufacturing_ehs_case",
+        name="Blocked manufacturing EHS case",
+        description=(
+            "Validates that manufacturing-sector red flags and open sector checklist "
+            "coverage block buy-side export readiness."
+        ),
+        case_payload={
+            "name": "Project Forge Acquisition",
+            "target_name": "Forge Components Private Limited",
+            "summary": "Evaluation scenario for blocked manufacturing diligence readiness.",
+            "motion_pack": "buy_side_diligence",
+            "sector_pack": "manufacturing_industrials",
+            "country": "India",
+        },
+        upload_documents=(
+            UploadDocumentFixture(
+                title="Environmental compliance note",
+                filename="environmental_compliance_note.txt",
+                content=(
+                    "The plant received an environmental notice from the pollution control "
+                    "board and the consent to operate renewal remains pending."
+                ),
+                mime_type="text/plain",
+                document_kind="environmental_compliance_note",
+                source_kind="uploaded_dataroom",
+                workstream_domain="regulatory",
+                evidence_kind="risk",
+            ),
+            UploadDocumentFixture(
+                title="Inventory review note",
+                filename="inventory_review_note.txt",
+                content=(
+                    "Inventory aging increased sharply because obsolete stock and a scrap "
+                    "write-off were identified in two product lines."
+                ),
+                mime_type="text/plain",
+                document_kind="inventory_review_note",
+                source_kind="uploaded_dataroom",
+                workstream_domain="financial_qoe",
+                evidence_kind="risk",
+            ),
+            UploadDocumentFixture(
+                title="Supply continuity note",
+                filename="supply_continuity_note.txt",
+                content=(
+                    "Supplier concentration remains elevated because a single supplier "
+                    "controls a critical alloy input and a raw material shortage hit the "
+                    "plant last quarter."
+                ),
+                mime_type="text/plain",
+                document_kind="supply_continuity_note",
+                source_kind="uploaded_dataroom",
+                workstream_domain="operations",
+                evidence_kind="risk",
+            ),
+        ),
+        requests=(
+            RequestFixture(
+                payload={
+                    "title": "Upload factory licence and remediation tracker",
+                    "detail": (
+                        "Need consent-to-operate filings, remediation capex plan, and the "
+                        "latest EHS action tracker."
+                    ),
+                    "owner": "Operations Controller",
+                    "status": "open",
+                }
+            ),
+        ),
+        scan_issues=True,
+        expectation=ScenarioExpectation(
+            approval_decision="changes_requested",
+            ready_for_export=False,
+            report_status="not_ready",
+            report_title="Executive Memo",
+            min_syntheses=7,
+            open_mandatory_items=13,
+            min_blocking_issue_count=1,
+            max_blocking_issue_count=1,
+            min_issue_count=3,
+            min_open_request_count=1,
+            min_evidence_count=3,
+            expected_issue_severities=("high", "medium"),
+        ),
+    ),
+    EvaluationScenario(
+        code="approved_manufacturing_credit_case",
+        name="Approved manufacturing credit case",
+        description=(
+            "Validates that the manufacturing sector pack composes cleanly with the "
+            "credit-lending motion pack."
+        ),
+        case_payload={
+            "name": "Project Alloy Working Capital Line",
+            "target_name": "Alloy Motion Systems Private Limited",
+            "summary": "Evaluation scenario for an approved manufacturing credit case.",
+            "motion_pack": "credit_lending",
+            "sector_pack": "manufacturing_industrials",
+            "country": "India",
+        },
+        upload_documents=(
+            UploadDocumentFixture(
+                title="Manufacturing underwriting summary",
+                filename="manufacturing_underwriting_summary.txt",
+                content=(
+                    "Debt service coverage remained above 2.1x, plant utilisation stayed "
+                    "stable, maintenance stayed within plan, and statutory permits were "
+                    "current across the review period."
+                ),
+                mime_type="text/plain",
+                document_kind="manufacturing_underwriting_summary",
+                source_kind="uploaded_dataroom",
+                workstream_domain="financial_qoe",
+                evidence_kind="metric",
+            ),
+        ),
+        evidence_items=(
+            EvidenceFixture(
+                payload={
+                    "title": "Plant continuity review",
+                    "evidence_kind": "fact",
+                    "workstream_domain": "operations",
+                    "citation": "Operations review pack FY26 Q1",
+                    "excerpt": (
+                        "The borrower maintains alternate sourcing for critical inputs and "
+                        "documented preventive maintenance across both production shifts."
+                    ),
+                    "confidence": 0.89,
+                }
+            ),
+        ),
+        satisfy_all_checklist_items=True,
+        expectation=ScenarioExpectation(
+            approval_decision="approved",
+            ready_for_export=True,
+            report_status="ready_for_export",
+            report_title="Credit Memo",
+            min_syntheses=7,
+            open_mandatory_items=0,
+            min_blocking_issue_count=0,
+            max_blocking_issue_count=0,
+            min_issue_count=0,
+            min_open_request_count=0,
+            min_evidence_count=2,
+        ),
+    ),
+)
+
+
 EVALUATION_SUITES: dict[str, EvaluationSuiteDefinition] = {
     "phase5_first_slice": EvaluationSuiteDefinition(
         key="phase5_first_slice",
@@ -581,5 +732,11 @@ EVALUATION_SUITES: dict[str, EvaluationSuiteDefinition] = {
         title="Vendor Onboarding Expansion Evaluation",
         artifact_prefix="vendor-onboarding-expansion",
         scenarios=VENDOR_ONBOARDING_EXPANSION_SCENARIOS,
+    ),
+    "manufacturing_industrials_expansion": EvaluationSuiteDefinition(
+        key="manufacturing_industrials_expansion",
+        title="Manufacturing Industrials Expansion Evaluation",
+        artifact_prefix="manufacturing-industrials-expansion",
+        scenarios=MANUFACTURING_INDUSTRIALS_EXPANSION_SCENARIOS,
     ),
 }

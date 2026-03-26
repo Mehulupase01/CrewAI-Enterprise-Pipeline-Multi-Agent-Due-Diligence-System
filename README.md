@@ -5,8 +5,9 @@
 This repository is the production build-out of an India-focused due diligence
 operating system. It combines a FastAPI control plane, a Next.js analyst
 workbench, CrewAI orchestration, structured evidence tracking, and a modular
-pack model that lets the platform grow from buy-side M&A diligence into future
-credit/lending, vendor onboarding, manufacturing, and BFSI workflows.
+pack model that lets the platform grow from buy-side M&A diligence into
+credit/lending, vendor onboarding, manufacturing/industrials, and future BFSI
+workflows.
 
 ## What We Are Building
 
@@ -45,10 +46,11 @@ docker-compose.yml
 
 ## Current Phase
 
-The repository has completed the second post-flagship expansion phase:
-`VendorOnboardingPack` now runs alongside `CreditLendingPack` on the same
-hardened platform spine. The current build includes the first flagship
-buy-side slice plus two additional motion packs:
+The repository has completed the third post-flagship expansion phase:
+`ManufacturingIndustrialsPack` now runs alongside the existing motion-pack
+expansions on the same hardened platform spine. The current build includes the
+first flagship buy-side slice plus two additional motion packs and one
+additional supported sector pack:
 
 - persisted case operations backed by SQLAlchemy
 - document upload, parsing, storage, and evidence extraction
@@ -70,8 +72,13 @@ buy-side slice plus two additional motion packs:
   credit-risk heuristics, and motion-aware memo generation
 - a supported `VendorOnboardingPack` with third-party onboarding templates,
   integrity-risk heuristics, and `Third-Party Risk Memo` generation
-- multi-suite evaluation coverage across buy-side, credit-lending, and
-  vendor-onboarding flows
+- a supported `ManufacturingIndustrialsPack` with sector-specific checklist
+  templates for inventory quality, plant utilisation, supplier concentration,
+  EHS and factory compliance, order-book review, and procurement leakage
+- manufacturing-specific issue heuristics for environmental notices, inventory
+  obsolescence, single-site dependence, and raw-material concentration
+- multi-suite evaluation coverage across buy-side, credit-lending,
+  vendor-onboarding, and manufacturing-enabled flows
 - Dockerized local dependencies plus automated checks
 
 ## Local Development
@@ -130,6 +137,12 @@ To run only the vendor-onboarding expansion suite:
 
 ```powershell
 ./scripts/evaluate.ps1 -Suite vendor_onboarding_expansion
+```
+
+To run only the manufacturing / industrials expansion suite:
+
+```powershell
+./scripts/evaluate.ps1 -Suite manufacturing_industrials_expansion
 ```
 
 To run a live API smoke check after the stack is up:

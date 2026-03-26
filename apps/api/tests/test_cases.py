@@ -555,3 +555,105 @@ def test_vendor_onboarding_report_uses_third_party_risk_memo_language(client) ->
     assert report_payload["report_title"] == "Third-Party Risk Memo"
     assert report_payload["motion_pack"] == "vendor_onboarding"
     assert "third-party risk items" in report_payload["executive_summary"]
+
+
+def test_manufacturing_sector_checklist_composes_with_credit_motion_pack(client) -> None:
+    case_response = client.post(
+        "/api/v1/cases",
+        json={
+            "name": "Project Alloy Working Capital Line",
+            "target_name": "Alloy Motion Systems Private Limited",
+            "summary": "Manufacturing credit pack checklist validation case.",
+            "motion_pack": "credit_lending",
+            "sector_pack": "manufacturing_industrials",
+            "country": "India",
+        },
+    )
+    case_id = case_response.json()["id"]
+
+    seed_response = client.post(f"/api/v1/cases/{case_id}/checklist/seed")
+    assert seed_response.status_code == 201
+    seed_payload = seed_response.json()
+    template_keys = {
+        item["template_key"] for item in seed_payload["checklist_items"] if item["template_key"]
+    }
+    assert seed_payload["created_count"] >= 14
+    assert "financial_qoe.debt_service_capacity" in template_keys
+    assert "legal_corporate.security_package" in template_keys
+    assert "operations.plant_capacity_utilisation" in template_keys
+    assert "regulatory.ehs_factory_compliance" in template_keys
+    assert "forensic.procurement_related_party" in template_keys
+
+
+def test_manufacturing_issue_scan_detects_sector_risks(client) -> None:
+    case_response = client.post(
+        "/api/v1/cases",
+        json={
+            "name": "Project Forge Acquisition",
+            "target_name": "Forge Components Private Limited",
+            "summary": "Manufacturing issue scan validation case.",
+            "motion_pack": "buy_side_diligence",
+            "sector_pack": "manufacturing_industrials",
+            "country": "India",
+        },
+    )
+    case_id = case_response.json()["id"]
+
+    evidence_payloads = (
+        {
+            "title": "Environmental notice summary",
+            "evidence_kind": "risk",
+            "workstream_domain": "regulatory",
+            "citation": "Pollution control notice pack FY26",
+            "excerpt": (
+                "The plant received an environmental notice and the consent to operate "
+                "renewal remains pending."
+            ),
+            "confidence": 0.93,
+        },
+        {
+            "title": "Inventory aging summary",
+            "evidence_kind": "risk",
+            "workstream_domain": "financial_qoe",
+            "citation": "Inventory review pack FY26",
+            "excerpt": (
+                "Inventory aging increased because obsolete stock was identified and a "
+                "scrap write-off was recorded in Q4."
+            ),
+            "confidence": 0.9,
+        },
+        {
+            "title": "Supply continuity summary",
+            "evidence_kind": "risk",
+            "workstream_domain": "operations",
+            "citation": "Operations continuity note FY26",
+            "excerpt": (
+                "Supplier concentration remains elevated because a single supplier "
+                "controls a critical alloy input."
+            ),
+            "confidence": 0.88,
+        },
+    )
+
+    for payload in evidence_payloads:
+        response = client.post(f"/api/v1/cases/{case_id}/evidence", json=payload)
+        assert response.status_code == 201
+
+    scan_response = client.post(f"/api/v1/cases/{case_id}/issues/scan")
+    assert scan_response.status_code == 201
+    scan_payload = scan_response.json()
+    assert scan_payload["created_count"] == 3
+
+    severities = {issue["severity"] for issue in scan_payload["issues"]}
+    workstreams = {issue["workstream_domain"] for issue in scan_payload["issues"]}
+    assert "high" in severities
+    assert "medium" in severities
+    assert "regulatory" in workstreams
+    assert "financial_qoe" in workstreams
+    assert "operations" in workstreams
+
+    rerun_response = client.post(f"/api/v1/cases/{case_id}/issues/scan")
+    assert rerun_response.status_code == 201
+    rerun_payload = rerun_response.json()
+    assert rerun_payload["created_count"] == 0
+    assert rerun_payload["reused_count"] == 3

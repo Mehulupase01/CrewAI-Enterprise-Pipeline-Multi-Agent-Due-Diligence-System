@@ -99,8 +99,14 @@ Rule packs capture jurisdictional and domain requirements such as:
 - GST and direct tax
 - labour and privacy
 
-The first implementation slice only activates the buy-side + tech/service path,
-but the contracts already account for later packs.
+The currently supported platform surface activates these pack combinations:
+
+- `buy_side_diligence` + `tech_saas_services`
+- `credit_lending` + `tech_saas_services`
+- `vendor_onboarding` + `tech_saas_services`
+- manufacturing / industrials as an active sector pack over supported motion packs
+
+`bfsi_nbfc` remains planned, but the contracts already account for it.
 
 ## Phase 2 Additions
 
@@ -166,3 +172,17 @@ The second expansion pack is now implemented:
   signals
 - the evaluation harness now exercises all three supported motion packs under
   one repeatable quality gate
+
+## Expansion Phase 3: Manufacturing / Industrials
+
+The third expansion pack is now implemented:
+
+- `manufacturing_industrials` now seeds sector-specific checklist templates for
+  inventory quality, plant utilisation, supplier concentration, EHS or factory
+  compliance, order-book review, and procurement leakage
+- issue heuristics now detect environmental and factory-compliance exposure,
+  inventory aging or obsolescence, single-site capacity dependence, and
+  supplier or raw-material concentration
+- the evaluation harness now proves that the manufacturing sector pack works
+  both on the flagship buy-side flow and in composition with the
+  `credit_lending` motion pack

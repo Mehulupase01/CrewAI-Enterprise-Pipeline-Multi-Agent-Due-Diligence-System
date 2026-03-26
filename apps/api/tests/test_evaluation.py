@@ -1,6 +1,7 @@
 from crewai_enterprise_pipeline_api.evaluation.scenarios import (
     CREDIT_LENDING_EXPANSION_SCENARIOS,
     EVALUATION_SUITES,
+    MANUFACTURING_INDUSTRIALS_EXPANSION_SCENARIOS,
     PHASE5_FIRST_SLICE_SCENARIOS,
     VENDOR_ONBOARDING_EXPANSION_SCENARIOS,
 )
@@ -13,6 +14,10 @@ def test_evaluation_scenarios_are_unique_and_well_formed() -> None:
         ("phase5_first_slice", PHASE5_FIRST_SLICE_SCENARIOS),
         ("credit_lending_expansion", CREDIT_LENDING_EXPANSION_SCENARIOS),
         ("vendor_onboarding_expansion", VENDOR_ONBOARDING_EXPANSION_SCENARIOS),
+        (
+            "manufacturing_industrials_expansion",
+            MANUFACTURING_INDUSTRIALS_EXPANSION_SCENARIOS,
+        ),
     ):
         assert suite_key in EVALUATION_SUITES
         for scenario in scenarios:
@@ -31,6 +36,8 @@ def test_evaluation_scenarios_are_unique_and_well_formed() -> None:
                 assert scenario.case_payload["motion_pack"] == "credit_lending"
             if suite_key == "vendor_onboarding_expansion":
                 assert scenario.case_payload["motion_pack"] == "vendor_onboarding"
+            if suite_key == "manufacturing_industrials_expansion":
+                assert scenario.case_payload["sector_pack"] == "manufacturing_industrials"
             for upload in scenario.upload_documents:
                 assert upload.filename
                 assert upload.content.strip()
