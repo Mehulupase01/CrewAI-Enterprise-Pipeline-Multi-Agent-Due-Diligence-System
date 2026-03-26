@@ -182,6 +182,68 @@ HEURISTIC_RULES: tuple[HeuristicIssueRule, ...] = (
         patterns=("sanctions", "watchlist", "pep", "aml alert"),
         workstream_override=WorkstreamDomain.REGULATORY,
     ),
+    HeuristicIssueRule(
+        title="Environmental or factory compliance exposure",
+        severity=FlagSeverity.HIGH,
+        business_impact=(
+            "Environmental, safety, or factory compliance failures can create shutdown, "
+            "remediation, and indemnity exposure."
+        ),
+        recommended_action=(
+            "Collect licence status, notice history, remediation plan, and expected "
+            "shutdown or capex implications."
+        ),
+        patterns=(
+            "pollution control",
+            "consent to operate",
+            "factory licence",
+            "ehs violation",
+            "environmental notice",
+        ),
+        workstream_override=WorkstreamDomain.REGULATORY,
+    ),
+    HeuristicIssueRule(
+        title="Inventory obsolescence or aging risk",
+        severity=FlagSeverity.MEDIUM,
+        business_impact=(
+            "Aging or obsolete inventory can distort working capital, gross margin, and "
+            "realisable asset value."
+        ),
+        recommended_action=(
+            "Review aging buckets, NRV logic, scrap trends, and stock provisioning "
+            "support by SKU and plant."
+        ),
+        patterns=("inventory aging", "obsolete stock", "slow moving inventory", "scrap write-off"),
+        workstream_override=WorkstreamDomain.FINANCIAL_QOE,
+    ),
+    HeuristicIssueRule(
+        title="Single-site or capacity concentration risk",
+        severity=FlagSeverity.MEDIUM,
+        business_impact=(
+            "Single-plant dependence or sustained capacity bottlenecks can impair "
+            "continuity, delivery performance, and growth capacity."
+        ),
+        recommended_action=(
+            "Review plant-level utilisation, downtime history, alternate-site options, "
+            "and contingency planning."
+        ),
+        patterns=("single plant", "single facility", "capacity bottleneck", "plant shutdown"),
+        workstream_override=WorkstreamDomain.OPERATIONS,
+    ),
+    HeuristicIssueRule(
+        title="Supplier concentration or raw-material dependency risk",
+        severity=FlagSeverity.MEDIUM,
+        business_impact=(
+            "Single-source supplier dependence or raw-material shortages can create "
+            "margin compression and production disruption."
+        ),
+        recommended_action=(
+            "Quantify supplier concentration, substitution ability, inventory buffers, "
+            "and pass-through protections."
+        ),
+        patterns=("supplier concentration", "single supplier", "sole supplier", "raw material shortage"),
+        workstream_override=WorkstreamDomain.OPERATIONS,
+    ),
 )
 
 

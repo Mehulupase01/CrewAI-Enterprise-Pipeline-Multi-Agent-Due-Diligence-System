@@ -270,6 +270,64 @@ TECH_SAAS_TEMPLATE: tuple[ChecklistTemplateItem, ...] = (
 )
 
 
+MANUFACTURING_INDUSTRIALS_TEMPLATE: tuple[ChecklistTemplateItem, ...] = (
+    ChecklistTemplateItem(
+        template_key="financial_qoe.inventory_quality",
+        title="Assess inventory quality, aging, and scrap exposure",
+        detail=(
+            "Review raw material, WIP, and finished-goods aging, obsolete stock, "
+            "scrap write-offs, and standard-cost versus actual-margin leakage."
+        ),
+        workstream_domain=WorkstreamDomain.FINANCIAL_QOE,
+    ),
+    ChecklistTemplateItem(
+        template_key="operations.plant_capacity_utilisation",
+        title="Validate plant capacity, utilisation, and maintenance resilience",
+        detail=(
+            "Review plant capacity, OEE or utilisation, unplanned downtime, "
+            "maintenance backlog, and dependence on a single site or line."
+        ),
+        workstream_domain=WorkstreamDomain.OPERATIONS,
+    ),
+    ChecklistTemplateItem(
+        template_key="operations.supplier_concentration",
+        title="Assess supplier concentration and raw-material continuity",
+        detail=(
+            "Measure single-source supplier dependence, raw-material volatility, "
+            "import dependencies, and continuity planning for key inputs."
+        ),
+        workstream_domain=WorkstreamDomain.OPERATIONS,
+    ),
+    ChecklistTemplateItem(
+        template_key="regulatory.ehs_factory_compliance",
+        title="Review factory, environmental, and EHS compliance",
+        detail=(
+            "Validate factory licences, consent-to-operate status, hazardous-waste "
+            "controls, pollution control obligations, and major accident history."
+        ),
+        workstream_domain=WorkstreamDomain.REGULATORY,
+    ),
+    ChecklistTemplateItem(
+        template_key="commercial.orderbook_channel_mix",
+        title="Review order book, dealer mix, and channel concentration",
+        detail=(
+            "Assess order-book quality, customer and dealer concentration, export "
+            "dependence, cancellation trends, and pricing pass-through ability."
+        ),
+        workstream_domain=WorkstreamDomain.COMMERCIAL,
+    ),
+    ChecklistTemplateItem(
+        template_key="forensic.procurement_related_party",
+        title="Trace procurement leakages and related-party vendor exposure",
+        detail=(
+            "Check related-party procurement, unusual vendor pricing, round-tripped "
+            "purchases, and capex flows linked to promoter entities."
+        ),
+        workstream_domain=WorkstreamDomain.FORENSIC_COMPLIANCE,
+    ),
+)
+
+
 COMPLETED_STATUSES = {
     ChecklistItemStatus.SATISFIED.value,
     ChecklistItemStatus.NOT_APPLICABLE.value,
@@ -416,5 +474,7 @@ class ChecklistService:
 
         if sector_pack == SectorPack.TECH_SAAS_SERVICES:
             template.extend(TECH_SAAS_TEMPLATE)
+        elif sector_pack == SectorPack.MANUFACTURING_INDUSTRIALS:
+            template.extend(MANUFACTURING_INDUSTRIALS_TEMPLATE)
 
         return tuple(template)
