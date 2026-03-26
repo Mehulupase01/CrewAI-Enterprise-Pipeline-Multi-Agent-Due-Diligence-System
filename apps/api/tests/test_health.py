@@ -1,11 +1,4 @@
-from fastapi.testclient import TestClient
-
-from crewai_enterprise_pipeline_api.main import create_app
-
-client = TestClient(create_app())
-
-
-def test_health_endpoint_returns_ok() -> None:
+def test_health_endpoint_returns_ok(client) -> None:
     response = client.get("/api/v1/system/health")
 
     assert response.status_code == 200
@@ -15,7 +8,7 @@ def test_health_endpoint_returns_ok() -> None:
     assert payload["enabled_sector_packs"] == ["tech_saas_services"]
 
 
-def test_overview_endpoint_exposes_pack_strategy() -> None:
+def test_overview_endpoint_exposes_pack_strategy(client) -> None:
     response = client.get("/api/v1/system/overview")
 
     assert response.status_code == 200
