@@ -1,6 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import ApprovalPanel from "@/components/ApprovalPanel";
+import ChecklistPanel from "@/components/ChecklistPanel";
+import DocumentUpload from "@/components/DocumentUpload";
+import IssueManager from "@/components/IssueManager";
+import RequestQaPanel from "@/components/RequestQaPanel";
+import RunWorkflowButton from "@/components/RunWorkflowButton";
+
 import styles from "../../workbench.module.css";
 import {
   getCaseWorkspace,
@@ -108,24 +115,7 @@ export default async function CasePage({ params }: PageProps) {
                 <span className={styles.badge}>Issues</span>
                 <h2>Issue register</h2>
               </div>
-              <div className={styles.table}>
-                {caseDetail.issues.length === 0 ? (
-                  <p className={styles.empty}>No issues have been registered yet.</p>
-                ) : (
-                  caseDetail.issues.map((issue) => (
-                    <div className={styles.row} key={issue.id}>
-                      <div>
-                        <strong>{issue.title}</strong>
-                        <p>{issue.business_impact}</p>
-                        <p>{issue.recommended_action ?? "Triage still pending."}</p>
-                      </div>
-                      <span className={styles.status}>
-                        {labelize(issue.severity)}
-                      </span>
-                    </div>
-                  ))
-                )}
-              </div>
+              <IssueManager caseId={caseId} issues={caseDetail.issues} />
             </article>
 
             <article className={styles.panel}>
@@ -133,102 +123,73 @@ export default async function CasePage({ params }: PageProps) {
                 <span className={styles.badge}>Checklist</span>
                 <h2>Mandatory completion controls</h2>
               </div>
-              <div className={styles.table}>
-                {caseDetail.checklist_items.length === 0 ? (
-                  <p className={styles.empty}>Checklist templates have not been seeded yet.</p>
-                ) : (
-                  caseDetail.checklist_items.map((item) => (
-                    <div className={styles.row} key={item.id}>
-                      <div>
-                        <strong>{item.title}</strong>
-                        <p>{item.detail}</p>
-                        <p>{item.note ?? "No analyst note yet."}</p>
-                      </div>
-                      <span className={styles.status}>
-                        {labelize(item.status)}
-                      </span>
-                    </div>
-                  ))
-                )}
-              </div>
+              <ChecklistPanel caseId={caseId} items={caseDetail.checklist_items} />
             </article>
           </div>
 
           <div className={styles.stack}>
             <article className={styles.panel}>
               <div className={styles.panelHeader}>
+                <span className={styles.badge}>Upload</span>
+                <h2>Upload documents</h2>
+              </div>
+              <DocumentUpload caseId={caseId} />
+            </article>
+
+            <article className={styles.panel}>
+              <div className={styles.panelHeader}>
                 <span className={styles.badge}>Artifacts</span>
                 <h2>Documents and evidence</h2>
               </div>
               <div className={styles.table}>
-                {caseDetail.documents.map((document) => (
-                  <div className={styles.row} key={document.id}>
-                    <div>
-                      <strong>{document.title}</strong>
-                      <p>{labelize(document.source_kind)}</p>
-                      <p>{document.original_filename ?? "No filename available."}</p>
-                    </div>
-                    <span className={styles.note}>
-                      {labelize(document.processing_status)}
-                    </span>
-                  </div>
-                ))}
-                {caseDetail.evidence_items.map((evidence) => (
-                  <div className={styles.row} key={evidence.id}>
-                    <div>
-                      <strong>{evidence.title}</strong>
-                      <p>{evidence.citation}</p>
-                      <p>{evidence.excerpt}</p>
-                    </div>
-                    <span className={styles.note}>
-                      {labelize(evidence.workstream_domain)}
-                    </span>
-                  </div>
-                ))}
+                {caseDetail.documents.length === 0 && caseDetail.evidence_items.length === 0 ? (
+                  <p className={styles.empty}>No documents uploaded yet.</p>
+                ) : (
+                  <>
+                    {caseDetail.documents.map((document) => (
+                      <div className={styles.row} key={document.id}>
+                        <div>
+                          <strong>{document.title}</strong>
+                          <p>{labelize(document.source_kind)}</p>
+                          <p>{document.original_filename ?? "No filename available."}</p>
+                        </div>
+                        <span className={styles.note}>
+                          {labelize(document.processing_status)}
+                        </span>
+                      </div>
+                    ))}
+                    {caseDetail.evidence_items.map((evidence) => (
+                      <div className={styles.row} key={evidence.id}>
+                        <div>
+                          <strong>{evidence.title}</strong>
+                          <p>{evidence.citation}</p>
+                          <p>{evidence.excerpt}</p>
+                        </div>
+                        <span className={styles.note}>
+                          {labelize(evidence.workstream_domain)}
+                        </span>
+                      </div>
+                    ))}
+                  </>
+                )}
               </div>
             </article>
 
             <article className={styles.panel}>
               <div className={styles.panelHeader}>
                 <span className={styles.badge}>Review</span>
-                <h2>Approvals and open asks</h2>
+                <h2>Approval gate</h2>
               </div>
-              <div className={styles.table}>
-                {caseDetail.approvals.length === 0 ? (
-                  <p className={styles.empty}>No approval reviews have been recorded yet.</p>
-                ) : (
-                  caseDetail.approvals.map((approval) => (
-                    <div className={styles.row} key={approval.id}>
-                      <div>
-                        <strong>{approval.reviewer}</strong>
-                        <p>{approval.rationale}</p>
-                        <p>{approval.note ?? "No reviewer note."}</p>
-                      </div>
-                      <span className={styles.status}>
-                        {labelize(approval.decision)}
-                      </span>
-                    </div>
-                  ))
-                )}
-                {caseDetail.request_items.map((request) => (
-                  <div className={styles.row} key={request.id}>
-                    <div>
-                      <strong>{request.title}</strong>
-                      <p>{request.detail}</p>
-                      <p>{request.owner ?? "No owner assigned."}</p>
-                    </div>
-                    <span className={styles.note}>
-                      {labelize(request.status)}
-                    </span>
-                  </div>
-                ))}
-              </div>
+              <ApprovalPanel caseId={caseId} approvals={caseDetail.approvals} />
             </article>
 
             <article className={styles.panel}>
               <div className={styles.panelHeader}>
                 <span className={styles.badge}>Runs</span>
-                <h2>Execution history</h2>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                  <h2>Execution history</h2>
+                  <RunWorkflowButton caseId={caseId} />
+                </div>
               </div>
               <div className={styles.table}>
                 {runs.length === 0 ? (
@@ -256,25 +217,14 @@ export default async function CasePage({ params }: PageProps) {
 
             <article className={styles.panel}>
               <div className={styles.panelHeader}>
-                <span className={styles.badge}>Q&amp;A</span>
-                <h2>Management responses</h2>
+                <span className={styles.badge}>Requests &amp; Q&amp;A</span>
+                <h2>Diligence asks and management responses</h2>
               </div>
-              <div className={styles.table}>
-                {caseDetail.qa_items.length === 0 ? (
-                  <p className={styles.empty}>No Q&amp;A items have been captured yet.</p>
-                ) : (
-                  caseDetail.qa_items.map((item) => (
-                    <div className={styles.row} key={item.id}>
-                      <div>
-                        <strong>{item.question}</strong>
-                        <p>{item.response ?? "Awaiting response."}</p>
-                        <p>{item.requested_by ?? "No requester listed."}</p>
-                      </div>
-                      <span className={styles.note}>{labelize(item.status)}</span>
-                    </div>
-                  ))
-                )}
-              </div>
+              <RequestQaPanel
+                caseId={caseId}
+                requests={caseDetail.request_items}
+                qaItems={caseDetail.qa_items}
+              />
             </article>
           </div>
         </section>

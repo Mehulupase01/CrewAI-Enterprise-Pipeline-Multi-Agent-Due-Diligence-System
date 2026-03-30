@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import CreateCaseButton from "@/components/CreateCaseButton";
+
 import styles from "./workbench.module.css";
 import {
   getDashboardData,
@@ -40,13 +42,12 @@ export default async function Home() {
         </section>
 
         <section className={styles.hero}>
-          <span className={styles.eyebrow}>Phase 4 Workbench</span>
-          <h1>Case operations, reviews, and run outputs in one workspace.</h1>
+          <span className={styles.eyebrow}>Interactive Workbench</span>
+          <h1>Create, manage, and run diligence cases end-to-end.</h1>
           <p className={styles.lead}>
-            The first flagship interface slice now moves beyond a summary
-            dashboard. Analysts can step into a case, inspect the issue and
-            checklist state, and follow workflow runs all the way through trace
-            events, report bundles, and workstream syntheses.
+            Full analyst workbench with case creation, document upload, issue
+            management, checklist toggling, approval workflows, and live
+            run streaming. Step into any case to start working.
           </p>
           <div className={styles.heroMeta}>
             <div className={styles.metaCard}>
@@ -69,7 +70,10 @@ export default async function Home() {
             <article className={styles.panel}>
               <div className={styles.panelHeader}>
                 <span className={styles.badge}>Cases</span>
-                <h2>Case workspace entry points</h2>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                  <h2>Case workspace entry points</h2>
+                  <CreateCaseButton />
+                </div>
               </div>
               <div className={styles.cardGrid}>
                 {cases.map((caseItem) => (

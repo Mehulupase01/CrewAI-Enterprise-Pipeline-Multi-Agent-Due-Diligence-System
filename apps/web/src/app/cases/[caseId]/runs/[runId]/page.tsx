@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import LiveRunViewer from "@/components/LiveRunViewer";
+
 import styles from "../../../../workbench.module.css";
 import {
   getRunWorkspace,
@@ -80,22 +82,38 @@ export default async function RunPage({ params }: PageProps) {
           <div className={styles.stack}>
             <article className={styles.panel}>
               <div className={styles.panelHeader}>
+                <span className={styles.badge}>Live</span>
+                <h2>Live event stream</h2>
+              </div>
+              <LiveRunViewer
+                caseId={caseId}
+                runId={runId}
+                initialStatus={run.status}
+              />
+            </article>
+
+            <article className={styles.panel}>
+              <div className={styles.panelHeader}>
                 <span className={styles.badge}>Trace</span>
                 <h2>Execution trace</h2>
               </div>
               <div className={styles.table}>
-                {run.trace_events.map((event) => (
-                  <div className={styles.row} key={event.id}>
-                    <div>
-                      <strong>
-                        {event.sequence_number}. {event.title}
-                      </strong>
-                      <p>{event.message}</p>
-                      <p>{labelize(event.step_key)}</p>
+                {run.trace_events.length === 0 ? (
+                  <p className={styles.empty}>No trace events recorded.</p>
+                ) : (
+                  run.trace_events.map((event) => (
+                    <div className={styles.row} key={event.id}>
+                      <div>
+                        <strong>
+                          {event.sequence_number}. {event.title}
+                        </strong>
+                        <p>{event.message}</p>
+                        <p>{labelize(event.step_key)}</p>
+                      </div>
+                      <span className={styles.note}>{labelize(event.level)}</span>
                     </div>
-                    <span className={styles.note}>{labelize(event.level)}</span>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </article>
 

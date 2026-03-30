@@ -80,13 +80,6 @@ def test_embedding_floats_roundtrip():
 
 def test_embedding_service_none_provider(client: TestClient):
     """With provider=none, embed_chunks returns 0 and embed_text returns None."""
-    from crewai_enterprise_pipeline_api.services.embedding_service import (
-        EmbeddingService,
-        _bytes_to_floats,
-        _floats_to_bytes,
-    )
-
-    # Verify the none provider logic directly (no async session needed)
     from crewai_enterprise_pipeline_api.core.settings import get_settings
 
     settings = get_settings()
