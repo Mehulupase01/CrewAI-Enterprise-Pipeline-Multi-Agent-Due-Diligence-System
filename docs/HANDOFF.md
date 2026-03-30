@@ -7,7 +7,7 @@
 
 ## Current State
 
-**Active phase:** None (Phase 1 complete, ready to start Phase 2)
+**Active phase:** None (Phase 2 complete, ready to start Phase 3)
 **Phase status:** Complete
 **Last session:** 2026-03-30
 
@@ -16,29 +16,24 @@
 1. Read `CLAUDE.md` for project context and commands
 2. Read `docs/PROGRESS.md` for completion history
 3. Read `docs/DECISIONS.md` for design rationale
-4. Start Phase 2: API Completeness (see `docs/MASTERPLAN.pdf`)
+4. Start Phase 3: Infrastructure Wiring -- Alembic + arq + Redis (see `docs/MASTERPLAN.pdf`)
 
 ## Files modified this phase (checkpoint)
 
-- `apps/api/pyproject.toml` -- added pdfplumber>=0.11, openpyxl>=3.1
-- `apps/api/src/.../domain/models.py` -- added REJECTED, CONDITIONALLY_APPROVED to ApprovalDecisionKind; added decision field to ApprovalDecisionCreate
-- `apps/api/src/.../core/settings.py` -- added product_name, current_phase, country, enabled_motion_packs, enabled_sector_packs
-- `apps/api/src/.../api/routes/health.py` -- overview + health now read from config instead of hardcoded values
-- `apps/api/src/.../services/workflow_service.py` -- execute_run() wrapped in try/except; FAILED status + trace event on error
-- `apps/api/src/.../services/issue_service.py` -- replaced `pattern in haystack` with `re.search(r'\b' + re.escape(pattern) + r'\b', ...)`
-- `apps/api/src/.../services/approval_service.py` -- payload.decision override wired in
-- `apps/api/src/.../ingestion/parsers.py` -- all parsers wrapped in try/except with logger.warning
-- `apps/api/src/.../storage/service.py` -- logger.warning on S3-to-local fallback
-- `apps/api/tests/test_phase1_fixes.py` -- 5 new tests (approval override, word boundary, corrupt file, run failure, config settings)
+- `apps/api/src/.../domain/models.py` -- added CaseUpdate, IssueUpdate, RequestItemUpdate, QaItemUpdate, EvidenceItemUpdate schemas
+- `apps/api/src/.../services/case_service.py` -- added update_case, delete_case, get_document, delete_document, get_evidence, update_evidence, get_issue, update_issue, delete_issue, update_request_item, update_qa_item; pagination on list_cases
+- `apps/api/src/.../api/routes/cases.py` -- added PATCH, DELETE, individual GET endpoints for all sub-resources; pagination on list_cases; download endpoint for export packages
+- `apps/api/src/.../storage/service.py` -- added retrieve_bytes() method for file download
+- `apps/api/tests/test_phase2_api_completeness.py` -- 12 new tests
 
 ## Files remaining this phase
 
-_None -- Phase 1 is complete._
+_None -- Phase 2 is complete._
 
 ## Tests run
 
 - ruff: clean
-- pytest: 29/29 pass (24 existing + 5 new)
+- pytest: 41/41 pass (29 existing + 12 new)
 - eval suites: 11/11 pass (5 suites, all 100%)
 - npm lint: clean
 - npm typecheck: clean
@@ -49,8 +44,8 @@ _None._
 
 ## Notes for next session
 
-- Phase 2 spec is in docs/MASTERPLAN.pdf (pages 13-16)
-- Phase 2 adds PATCH, DELETE, individual GET, pagination, filtering, download endpoint
-- The new ApprovalDecisionKind values (REJECTED, CONDITIONALLY_APPROVED) are available but no existing evaluation scenario uses them yet
-- The word-boundary regex fix means issue heuristics are stricter now -- partial substring matches no longer fire
-- All eval suites still pass at 100%, confirming no regressions from the regex change
+- Phase 3 spec is in docs/MASTERPLAN.pdf (pages 17-18)
+- Phase 3 adds Alembic migrations, arq background worker via Redis, SSE endpoint
+- The API now has full CRUD: 5 PATCH endpoints, 3 DELETE endpoints, 3 individual GET endpoints, 1 download endpoint
+- Pagination is on list_cases only; other list endpoints can be paginated in a future pass if needed
+- The download endpoint streams the ZIP file from storage (local file:// or S3)

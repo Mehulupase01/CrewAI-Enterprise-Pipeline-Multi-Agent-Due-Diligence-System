@@ -20,7 +20,7 @@ India-focused due diligence operating system: FastAPI control plane (`apps/api/`
 
 Uses a **pack model**: motion packs (buy_side_diligence, credit_lending, vendor_onboarding) x sector packs (tech_saas_services, manufacturing_industrials, bfsi_nbfc) x India rule packs (MCA, SEBI, RBI, CCI, GST, labour, privacy).
 
-**Current state:** Phase 1 (Critical Fixes & Dependency Repair) complete. CrewAI is installed but NOT wired into runtime -- `workflow_service.py` is fully deterministic. Redis is provisioned but unused. Alembic is installed but no migrations exist; schema relies on `AUTO_CREATE_SCHEMA=true`. All parsers have error handling, issue heuristics use word-boundary regex, workflow runs get FAILED status on error, and approval supports reviewer decision override.
+**Current state:** Phase 2 (API Completeness) complete. Full CRUD API: PATCH for cases/issues/evidence/requests/QA, DELETE for cases/documents/issues, individual GET for documents/evidence/issues, pagination on list_cases, ZIP download for export packages. CrewAI is installed but NOT wired into runtime -- `workflow_service.py` is fully deterministic. Redis is provisioned but unused. Alembic is installed but no migrations exist; schema relies on `AUTO_CREATE_SCHEMA=true`.
 
 ## Commands
 
@@ -38,7 +38,7 @@ Uses a **pack model**: motion packs (buy_side_diligence, credit_lending, vendor_
 
 # Individual checks (from apps/api/)
 python -m ruff check src tests                   # Lint
-python -m pytest                                 # All tests (29 tests)
+python -m pytest                                 # All tests (41 tests)
 python -m pytest tests/test_cases.py -k "test_name"  # Single test
 
 # Individual checks (from apps/web/)
@@ -103,7 +103,6 @@ These are coupled across tests, evaluation fixtures, UI, and smoke checks:
 ## Known Gaps
 
 - Web fetch layer sends no auth headers; silently falls back to demo data on API errors
-- No download endpoint for export packages (UI only shows `storage_path`)
 - `scripts/bootstrap.ps1` hardcodes `C:\Users\Mehul-PC\anaconda3\Scripts\conda.exe`
 - No Alembic migration history; schema created at startup only
 - No frontend tests, no Playwright, no load tests

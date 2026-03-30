@@ -1,6 +1,6 @@
 # Architecture Overview
 
-> **Last updated:** 2026-03-30 (Phase 1 -- Critical Fixes & Dependency Repair)
+> **Last updated:** 2026-03-30 (Phase 2 -- API Completeness)
 > **Update rule:** This file is updated after every masterplan phase to reflect actual system state.
 
 ## System Summary
@@ -48,12 +48,14 @@ See `docs/MASTERPLAN.pdf` pages 3-8 for full diagrams including:
 - ~~Storage service silently falls back to local~~ -- logger.warning on fallback
 - ~~Parsers crash on corrupt files~~ -- all parsers wrapped in try/except
 
+### What was ADDED in Phase 2
+- ~~No PATCH endpoints~~ -- PATCH for cases, issues, evidence, requests, Q&A
+- ~~No DELETE endpoints~~ -- DELETE for cases (cascade), documents, issues
+- ~~No individual GET endpoints~~ -- GET for documents/{id}, evidence/{id}, issues/{id}
+- ~~No pagination~~ -- skip/limit on list_cases
+- ~~No download endpoint~~ -- GET .../export-packages/{id}/download streams ZIP
+
 ### What is MISSING
-- No PATCH endpoints (except one for checklist items)
-- No DELETE endpoints anywhere
-- No individual GET endpoints for documents, evidence, issues
-- No pagination or filtering on list endpoints
-- No download endpoint for export packages
 - Frontend is 100% read-only (zero POST/PATCH/DELETE from web)
 - No structured logging, tracing, or metrics
 - No JWT authentication

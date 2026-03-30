@@ -123,6 +123,42 @@ field). New enum values REJECTED and CONDITIONALLY_APPROVED are available for us
 
 ---
 
+## AD-010: Pagination on list_cases only (2026-03-30)
+
+**Decision:** Add skip/limit pagination to GET /cases. Other list endpoints (documents, evidence,
+issues, etc.) are not paginated yet because they are always scoped by case_id.
+
+**Why:** Cases are the only unbounded list. Sub-resource lists are bounded by the case they
+belong to and are typically small enough to return in full.
+
+**Impact:** Frontend can paginate the case dashboard. Sub-resource pagination can be added later
+if needed.
+
+---
+
+## AD-011: DELETE /cases cascade-deletes all children (2026-03-30)
+
+**Decision:** DELETE /cases/{id} uses the existing CaseRecord cascade to remove all child records.
+
+**Why:** CaseRecord is the aggregate root (AD-005). The cascade is already configured in the ORM.
+A hard delete is simpler and safer than soft-delete for the current use case.
+
+**Impact:** No orphan cleanup needed. All sub-resources are removed atomically.
+
+---
+
+## AD-012: Download endpoint uses full Response, not streaming (2026-03-30)
+
+**Decision:** The export package download endpoint reads the full ZIP into memory and returns
+it via `Response(content=...)` rather than `StreamingResponse`.
+
+**Why:** Export ZIPs are currently small (< 1 MB). Streaming adds complexity without benefit at
+this scale. Can be upgraded to StreamingResponse when large exports justify it.
+
+**Impact:** Simple implementation. May need revisiting if export packages grow significantly.
+
+---
+
 <!--
 Template for future decisions:
 

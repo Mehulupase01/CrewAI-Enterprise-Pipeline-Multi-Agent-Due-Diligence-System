@@ -18,6 +18,7 @@ from crewai_enterprise_pipeline_api.domain.models import (
     CaseCreate,
     CaseDetail,
     CaseSummary,
+    CaseUpdate,
     ChecklistItemCreate,
     ChecklistItemSummary,
     ChecklistItemUpdate,
@@ -25,12 +26,16 @@ from crewai_enterprise_pipeline_api.domain.models import (
     DocumentArtifactSummary,
     EvidenceItemCreate,
     EvidenceItemSummary,
+    EvidenceItemUpdate,
     IssueRegisterItemCreate,
     IssueRegisterItemSummary,
+    IssueUpdate,
     QaItemCreate,
     QaItemSummary,
+    QaItemUpdate,
     RequestItemCreate,
     RequestItemSummary,
+    RequestItemUpdate,
 )
 
 
@@ -38,9 +43,14 @@ class CaseService:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def list_cases(self) -> list[CaseSummary]:
+    async def list_cases(
+        self, *, skip: int = 0, limit: int = 100
+    ) -> list[CaseSummary]:
         result = await self.session.execute(
-            select(CaseRecord).order_by(CaseRecord.created_at.desc())
+            select(CaseRecord)
+            .order_by(CaseRecord.created_at.desc())
+            .offset(skip)
+            .limit(limit)
         )
         return [CaseSummary.model_validate(row) for row in result.scalars().all()]
 
@@ -291,6 +301,189 @@ class CaseService:
         await self.session.commit()
         await self.session.refresh(record)
         return ChecklistItemSummary.model_validate(record)
+
+    async def update_case(
+        self,
+        case_id: str,
+        payload: CaseUpdate,
+    ) -> CaseDetail | None:
+        case = await self._get_case_record(case_id)
+        if case is None:
+            return None
+        for field, value in payload.model_dump(exclude_unset=True).items():
+            if hasattr(value, "value"):
+                value = value.value
+            setattr(case, field, value)
+        await self.session.commit()
+        return await self.get_case(case_id)
+
+    async def delete_case(self, case_id: str) -> bool:
+        case = await self._get_case_record(case_id)
+        if case is None:
+            return False
+        await self.session.delete(case)
+        await self.session.commit()
+        return True
+
+    async def get_document(
+        self, case_id: str, doc_id: str
+    ) -> DocumentArtifactSummary | None:
+        result = await self.session.execute(
+            select(DocumentArtifactRecord).where(
+                DocumentArtifactRecord.id == doc_id,
+                DocumentArtifactRecord.case_id == case_id,
+            )
+        )
+        record = result.scalar_one_or_none()
+        if record is None:
+            return None
+        return DocumentArtifactSummary.model_validate(record)
+
+    async def delete_document(self, case_id: str, doc_id: str) -> bool:
+        result = await self.session.execute(
+            select(DocumentArtifactRecord).where(
+                DocumentArtifactRecord.id == doc_id,
+                DocumentArtifactRecord.case_id == case_id,
+            )
+        )
+        record = result.scalar_one_or_none()
+        if record is None:
+            return False
+        await self.session.delete(record)
+        await self.session.commit()
+        return True
+
+    async def get_evidence(
+        self, case_id: str, evidence_id: str
+    ) -> EvidenceItemSummary | None:
+        result = await self.session.execute(
+            select(EvidenceNodeRecord).where(
+                EvidenceNodeRecord.id == evidence_id,
+                EvidenceNodeRecord.case_id == case_id,
+            )
+        )
+        record = result.scalar_one_or_none()
+        if record is None:
+            return None
+        return EvidenceItemSummary.model_validate(record)
+
+    async def update_evidence(
+        self,
+        case_id: str,
+        evidence_id: str,
+        payload: EvidenceItemUpdate,
+    ) -> EvidenceItemSummary | None:
+        result = await self.session.execute(
+            select(EvidenceNodeRecord).where(
+                EvidenceNodeRecord.id == evidence_id,
+                EvidenceNodeRecord.case_id == case_id,
+            )
+        )
+        record = result.scalar_one_or_none()
+        if record is None:
+            return None
+        for field, value in payload.model_dump(exclude_unset=True).items():
+            setattr(record, field, value)
+        await self.session.commit()
+        await self.session.refresh(record)
+        return EvidenceItemSummary.model_validate(record)
+
+    async def get_issue(
+        self, case_id: str, issue_id: str
+    ) -> IssueRegisterItemSummary | None:
+        result = await self.session.execute(
+            select(IssueRegisterItemRecord).where(
+                IssueRegisterItemRecord.id == issue_id,
+                IssueRegisterItemRecord.case_id == case_id,
+            )
+        )
+        record = result.scalar_one_or_none()
+        if record is None:
+            return None
+        return IssueRegisterItemSummary.model_validate(record)
+
+    async def update_issue(
+        self,
+        case_id: str,
+        issue_id: str,
+        payload: IssueUpdate,
+    ) -> IssueRegisterItemSummary | None:
+        result = await self.session.execute(
+            select(IssueRegisterItemRecord).where(
+                IssueRegisterItemRecord.id == issue_id,
+                IssueRegisterItemRecord.case_id == case_id,
+            )
+        )
+        record = result.scalar_one_or_none()
+        if record is None:
+            return None
+        for field, value in payload.model_dump(exclude_unset=True).items():
+            if hasattr(value, "value"):
+                value = value.value
+            setattr(record, field, value)
+        await self.session.commit()
+        await self.session.refresh(record)
+        return IssueRegisterItemSummary.model_validate(record)
+
+    async def delete_issue(self, case_id: str, issue_id: str) -> bool:
+        result = await self.session.execute(
+            select(IssueRegisterItemRecord).where(
+                IssueRegisterItemRecord.id == issue_id,
+                IssueRegisterItemRecord.case_id == case_id,
+            )
+        )
+        record = result.scalar_one_or_none()
+        if record is None:
+            return False
+        await self.session.delete(record)
+        await self.session.commit()
+        return True
+
+    async def update_request_item(
+        self,
+        case_id: str,
+        item_id: str,
+        payload: RequestItemUpdate,
+    ) -> RequestItemSummary | None:
+        result = await self.session.execute(
+            select(RequestItemRecord).where(
+                RequestItemRecord.id == item_id,
+                RequestItemRecord.case_id == case_id,
+            )
+        )
+        record = result.scalar_one_or_none()
+        if record is None:
+            return None
+        for field, value in payload.model_dump(exclude_unset=True).items():
+            if hasattr(value, "value"):
+                value = value.value
+            setattr(record, field, value)
+        await self.session.commit()
+        await self.session.refresh(record)
+        return RequestItemSummary.model_validate(record)
+
+    async def update_qa_item(
+        self,
+        case_id: str,
+        item_id: str,
+        payload: QaItemUpdate,
+    ) -> QaItemSummary | None:
+        result = await self.session.execute(
+            select(QaItemRecord).where(
+                QaItemRecord.id == item_id,
+                QaItemRecord.case_id == case_id,
+            )
+        )
+        record = result.scalar_one_or_none()
+        if record is None:
+            return None
+        for field, value in payload.model_dump(exclude_unset=True).items():
+            if hasattr(value, "value"):
+                value = value.value
+            setattr(record, field, value)
+        await self.session.commit()
+        await self.session.refresh(record)
+        return QaItemSummary.model_validate(record)
 
     async def list_approvals(self, case_id: str) -> list[ApprovalDecisionSummary]:
         case = await self._get_case_record(case_id)

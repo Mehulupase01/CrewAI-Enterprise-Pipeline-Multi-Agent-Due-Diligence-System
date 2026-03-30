@@ -3,11 +3,11 @@
 > This file is the single source of truth for what has been implemented.
 > Any AI agent resuming work should read this file + CLAUDE.md first.
 
-## Status: Phase 1 Complete
+## Status: Phase 2 Complete
 
 **Last updated:** 2026-03-30
-**Completed phases:** Phase 0, Phase 1
-**Next phase:** Phase 2 -- API Completeness
+**Completed phases:** Phase 0, Phase 1, Phase 2
+**Next phase:** Phase 3 -- Infrastructure Wiring (Alembic + arq + Redis)
 **Blocking issues:** None
 
 ---
@@ -97,6 +97,49 @@
 - Phase 2 adds PATCH/DELETE/individual GET/pagination/filtering/download endpoint
 - New ApprovalDecisionKind values available but not yet used in evaluation scenarios
 - Word-boundary regex is stricter but all existing scenarios still pass
+
+---
+
+### Phase 2: API Completeness (2026-03-30)
+
+**What was done:**
+- Added 5 update Pydantic schemas: CaseUpdate, IssueUpdate, RequestItemUpdate, QaItemUpdate, EvidenceItemUpdate
+- Added full CRUD service methods to case_service: update_case, delete_case, get_document, delete_document, get_evidence, update_evidence, get_issue, update_issue, delete_issue, update_request_item, update_qa_item
+- Added pagination (skip/limit) to list_cases endpoint
+- Added PATCH endpoints: cases, issues, evidence, requests, Q&A
+- Added DELETE endpoints: cases (cascade), documents, issues
+- Added individual GET endpoints: documents/{id}, evidence/{id}, issues/{id}
+- Added download endpoint: export-packages/{id}/download (streams ZIP)
+- Added retrieve_bytes() to storage service for file download from local/S3
+- Added 12 new pytest tests covering all new endpoints
+
+**Files created:**
+- apps/api/tests/test_phase2_api_completeness.py -- 12 new test cases
+
+**Files modified:**
+- apps/api/src/.../domain/models.py -- 5 new update schemas
+- apps/api/src/.../services/case_service.py -- 11 new service methods, pagination on list_cases
+- apps/api/src/.../api/routes/cases.py -- 11 new endpoints (5 PATCH, 3 DELETE, 3 GET)
+- apps/api/src/.../storage/service.py -- retrieve_bytes() method
+
+**Decisions made:**
+- AD-010: Pagination on list_cases only for now; other lists typically scoped by case_id
+- AD-011: DELETE /cases cascade-deletes all children (leveraging existing CaseRecord cascade)
+- AD-012: Download endpoint returns full file content via Response (not streaming) -- sufficient for current ZIP sizes
+
+**Blockers encountered:**
+- None
+
+**Test results:**
+- pytest: 41/41 pass (29 existing + 12 new)
+- eval suites: 11/11 pass (all 5 suites at 100%)
+- ruff: clean
+- npm lint: clean
+- npm typecheck: clean
+
+**Notes for next phase:**
+- Phase 3 adds Alembic, arq worker, Redis wiring, SSE endpoint
+- API surface is now complete for frontend mutations (Phase 6)
 
 ---
 

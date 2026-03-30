@@ -278,6 +278,37 @@ class ChecklistItemUpdate(BaseModel):
     note: str | None = Field(default=None, max_length=4000)
 
 
+class CaseUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=3, max_length=255)
+    summary: str | None = Field(default=None, max_length=4000)
+    status: CaseStatus | None = None
+    sector_pack: SectorPack | None = None
+
+
+class IssueUpdate(BaseModel):
+    status: IssueStatus | None = None
+    severity: FlagSeverity | None = None
+    summary: str | None = Field(default=None, max_length=4000)
+    recommended_action: str | None = Field(default=None, max_length=4000)
+
+
+class RequestItemUpdate(BaseModel):
+    status: RequestItemStatus | None = None
+    owner: str | None = Field(default=None, max_length=255)
+    detail: str | None = Field(default=None, max_length=4000)
+
+
+class QaItemUpdate(BaseModel):
+    response: str | None = Field(default=None, max_length=4000)
+    status: QaItemStatus | None = None
+
+
+class EvidenceItemUpdate(BaseModel):
+    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+    title: str | None = Field(default=None, min_length=2, max_length=255)
+    excerpt: str | None = Field(default=None, min_length=3, max_length=8000)
+
+
 class ApprovalDecisionCreate(BaseModel):
     reviewer: str = Field(min_length=2, max_length=255)
     note: str | None = Field(default=None, max_length=4000)
