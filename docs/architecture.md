@@ -1,6 +1,6 @@
 # Architecture Overview
 
-> **Last updated:** 2026-03-30 (Phase 4 -- Document Intelligence)
+> **Last updated:** 2026-03-30 (Phase 5 -- Evidence Intelligence)
 > **Update rule:** This file is updated after every masterplan phase to reflect actual system state.
 
 ## System Summary
@@ -23,18 +23,25 @@ See `docs/MASTERPLAN.pdf` pages 3-8 for full diagrams including:
 
 ### What is REAL and WORKING
 - 15 SQLAlchemy ORM models with proper relationships, cascades, timestamps
-- 98 Pydantic schemas with consistent naming conventions
-- 9 service classes (functional but 100% deterministic — no AI)
-- 39 REST endpoints (full CRUD + SSE streaming + chunks)
+- 103 Pydantic schemas with consistent naming conventions
+- 11 service classes (functional but 100% deterministic — no AI)
+- 41 REST endpoints (full CRUD + SSE streaming + chunks + search + conflicts)
 - Document parsing for 6 formats (PDF with tables, DOCX with headings+tables, XLSX multi-sheet, CSV, JSON, TXT)
 - Semantic chunking engine (heading > paragraph > sentence splitting, 1200 char max)
 - Rule-based entity extraction (financial, legal, regulatory, India identifiers)
 - SHA256 document dedup (same content returns existing artifact)
 - Header-based RBAC with 4 roles (VIEWER, ANALYST, REVIEWER, ADMIN)
 - Evaluation harness with 5 suites, 11 scenarios
-- 60 pytest unit tests
+- 71 pytest unit tests
 - Export ZIP packages (markdown only)
 - Docker Compose stack (PostgreSQL 17, Redis 7.4, MinIO)
+
+### What was ADDED in Phase 5
+- pgvector embedding support: configurable provider (none/openai/local), raw float32 byte storage
+- Hybrid search: keyword (BM25-like) + cosine similarity with 0.4/0.6 weighting
+- Evidence conflict detection: duplicate (>0.98 similarity) and contradictory (>0.92 with different values)
+- Alembic migration 002: vector column + HNSW index + GIN full-text index
+- POST /cases/{id}/search and GET /cases/{id}/evidence/conflicts endpoints
 
 ### What was ADDED in Phase 4
 - Semantic chunking engine (`ingestion/chunker.py`) — heading > paragraph > sentence splitting with char offsets and page detection
@@ -107,7 +114,9 @@ apps/api/src/crewai_enterprise_pipeline_api/
     workflow_service.py    # Orchestrates runs (deterministic, no CrewAI)
     synthesis_service.py   # Workstream synthesis (deterministic template fill)
     report_service.py      # Executive memo generation
+    embedding_service.py   # Vector embedding generation (none/openai/local providers)
     export_service.py      # ZIP export package creation
+    search_service.py      # Hybrid BM25+cosine search, evidence conflict detection
   ingestion/
     parsers.py         # PDF (tables), DOCX (headings+tables), XLSX (multi-sheet), CSV, JSON, TXT
     chunker.py         # Semantic chunking: heading > paragraph > sentence (1200 char max)

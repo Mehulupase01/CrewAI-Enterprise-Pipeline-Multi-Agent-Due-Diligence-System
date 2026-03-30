@@ -69,7 +69,7 @@ class EmbeddingService:
         texts = [c.text for c in chunks]
         vectors = await self._generate_vectors(texts)
 
-        for chunk, vec in zip(chunks, vectors):
+        for chunk, vec in zip(chunks, vectors, strict=True):
             chunk.embedding = _floats_to_bytes(vec)
             chunk.has_embedding = True
 

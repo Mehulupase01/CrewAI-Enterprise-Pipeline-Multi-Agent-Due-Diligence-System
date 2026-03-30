@@ -242,6 +242,36 @@ name-based).
 
 ---
 
+## AD-019: Embeddings stored as raw float32 bytes in LargeBinary (2026-03-30)
+
+**Decision:** Store embedding vectors as raw little-endian float32 bytes in a `LargeBinary` column rather than using pgvector's native `Vector` type in the ORM.
+
+**Why:** SQLite (used for all tests) has no pgvector support. By storing raw bytes, the ORM works identically on both SQLite and PostgreSQL. The Alembic migration adds the actual `vector(1536)` column and HNSW/GIN indexes for PostgreSQL only. Cosine similarity is computed in pure Python for SQLite and via pgvector operators for PostgreSQL.
+
+**Impact:** Tests work without PostgreSQL. Production gets full pgvector performance via the migration.
+
+---
+
+## AD-020: Embedding provider defaults to "none" (2026-03-30)
+
+**Decision:** The `embedding_provider` setting defaults to `"none"`. When set to `"none"`, embedding generation is skipped and search falls back to keyword-only matching.
+
+**Why:** Consistent with AD-001 (deterministic fallback). Tests and local development work without OpenAI API keys. Production sets `EMBEDDING_PROVIDER=openai` with a key.
+
+**Impact:** Search always works (keyword fallback). Embedding-enhanced search activates only with explicit configuration.
+
+---
+
+## AD-021: Conflict detection with embedding + text fallback (2026-03-30)
+
+**Decision:** Evidence conflict detection uses cosine similarity between embeddings when available. Falls back to Jaccard word overlap when embeddings are absent. Thresholds: >0.98 = DUPLICATE, >0.92 with different values = CONTRADICTORY.
+
+**Why:** Embedding-based comparison is more accurate but requires the embedding provider to be active. The text overlap fallback ensures the feature works in all environments, including tests.
+
+**Impact:** The `/evidence/conflicts` endpoint always returns results. Accuracy improves when embeddings are enabled.
+
+---
+
 <!--
 Template for future decisions:
 

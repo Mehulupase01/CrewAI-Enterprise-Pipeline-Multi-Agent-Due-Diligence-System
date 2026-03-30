@@ -19,7 +19,7 @@ from __future__ import annotations
 import logging
 import math
 
-from sqlalchemy import select, text
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from crewai_enterprise_pipeline_api.db.models import (
@@ -38,7 +38,6 @@ from crewai_enterprise_pipeline_api.domain.models import (
 from crewai_enterprise_pipeline_api.services.embedding_service import (
     EmbeddingService,
     _bytes_to_floats,
-    _floats_to_bytes,
 )
 
 logger = logging.getLogger(__name__)
@@ -46,7 +45,7 @@ logger = logging.getLogger(__name__)
 
 def _cosine_similarity(a: list[float], b: list[float]) -> float:
     """Pure-Python cosine similarity between two vectors."""
-    dot = sum(x * y for x, y in zip(a, b))
+    dot = sum(x * y for x, y in zip(a, b, strict=True))
     norm_a = math.sqrt(sum(x * x for x in a))
     norm_b = math.sqrt(sum(x * x for x in b))
     if norm_a == 0 or norm_b == 0:

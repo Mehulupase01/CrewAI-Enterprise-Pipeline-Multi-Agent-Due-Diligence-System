@@ -3,11 +3,11 @@
 > This file is the single source of truth for what has been implemented.
 > Any AI agent resuming work should read this file + CLAUDE.md first.
 
-## Status: Phase 4 Complete
+## Status: Phase 5 Complete
 
 **Last updated:** 2026-03-30
-**Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3, Phase 4
-**Next phase:** Phase 5 -- Evidence Intelligence + pgvector Hybrid Search
+**Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3, Phase 4, Phase 5
+**Next phase:** Phase 6 -- Interactive Analyst Workbench (Frontend Mutations)
 **Blocking issues:** None
 
 ---
@@ -246,6 +246,52 @@
 - Phase 5 adds pgvector embeddings to ChunkRecord + hybrid search
 - ChunkRecord.has_embedding is false for all rows — Phase 5 migration will add vector column
 - Entity extractor covers India-specific patterns (CIN, GSTIN) regardless of document kind
+
+---
+
+### Phase 5: Evidence Intelligence + pgvector Hybrid Search (2026-03-30)
+
+**What was done:**
+- Added pgvector>=0.3 dependency and sentence-transformers as optional
+- Created Alembic migration 002: pgvector extension, embedding vector(1536) column, HNSW + GIN indexes
+- Added embedding column (LargeBinary, nullable) to ChunkRecord ORM
+- Added embedding settings: embedding_provider (none/openai/local), embedding_model, embedding_api_key, embedding_dimensions
+- Created EmbeddingService: batch embed chunks via configurable provider (none/openai/local), float32 byte packing
+- Created SearchService: hybrid keyword + cosine search with 0.4/0.6 weighting, evidence conflict detection (duplicate >0.98, contradictory >0.92)
+- Added Pydantic schemas: SearchRequest, EvidenceSearchResult, EvidenceSearchResponse, ConflictType, EvidenceConflict
+- Added POST /cases/{id}/search endpoint (hybrid search)
+- Added GET /cases/{id}/evidence/conflicts endpoint (auto-detect duplicates/contradictions)
+- Added 11 new pytest tests
+
+**Files created:**
+- apps/api/alembic/versions/002_pgvector_embedding.py -- pgvector migration
+- apps/api/src/.../services/embedding_service.py -- embedding generation service
+- apps/api/src/.../services/search_service.py -- hybrid search + conflict detection
+- apps/api/tests/test_phase5_evidence_intelligence.py -- 11 test cases
+
+**Files modified:**
+- apps/api/pyproject.toml -- added pgvector>=0.3, sentence-transformers optional
+- apps/api/src/.../core/settings.py -- 4 new embedding settings, updated current_phase
+- apps/api/src/.../db/models.py -- ChunkRecord.embedding column (LargeBinary)
+- apps/api/src/.../domain/models.py -- 5 new schemas (SearchRequest, EvidenceSearchResult, EvidenceSearchResponse, ConflictType, EvidenceConflict)
+- apps/api/src/.../api/routes/cases.py -- 2 new endpoints (search, conflicts)
+
+**Decisions made:**
+- AD-019: Embeddings stored as raw float32 bytes in LargeBinary (SQLite-compatible); cast to vector(1536) by pgvector at query time
+- AD-020: Embedding provider defaults to "none" — search falls back to keyword-only; tests work without API keys
+- AD-021: Conflict detection uses embedding cosine similarity when available, Jaccard word overlap as fallback
+
+**Test results:**
+- pytest: 71/71 pass (60 existing + 11 new)
+- eval suites: 11/11 pass (all 5 suites at 100%)
+- ruff: clean
+- npm lint: clean
+- npm typecheck: clean
+
+**Notes for next phase:**
+- Phase 6 transforms the read-only Next.js frontend into an interactive analyst workbench
+- Search and conflict endpoints are ready for frontend integration
+- Embedding generation activates when EMBEDDING_PROVIDER is set to "openai" or "local"
 
 ---
 

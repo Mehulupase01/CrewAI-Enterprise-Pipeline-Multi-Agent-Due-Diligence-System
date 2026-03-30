@@ -40,10 +40,12 @@ from crewai_enterprise_pipeline_api.domain.models import (
     DocumentArtifactCreate,
     DocumentArtifactSummary,
     DocumentIngestionResult,
+    EvidenceConflict,
     EvidenceItemCreate,
     EvidenceItemSummary,
     EvidenceItemUpdate,
     EvidenceKind,
+    EvidenceSearchResponse,
     ExecutiveMemoReport,
     IssueRegisterItemCreate,
     IssueRegisterItemSummary,
@@ -57,6 +59,7 @@ from crewai_enterprise_pipeline_api.domain.models import (
     RequestItemUpdate,
     RunExportPackageCreate,
     RunExportPackageSummary,
+    SearchRequest,
     WorkflowRunCreate,
     WorkflowRunDetail,
     WorkflowRunEnqueueResult,
@@ -72,6 +75,7 @@ from crewai_enterprise_pipeline_api.services.export_service import ExportService
 from crewai_enterprise_pipeline_api.services.ingestion_service import IngestionService
 from crewai_enterprise_pipeline_api.services.issue_service import IssueService
 from crewai_enterprise_pipeline_api.services.report_service import ReportService
+from crewai_enterprise_pipeline_api.services.search_service import SearchService
 from crewai_enterprise_pipeline_api.services.workflow_service import WorkflowService
 from crewai_enterprise_pipeline_api.storage.service import DocumentStorageService
 
@@ -246,6 +250,17 @@ async def list_evidence(case_id: str, session: DbSession) -> list[EvidenceItemSu
     return await CaseService(session).list_evidence(case_id)
 
 
+@router.get(
+    "/{case_id}/evidence/conflicts",
+    response_model=list[EvidenceConflict],
+)
+async def detect_evidence_conflicts(
+    case_id: str,
+    session: DbSession,
+) -> list[EvidenceConflict]:
+    return await SearchService(session).detect_conflicts(case_id)
+
+
 @router.post(
     "/{case_id}/evidence",
     response_model=EvidenceItemSummary,
@@ -375,6 +390,23 @@ async def scan_issues(case_id: str, session: DbSession) -> IssueScanResult:
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
     return result
+
+
+# ---------------------------------------------------------------------------
+# Search
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/{case_id}/search",
+    response_model=EvidenceSearchResponse,
+)
+async def search_evidence(
+    case_id: str,
+    payload: SearchRequest,
+    session: DbSession,
+) -> EvidenceSearchResponse:
+    return await SearchService(session).hybrid_search(case_id, payload)
 
 
 # ---------------------------------------------------------------------------
