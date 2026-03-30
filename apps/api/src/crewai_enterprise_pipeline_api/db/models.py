@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, ForeignKey, String, Text, UniqueConstraint
+from sqlalchemy import JSON, Boolean, ForeignKey, LargeBinary, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from crewai_enterprise_pipeline_api.db.base import Base, TimestampedMixin
@@ -106,6 +106,7 @@ class ChunkRecord(TimestampedMixin, Base):
     char_start: Mapped[int] = mapped_column(default=0)
     char_end: Mapped[int] = mapped_column(default=0)
     has_embedding: Mapped[bool] = mapped_column(Boolean, default=False)
+    embedding: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
 
     artifact: Mapped[DocumentArtifactRecord] = relationship(back_populates="chunks")
 

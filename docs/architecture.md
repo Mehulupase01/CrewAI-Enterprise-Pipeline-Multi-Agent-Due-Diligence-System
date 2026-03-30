@@ -1,6 +1,6 @@
 # Architecture Overview
 
-> **Last updated:** 2026-03-30 (Phase 3 -- Infrastructure Wiring)
+> **Last updated:** 2026-03-30 (Phase 4 -- Document Intelligence)
 > **Update rule:** This file is updated after every masterplan phase to reflect actual system state.
 
 ## System Summary
@@ -22,16 +22,29 @@ See `docs/MASTERPLAN.pdf` pages 3-8 for full diagrams including:
 ## Current State (Honest Assessment)
 
 ### What is REAL and WORKING
-- 14 SQLAlchemy ORM models with proper relationships, cascades, timestamps
-- 96 Pydantic schemas with consistent naming conventions
+- 15 SQLAlchemy ORM models with proper relationships, cascades, timestamps
+- 98 Pydantic schemas with consistent naming conventions
 - 9 service classes (functional but 100% deterministic — no AI)
-- 38 REST endpoints (full CRUD + SSE streaming)
-- Document parsing for 6 formats (PDF, DOCX, XLSX, CSV, JSON, TXT)
+- 39 REST endpoints (full CRUD + SSE streaming + chunks)
+- Document parsing for 6 formats (PDF with tables, DOCX with headings+tables, XLSX multi-sheet, CSV, JSON, TXT)
+- Semantic chunking engine (heading > paragraph > sentence splitting, 1200 char max)
+- Rule-based entity extraction (financial, legal, regulatory, India identifiers)
+- SHA256 document dedup (same content returns existing artifact)
 - Header-based RBAC with 4 roles (VIEWER, ANALYST, REVIEWER, ADMIN)
 - Evaluation harness with 5 suites, 11 scenarios
-- 50 pytest unit tests
+- 60 pytest unit tests
 - Export ZIP packages (markdown only)
 - Docker Compose stack (PostgreSQL 17, Redis 7.4, MinIO)
+
+### What was ADDED in Phase 4
+- Semantic chunking engine (`ingestion/chunker.py`) — heading > paragraph > sentence splitting with char offsets and page detection
+- Rule-based entity extractor (`ingestion/entity_extractor.py`) — financial metrics, legal entities, regulatory IDs, India identifiers (CIN, GSTIN)
+- ChunkRecord ORM model linked to DocumentArtifactRecord (cascade delete, ready for Phase 5 embeddings)
+- Upgraded PDF parser — table extraction via pdfplumber as markdown
+- Upgraded DOCX parser — heading structure preservation + table extraction
+- Upgraded XLSX parser — all sheets as markdown tables (up to 8 sheets, 200 rows)
+- SHA256 document dedup — second upload of identical content is a no-op
+- GET /documents/{doc_id}/chunks endpoint with pagination
 
 ### What was WIRED in Phase 3
 - ~~Redis 7.4 — in Docker Compose, never connected~~ -- Redis pool wired in lifespan when background_mode=true; arq worker dispatches workflow jobs
@@ -83,7 +96,7 @@ apps/api/src/crewai_enterprise_pipeline_api/
     models.py          # ~96 Pydantic schemas + all StrEnums
   db/
     base.py            # UUID generation, TimestampedMixin
-    models.py          # 14 SQLAlchemy ORM models (CaseRecord is aggregate root)
+    models.py          # 15 SQLAlchemy ORM models (CaseRecord is aggregate root, ChunkRecord for embeddings)
     session.py         # AsyncSession factory
   services/
     case_service.py        # Case CRUD + sub-resource operations
@@ -96,7 +109,9 @@ apps/api/src/crewai_enterprise_pipeline_api/
     report_service.py      # Executive memo generation
     export_service.py      # ZIP export package creation
   ingestion/
-    parsers.py         # PDF, DOCX, XLSX, CSV, JSON, TXT parsers
+    parsers.py         # PDF (tables), DOCX (headings+tables), XLSX (multi-sheet), CSV, JSON, TXT
+    chunker.py         # Semantic chunking: heading > paragraph > sentence (1200 char max)
+    entity_extractor.py  # Rule-based: financial, legal, regulatory, India IDs (CIN, GSTIN)
   storage/
     service.py         # S3/MinIO with local fallback
   evaluation/

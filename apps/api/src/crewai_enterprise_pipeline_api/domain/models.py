@@ -606,3 +606,41 @@ class WorkflowRunEnqueueResult(BaseModel):
     case_id: str
     status: WorkflowRunStatus = WorkflowRunStatus.QUEUED
     message: str = "Workflow run enqueued for background processing"
+
+
+# ---------------------------------------------------------------------------
+# Evidence Intelligence (Phase 5)
+# ---------------------------------------------------------------------------
+
+
+class SearchRequest(BaseModel):
+    query: str = Field(min_length=1, max_length=500)
+    top_k: int = Field(default=10, ge=1, le=100)
+    workstream_domain: WorkstreamDomain | None = None
+
+
+class EvidenceSearchResult(BaseModel):
+    chunk_id: str
+    artifact_id: str
+    text: str
+    score: float = Field(ge=0.0, le=1.0)
+    section_title: str | None = None
+    page_number: int | None = None
+
+
+class EvidenceSearchResponse(BaseModel):
+    results: list[EvidenceSearchResult]
+    total: int
+
+
+class ConflictType(StrEnum):
+    CONTRADICTORY = "contradictory"
+    DUPLICATE = "duplicate"
+
+
+class EvidenceConflict(BaseModel):
+    evidence_a_id: str
+    evidence_b_id: str
+    similarity: float = Field(ge=0.0, le=1.0)
+    conflict_type: ConflictType
+    explanation: str

@@ -27,27 +27,27 @@ _INR_AMOUNT_RE = re.compile(
 
 _REVENUE_RE = re.compile(
     r"(?:revenue|turnover|total\s+income|net\s+sales)"
-    r"[:\s\-]*(?:INR|Rs\.?|₹)\s*([\d,]+(?:\.\d+)?)\s*"
+    r"[\w\s:\-]{0,20}?(?:INR|Rs\.?|₹)\s*([\d,]+(?:\.\d+)?)\s*"
     r"(?:crore|cr|lakh|lakhs|mn|million)?",
     re.IGNORECASE,
 )
 
 _EBITDA_RE = re.compile(
-    r"EBITDA[:\s\-]*(?:INR|Rs\.?|₹)\s*([\d,]+(?:\.\d+)?)\s*"
+    r"EBITDA[\w\s:\-]{0,20}?(?:INR|Rs\.?|₹)\s*([\d,]+(?:\.\d+)?)\s*"
     r"(?:crore|cr|lakh|lakhs|mn|million)?",
     re.IGNORECASE,
 )
 
 _PAT_RE = re.compile(
     r"(?:PAT|profit\s+after\s+tax|net\s+profit)"
-    r"[:\s\-]*(?:INR|Rs\.?|₹)\s*([\d,]+(?:\.\d+)?)\s*"
+    r"[\w\s:\-]{0,20}?(?:INR|Rs\.?|₹)\s*([\d,]+(?:\.\d+)?)\s*"
     r"(?:crore|cr|lakh|lakhs|mn|million)?",
     re.IGNORECASE,
 )
 
 _NET_DEBT_RE = re.compile(
     r"(?:net\s+debt|total\s+debt|total\s+borrowings)"
-    r"[:\s\-]*(?:INR|Rs\.?|₹)\s*([\d,]+(?:\.\d+)?)\s*"
+    r"[\w\s:\-]{0,20}?(?:INR|Rs\.?|₹)\s*([\d,]+(?:\.\d+)?)\s*"
     r"(?:crore|cr|lakh|lakhs|mn|million)?",
     re.IGNORECASE,
 )
@@ -88,7 +88,7 @@ _GOVERNING_LAW_RE = re.compile(
 
 _CIN_RE = re.compile(r"\b([A-Z]\d{5}[A-Z]{2}\d{4}[A-Z]{3}\d{6})\b")
 
-_GSTIN_RE = re.compile(r"\b(\d{2}[A-Z]{5}\d{4}[A-Z]\d[A-Z\d][A-Z])\b")
+_GSTIN_RE = re.compile(r"\b(\d{2}[A-Z]{5}\d{4}[A-Z]\d[A-Z\d][A-Z\d])\b")
 
 _REG_NUMBER_RE = re.compile(
     r"(?:registration\s*(?:no|number|#)|license\s*(?:no|number))"

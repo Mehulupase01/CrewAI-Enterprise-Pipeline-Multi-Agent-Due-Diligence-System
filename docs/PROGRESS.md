@@ -3,11 +3,11 @@
 > This file is the single source of truth for what has been implemented.
 > Any AI agent resuming work should read this file + CLAUDE.md first.
 
-## Status: Phase 3 Complete
+## Status: Phase 4 Complete
 
 **Last updated:** 2026-03-30
-**Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3
-**Next phase:** Phase 4 -- Frontend Mutations & Live Binding
+**Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3, Phase 4
+**Next phase:** Phase 5 -- Evidence Intelligence + pgvector Hybrid Search
 **Blocking issues:** None
 
 ---
@@ -195,6 +195,57 @@
 - Phase 4 wires the Next.js frontend to POST/PATCH/DELETE endpoints
 - SSE endpoint available for live run streaming in the UI
 - Worker is standalone: `arq crewai_enterprise_pipeline_api.worker.WorkerSettings`
+
+---
+
+### Phase 4: Document Intelligence (2026-03-30)
+
+**What was done:**
+- Created ChunkRecord ORM model linked to DocumentArtifactRecord (cascade delete)
+- Created semantic chunking engine (ingestion/chunker.py): splits by heading > paragraph > sentence with char offsets and page detection
+- Created rule-based entity extractor (ingestion/entity_extractor.py): financial (revenue, EBITDA, PAT, debt, auditor, opinion), legal (parties, dates, governing law), regulatory (reg numbers, validity), India identifiers (CIN, GSTIN)
+- Upgraded PDF parser to extract tables as markdown via pdfplumber
+- Upgraded DOCX parser to preserve heading structure (markdown #) and extract tables
+- Upgraded XLSX parser to render all sheets as markdown tables (up to 8 sheets, 200 rows)
+- Wired semantic chunker and entity extractor into ingestion service
+- Added SHA256 document dedup — uploading same file returns existing artifact
+- Added GET /documents/{doc_id}/chunks endpoint with pagination
+- Added ChunkSummary schema; extended DocumentIngestionResult with chunks_created and entities_extracted
+- Added 10 new pytest tests
+
+**Files created:**
+- apps/api/src/.../ingestion/chunker.py -- semantic chunking engine
+- apps/api/src/.../ingestion/entity_extractor.py -- rule-based entity extractor
+- apps/api/tests/test_phase4_document_intelligence.py -- 10 test cases
+
+**Files modified:**
+- apps/api/src/.../db/models.py -- ChunkRecord ORM model + relationship on DocumentArtifactRecord
+- apps/api/src/.../domain/models.py -- ChunkSummary, extended DocumentIngestionResult
+- apps/api/src/.../ingestion/parsers.py -- PDF table extraction, DOCX headings+tables, XLSX markdown tables
+- apps/api/src/.../services/ingestion_service.py -- chunker + extractor wiring, SHA256 dedup
+- apps/api/src/.../services/case_service.py -- list_chunks() method
+- apps/api/src/.../api/routes/cases.py -- GET /documents/{doc_id}/chunks endpoint
+- apps/api/src/.../storage/service.py -- active_backend() helper
+
+**Decisions made:**
+- AD-016: Semantic chunking uses heading-first splitting (heading > paragraph > sentence) with 1200-char default
+- AD-017: Entity extraction is rule-based (regex), not LLM-dependent — deterministic and testable
+- AD-018: Document dedup by SHA256 — same content returns existing artifact with zero new evidence
+
+**Blockers encountered:**
+- None
+
+**Test results:**
+- pytest: 60/60 pass (50 existing + 10 new)
+- eval suites: 11/11 pass (all 5 suites at 100%)
+- ruff: clean
+- npm lint: clean
+- npm typecheck: clean
+
+**Notes for next phase:**
+- Phase 5 adds pgvector embeddings to ChunkRecord + hybrid search
+- ChunkRecord.has_embedding is false for all rows — Phase 5 migration will add vector column
+- Entity extractor covers India-specific patterns (CIN, GSTIN) regardless of document kind
 
 ---
 

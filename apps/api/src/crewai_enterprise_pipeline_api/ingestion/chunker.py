@@ -11,7 +11,7 @@ import re
 from dataclasses import dataclass
 
 _HEADING_RE = re.compile(
-    r"^(?:#{1,4}\s+.+|[A-Z][A-Z0-9 /&,\-]{4,})\s*$",
+    r"^(?:#{1,4}\s+.+|[A-Z][A-Z0-9]{1,}(?:[ /&,\-][A-Z][A-Z0-9]*){1,})\s*$",
     re.MULTILINE,
 )
 

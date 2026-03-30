@@ -200,6 +200,48 @@ runs (Phase 7+), the 1-second poll is adequate since runs take minutes, not mill
 
 ---
 
+## AD-016: Semantic chunking uses heading-first splitting (2026-03-30)
+
+**Decision:** The chunker splits text by section headings first, then by paragraphs within
+each section, then by sentence boundaries for oversized paragraphs. Chunk max is 1200 chars.
+
+**Why:** Heading-aware chunks preserve document structure, making them more useful for evidence
+extraction and future embedding-based search. Sentence splitting is the last resort to keep
+chunks under the size limit.
+
+**Impact:** ChunkRecord carries section_title, page_number, char_start, char_end. Phase 5
+embeddings will benefit from semantically coherent chunks.
+
+---
+
+## AD-017: Entity extraction is rule-based, not LLM-dependent (2026-03-30)
+
+**Decision:** The entity extractor uses regex patterns to identify financial metrics, legal
+entities, regulatory identifiers, and India-specific numbers (CIN, GSTIN).
+
+**Why:** Deterministic extraction is testable, fast, and doesn't require API keys. India-specific
+formats (CIN: 21 chars, GSTIN: 15 chars) have rigid structures ideal for regex. LLM-based
+extraction can be layered on top in Phase 7 when CrewAI agents are wired.
+
+**Impact:** All evaluation scenarios continue to pass. Entity evidence has higher confidence
+(0.8-0.95) than chunk-based evidence (0.75).
+
+---
+
+## AD-018: Document dedup by SHA256 digest (2026-03-30)
+
+**Decision:** Before creating a new DocumentArtifactRecord, check if the same SHA256 digest
+already exists for the case. If so, return the existing artifact with zero new evidence.
+
+**Why:** Users may accidentally upload the same file twice. Without dedup, this creates
+duplicate evidence and chunks, inflating issue counts and confusing analysis.
+
+**Impact:** Second upload of identical content is a no-op that returns the existing artifact.
+Different files with the same name but different content are NOT deduped (content-based, not
+name-based).
+
+---
+
 <!--
 Template for future decisions:
 

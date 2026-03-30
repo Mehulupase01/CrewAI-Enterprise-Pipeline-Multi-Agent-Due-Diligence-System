@@ -20,7 +20,7 @@ India-focused due diligence operating system: FastAPI control plane (`apps/api/`
 
 Uses a **pack model**: motion packs (buy_side_diligence, credit_lending, vendor_onboarding) x sector packs (tech_saas_services, manufacturing_industrials, bfsi_nbfc) x India rule packs (MCA, SEBI, RBI, CCI, GST, labour, privacy).
 
-**Current state:** Phase 3 (Infrastructure Wiring) complete. Full CRUD API with async background processing: arq worker dispatches workflow runs via Redis when `background_mode=true`, falls back to synchronous execution otherwise. Alembic migrations created (initial schema with 14 tables). SSE stream endpoint for real-time run progress. CrewAI is installed but NOT wired into runtime -- `workflow_service.py` is fully deterministic.
+**Current state:** Phase 4 (Document Intelligence) complete. Full CRUD API with async background processing, semantic document intelligence: heading-aware chunking engine, rule-based entity extraction (financial, legal, regulatory, India identifiers), upgraded parsers (PDF tables, DOCX headings+tables, XLSX multi-sheet), SHA256 document dedup, chunks endpoint. arq worker dispatches workflow runs via Redis when `background_mode=true`, falls back to synchronous execution otherwise. Alembic migrations created (initial schema with 15 tables including ChunkRecord). SSE stream endpoint for real-time run progress. CrewAI is installed but NOT wired into runtime -- `workflow_service.py` is fully deterministic.
 
 ## Commands
 
@@ -39,7 +39,7 @@ Uses a **pack model**: motion packs (buy_side_diligence, credit_lending, vendor_
 
 # Individual checks (from apps/api/)
 python -m ruff check src tests                   # Lint
-python -m pytest                                 # All tests (50 tests)
+python -m pytest                                 # All tests (60 tests)
 python -m pytest tests/test_cases.py -k "test_name"  # Single test
 
 # Individual checks (from apps/web/)
@@ -70,10 +70,12 @@ Layered async: **Routes -> Services -> DB/Storage**
 - **`worker.py`** -- arq WorkerSettings + `run_workflow_job` background task. Run with: `arq crewai_enterprise_pipeline_api.worker.WorkerSettings`.
 - **`api/router.py`** -- Mounts `/system`, `/source-adapters`, `/cases` under `/api/v1/`.
 - **`api/security.py`** -- Header-based RBAC (`X-CEP-User-{Id,Name,Email,Role}`). Three tiers: read (VIEWER+), write (ANALYST+), reviewer (REVIEWER+). Auth bypassed when `APP_ENV` is development/test.
-- **`domain/models.py`** -- ~96 Pydantic schemas/enums. Naming: `*Create`, `*Summary`, `*Detail`, `*Result`. Key enums: `MotionPack`, `SectorPack`, `WorkstreamDomain`, `FlagSeverity`.
-- **`db/models.py`** -- 14 SQLAlchemy ORM models. `CaseRecord` is aggregate root with cascade deletes. Classes end in `Record`. UUIDs from `db/base.py`, UTC timestamps via `TimestampedMixin`.
+- **`domain/models.py`** -- ~98 Pydantic schemas/enums. Naming: `*Create`, `*Summary`, `*Detail`, `*Result`. Key enums: `MotionPack`, `SectorPack`, `WorkstreamDomain`, `FlagSeverity`.
+- **`db/models.py`** -- 15 SQLAlchemy ORM models. `CaseRecord` is aggregate root with cascade deletes. `ChunkRecord` linked to `DocumentArtifactRecord` (ready for Phase 5 embeddings). Classes end in `Record`. UUIDs from `db/base.py`, UTC timestamps via `TimestampedMixin`.
 - **`services/`** -- Services compose sub-services via constructor (not inheritance). `WorkflowService` orchestrates runs by delegating to `CaseService`, `ChecklistService`, `ReportService`, `SynthesisService`.
-- **`ingestion/parsers.py`** -- Parses PDF, DOCX, XLSX, CSV, JSON, TXT. Chunks at 1200-char paragraph boundaries. All parsers wrapped in try/except for graceful failure on corrupt files.
+- **`ingestion/parsers.py`** -- Parses PDF (with table extraction), DOCX (heading structure + tables), XLSX (multi-sheet markdown tables), CSV, JSON, TXT. All parsers wrapped in try/except for graceful failure on corrupt files.
+- **`ingestion/chunker.py`** -- Semantic chunking engine: heading > paragraph > sentence splitting. 1200-char max. Carries section_title, page_number, char_start, char_end.
+- **`ingestion/entity_extractor.py`** -- Rule-based extraction: financial (revenue, EBITDA, PAT, debt, auditor, opinion), legal (parties, dates, governing law), regulatory (reg numbers, validity), India IDs (CIN, GSTIN). Returns `EvidenceItemCreate` instances.
 - **`storage/service.py`** -- S3/MinIO with local fallback. Path: `cases/{case_id}/artifacts/{artifact_id}/{filename}`. SHA256 on every store.
 - **`evaluation/`** -- Scenario-based integration harness (not pytest). Runs full HTTP flows against isolated SQLite. Outputs JSON scorecards to `artifacts/evaluations/`.
 
