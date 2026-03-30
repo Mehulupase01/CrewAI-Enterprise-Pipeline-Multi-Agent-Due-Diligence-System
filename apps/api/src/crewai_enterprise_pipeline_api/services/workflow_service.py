@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime
 
 from sqlalchemy import select
@@ -25,6 +26,8 @@ from crewai_enterprise_pipeline_api.services.case_service import CaseService
 from crewai_enterprise_pipeline_api.services.checklist_service import ChecklistService
 from crewai_enterprise_pipeline_api.services.report_service import ReportService
 from crewai_enterprise_pipeline_api.services.synthesis_service import SynthesisService
+
+logger = logging.getLogger(__name__)
 
 
 class WorkflowService:
@@ -79,41 +82,60 @@ class WorkflowService:
         await self.session.flush()
         run_id = run.id
 
-        coverage = await self.checklist_service.get_coverage_summary(case_id)
-        executive_memo = await self.report_service.build_executive_memo(case_id)
-        executive_memo_markdown = await self.report_service.render_executive_memo_markdown(
-            case_id
-        )
-        issue_register_markdown = await self.report_service.render_issue_register_markdown(
-            case_id
-        )
-        if coverage is None or executive_memo is None:
-            return None
+        try:
+            coverage = await self.checklist_service.get_coverage_summary(case_id)
+            executive_memo = await self.report_service.build_executive_memo(case_id)
+            executive_memo_markdown = await self.report_service.render_executive_memo_markdown(
+                case_id
+            )
+            issue_register_markdown = await self.report_service.render_issue_register_markdown(
+                case_id
+            )
+            if coverage is None or executive_memo is None:
+                return None
 
-        syntheses = self.synthesis_service.build_workstream_syntheses(case, run_id)
-        synthesis_markdown = self.synthesis_service.render_markdown(case, syntheses)
+            syntheses = self.synthesis_service.build_workstream_syntheses(case, run_id)
+            synthesis_markdown = self.synthesis_service.render_markdown(case, syntheses)
 
-        trace_events = self._build_trace_events(case, run_id, coverage, syntheses)
-        report_bundles = self._build_report_bundles(
-            case_id,
-            run_id,
-            executive_memo_markdown,
-            issue_register_markdown,
-            synthesis_markdown,
-        )
+            trace_events = self._build_trace_events(case, run_id, coverage, syntheses)
+            report_bundles = self._build_report_bundles(
+                case_id,
+                run_id,
+                executive_memo_markdown,
+                issue_register_markdown,
+                synthesis_markdown,
+            )
 
-        self.session.add_all(trace_events)
-        self.session.add_all(report_bundles)
-        self.session.add_all(syntheses)
+            self.session.add_all(trace_events)
+            self.session.add_all(report_bundles)
+            self.session.add_all(syntheses)
 
-        run.status = WorkflowRunStatus.COMPLETED.value
-        run.completed_at = datetime.now(UTC)
-        run.summary = (
-            f"Generated {len(report_bundles)} report bundles, "
-            f"{len(syntheses)} workstream syntheses, with "
-            f"{len(case.issues)} issues and "
-            f"{coverage.open_mandatory_items} open mandatory checklist items."
-        )
+            run.status = WorkflowRunStatus.COMPLETED.value
+            run.completed_at = datetime.now(UTC)
+            run.summary = (
+                f"Generated {len(report_bundles)} report bundles, "
+                f"{len(syntheses)} workstream syntheses, with "
+                f"{len(case.issues)} issues and "
+                f"{coverage.open_mandatory_items} open mandatory checklist items."
+            )
+        except Exception as exc:
+            logger.exception("Workflow run %s failed", run_id)
+            run.status = WorkflowRunStatus.FAILED.value
+            run.completed_at = datetime.now(UTC)
+            run.summary = f"Run failed: {exc}"
+            self.session.add(
+                RunTraceEventRecord(
+                    run_id=run_id,
+                    sequence_number=0,
+                    step_key="run_failure",
+                    title="Workflow run failed",
+                    message=str(exc),
+                    level=RunEventLevel.WARNING.value,
+                )
+            )
+            await self.session.commit()
+            raise
+
         await self.session.commit()
         self.session.expire_all()
 

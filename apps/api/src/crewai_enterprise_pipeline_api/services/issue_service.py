@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import re
 from dataclasses import dataclass
 
 from sqlalchemy import select
@@ -412,7 +413,10 @@ class IssueService:
             (
                 rule
                 for rule in HEURISTIC_RULES
-                if any(pattern in haystack for pattern in rule.patterns)
+                if any(
+                    re.search(r"\b" + re.escape(pattern) + r"\b", haystack, re.IGNORECASE)
+                    for pattern in rule.patterns
+                )
             ),
             None,
         )

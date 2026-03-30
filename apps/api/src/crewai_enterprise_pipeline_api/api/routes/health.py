@@ -34,14 +34,14 @@ def health() -> AppHealth:
         default_actor_role=UserRole(settings.default_actor_role),
         request_id_header_name=settings.request_id_header_name,
         enabled_motion_packs=[
-            MotionPack.BUY_SIDE_DILIGENCE,
-            MotionPack.CREDIT_LENDING,
-            MotionPack.VENDOR_ONBOARDING,
+            MotionPack(p.strip())
+            for p in settings.enabled_motion_packs.split(",")
+            if p.strip()
         ],
         enabled_sector_packs=[
-            SectorPack.TECH_SAAS_SERVICES,
-            SectorPack.MANUFACTURING_INDUSTRIALS,
-            SectorPack.BFSI_NBFC,
+            SectorPack(p.strip())
+            for p in settings.enabled_sector_packs.split(",")
+            if p.strip()
         ],
     )
 
@@ -115,9 +115,9 @@ async def readiness(session: DbSession) -> ReadinessReport:
 def overview() -> PlatformOverview:
     settings = get_settings()
     return PlatformOverview(
-        product_name="CrewAI Enterprise Pipeline",
-        current_phase="Post-roadmap enhancement 1: run export packages",
-        country="India",
+        product_name=settings.product_name,
+        current_phase=settings.current_phase,
+        country=settings.country,
         auth_required=settings.auth_required,
         motion_packs=list(MotionPack),
         sector_packs=list(SectorPack),

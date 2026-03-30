@@ -3,11 +3,14 @@ from __future__ import annotations
 import csv
 import io
 import json
+import logging
 from dataclasses import dataclass
 
 import pdfplumber
 from docx import Document as DocxDocument
 from openpyxl import load_workbook
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -50,42 +53,62 @@ class DocumentParser:
         return content.decode("utf-8", errors="ignore")
 
     def _parse_json(self, content: bytes) -> str:
-        loaded = json.loads(self._decode_text(content))
-        return json.dumps(loaded, indent=2, ensure_ascii=False)
+        try:
+            loaded = json.loads(self._decode_text(content))
+            return json.dumps(loaded, indent=2, ensure_ascii=False)
+        except Exception:
+            logger.warning("JSON parse failed", exc_info=True)
+            return ""
 
     def _parse_csv(self, content: bytes) -> str:
-        buffer = io.StringIO(self._decode_text(content))
-        reader = csv.reader(buffer)
-        rows = [" | ".join(cell.strip() for cell in row) for row in reader]
-        return "\n".join(rows)
+        try:
+            buffer = io.StringIO(self._decode_text(content))
+            reader = csv.reader(buffer)
+            rows = [" | ".join(cell.strip() for cell in row) for row in reader]
+            return "\n".join(rows)
+        except Exception:
+            logger.warning("CSV parse failed", exc_info=True)
+            return ""
 
     def _parse_pdf(self, content: bytes) -> str:
-        buffer = io.BytesIO(content)
-        pages: list[str] = []
-        with pdfplumber.open(buffer) as pdf:
-            for page_number, page in enumerate(pdf.pages, start=1):
-                page_text = page.extract_text() or ""
-                if page_text.strip():
-                    pages.append(f"[Page {page_number}]\n{page_text.strip()}")
-        return "\n\n".join(pages)
+        try:
+            buffer = io.BytesIO(content)
+            pages: list[str] = []
+            with pdfplumber.open(buffer) as pdf:
+                for page_number, page in enumerate(pdf.pages, start=1):
+                    page_text = page.extract_text() or ""
+                    if page_text.strip():
+                        pages.append(f"[Page {page_number}]\n{page_text.strip()}")
+            return "\n\n".join(pages)
+        except Exception:
+            logger.warning("PDF parse failed", exc_info=True)
+            return ""
 
     def _parse_xlsx(self, content: bytes) -> str:
-        buffer = io.BytesIO(content)
-        workbook = load_workbook(buffer, data_only=True)
-        lines: list[str] = []
-        for worksheet in workbook.worksheets[:4]:
-            lines.append(f"[Sheet] {worksheet.title}")
-            for row in worksheet.iter_rows(values_only=True, max_row=50):
-                values = [str(value).strip() for value in row if value not in (None, "")]
-                if values:
-                    lines.append(" | ".join(values))
-        return "\n".join(lines)
+        try:
+            buffer = io.BytesIO(content)
+            workbook = load_workbook(buffer, data_only=True)
+            lines: list[str] = []
+            for worksheet in workbook.worksheets[:4]:
+                lines.append(f"[Sheet] {worksheet.title}")
+                for row in worksheet.iter_rows(values_only=True, max_row=50):
+                    values = [str(value).strip() for value in row if value not in (None, "")]
+                    if values:
+                        lines.append(" | ".join(values))
+            return "\n".join(lines)
+        except Exception:
+            logger.warning("XLSX parse failed", exc_info=True)
+            return ""
 
     def _parse_docx(self, content: bytes) -> str:
-        buffer = io.BytesIO(content)
-        document = DocxDocument(buffer)
-        paragraphs = [paragraph.text.strip() for paragraph in document.paragraphs]
-        return "\n".join(text for text in paragraphs if text)
+        try:
+            buffer = io.BytesIO(content)
+            document = DocxDocument(buffer)
+            paragraphs = [paragraph.text.strip() for paragraph in document.paragraphs]
+            return "\n".join(text for text in paragraphs if text)
+        except Exception:
+            logger.warning("DOCX parse failed", exc_info=True)
+            return ""
 
 
 def chunk_text(text: str, *, max_chars: int = 1200) -> list[str]:

@@ -1,0 +1,50 @@
+{
+  "model": "opus",
+  "effortLevel": "high",
+  "permissions": {
+    "allow": [
+      "Bash(python -m ruff check*)",
+      "Bash(python -m pytest*)",
+      "Bash(python -m crewai_enterprise_pipeline_api.evaluation.runner*)",
+      "Bash(npm run lint*)",
+      "Bash(npm run typecheck*)",
+      "Bash(npm run build*)",
+      "Bash(docker compose ps*)",
+      "Bash(docker compose logs*)",
+      "Bash(git status*)",
+      "Bash(git log*)",
+      "Bash(git diff*)",
+      "Bash(git branch*)",
+      "Bash(git add*)",
+      "Bash(git commit*)",
+      "Bash(uvicorn*--reload*)",
+      "Bash(pip install*)",
+      "Bash(npm install*)",
+      "Bash(ls*)",
+      "Bash(cat*)",
+      "Bash(head*)",
+      "Bash(tail*)",
+      "Bash(wc*)",
+      "Bash(pwd*)",
+      "Bash(which*)",
+      "Bash(where*)",
+      "Bash(node*)",
+      "Bash(curl*localhost*)",
+      "Bash(curl*127.0.0.1*)",
+      "Bash(C:/Users/Mehul-PC/anaconda3/envs/crewai-enterprise-pipeline/python.exe*)",
+      "Read",
+      "Write",
+      "Edit",
+      "Glob",
+      "Grep"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(git push --force*)",
+      "Bash(git reset --hard*)",
+      "Bash(docker compose down -v*)",
+      "Bash(drop table*)",
+      "Bash(DROP TABLE*)"
+    ]
+  }
+}

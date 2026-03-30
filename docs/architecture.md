@@ -1,211 +1,169 @@
 # Architecture Overview
 
-## Foundation Direction
+> **Last updated:** 2026-03-30 (Phase 1 -- Critical Fixes & Dependency Repair)
+> **Update rule:** This file is updated after every masterplan phase to reflect actual system state.
 
-The platform is being built as an India due diligence operating system with a
-pack-based architecture. The goal is to keep the first production slice narrow
-enough to verify, while avoiding hard-coding assumptions that would block later
-credit, vendor, or sector expansions.
+## System Summary
 
-## Core Layers
+India-focused due diligence operating system: FastAPI control plane + Next.js analyst workbench.
+Manages diligence cases, document ingestion, evidence extraction, issue flags, checklist coverage,
+reviewer approvals, workflow runs, report bundles, and durable ZIP export packages.
 
-### 1. Control Plane
+## Architecture Diagram
 
-The FastAPI service owns universal platform concepts:
+See `docs/MASTERPLAN.pdf` pages 3-8 for full diagrams including:
+- System architecture (all components and connections)
+- 7-step data flow pipeline
+- Phase dependency graph
+- CrewAI multi-agent architecture (target state)
+- Pack model matrix
+- Database ER diagram
 
-- cases
-- entities and counterparties
-- documents and evidence
-- findings and issues
-- approvals
-- report bundles
-- run traces and cost ledgers
+## Current State (Honest Assessment)
 
-The first persisted platform entities are now live in the API surface:
+### What is REAL and WORKING
+- 14 SQLAlchemy ORM models with proper relationships, cascades, timestamps
+- 96 Pydantic schemas with consistent naming conventions
+- 9 service classes (functional but 100% deterministic — no AI)
+- 26 REST endpoints (all GET + POST, no PATCH/DELETE except one checklist PATCH)
+- Document parsing for 6 formats (PDF, DOCX, XLSX, CSV, JSON, TXT)
+- Header-based RBAC with 4 roles (VIEWER, ANALYST, REVIEWER, ADMIN)
+- Evaluation harness with 5 suites, 11 scenarios
+- 24 pytest unit tests
+- Export ZIP packages (markdown only)
+- Docker Compose stack (PostgreSQL 17, Redis 7.4, MinIO)
 
-- `Case`
-- `ChecklistItem`
-- `DocumentArtifact`
-- `EvidenceNode`
-- `IssueRegisterItem`
-- `ApprovalDecision`
-- `WorkflowRun`
-- `RunTraceEvent`
-- `ReportBundle`
-- `WorkstreamSynthesis`
-- `RequestItem`
-- `QaItem`
+### What is DECLARED BUT NOT WIRED
+- **CrewAI 1.12.2** — in pyproject.toml, zero `import crewai` in any src/ file
+- **Redis 7.4** — in Docker Compose, never connected from application code
+- **Alembic 1.18.4** — in pyproject.toml, no migrations directory or files
+- **httpx 0.28.1** — in pyproject.toml, never imported in src/
 
-### 2. Orchestration Layer
+### What was FIXED in Phase 1
+- ~~pdfplumber and openpyxl imported but missing from pyproject.toml~~ -- added to dependencies
+- ~~workflow_service.execute_run() has no error handling~~ -- try/except sets FAILED status + trace event
+- ~~Issue heuristics use naive substring matching~~ -- now uses word-boundary regex
+- ~~Health endpoint has hardcoded values~~ -- reads from configurable Settings
+- ~~Approval has no manual decision override~~ -- optional decision field added
+- ~~Storage service silently falls back to local~~ -- logger.warning on fallback
+- ~~Parsers crash on corrupt files~~ -- all parsers wrapped in try/except
 
-CrewAI Flows will coordinate agentic workflows, but the platform will not rely
-on prompts for deterministic responsibilities. The control plane remains the
-source of truth for:
+### What is MISSING
+- No PATCH endpoints (except one for checklist items)
+- No DELETE endpoints anywhere
+- No individual GET endpoints for documents, evidence, issues
+- No pagination or filtering on list endpoints
+- No download endpoint for export packages
+- Frontend is 100% read-only (zero POST/PATCH/DELETE from web)
+- No structured logging, tracing, or metrics
+- No JWT authentication
+- No multi-tenancy
+- No Alembic migrations (schema auto-created at startup only)
+- No async background processing (workflow runs are synchronous)
 
-- evidence provenance
-- pack selection
-- issue state
-- approvals
-- compliance coverage
+## Layers
 
-### 3. Workbench
+### Layer 1: API Control Plane (`apps/api/`)
 
-The Next.js app is the analyst and reviewer surface. It will eventually expose:
+```
+apps/api/src/crewai_enterprise_pipeline_api/
+  main.py              # App factory, lifespan, middleware
+  config.py            # pydantic-settings based configuration
+  api/
+    router.py          # Mounts /system, /source-adapters, /cases under /api/v1/
+    security.py        # Header-based RBAC (X-CEP-User-{Id,Name,Email,Role})
+    routes/
+      health.py        # GET /health, /readiness, /overview
+      cases.py         # All case CRUD + sub-resource endpoints
+      source_adapters.py  # GET /source-adapters (read-only catalog)
+  domain/
+    models.py          # ~96 Pydantic schemas + all StrEnums
+  db/
+    base.py            # UUID generation, TimestampedMixin
+    models.py          # 14 SQLAlchemy ORM models (CaseRecord is aggregate root)
+    session.py         # AsyncSession factory
+  services/
+    case_service.py        # Case CRUD + sub-resource operations
+    ingestion_service.py   # Document upload, parse, chunk, evidence extract
+    checklist_service.py   # Template seeding, coverage summaries
+    issue_service.py       # Heuristic-based issue scanning
+    approval_service.py    # Review decision logic
+    workflow_service.py    # Orchestrates runs (deterministic, no CrewAI)
+    synthesis_service.py   # Workstream synthesis (deterministic template fill)
+    report_service.py      # Executive memo generation
+    export_service.py      # ZIP export package creation
+  ingestion/
+    parsers.py         # PDF, DOCX, XLSX, CSV, JSON, TXT parsers
+  storage/
+    service.py         # S3/MinIO with local fallback
+  evaluation/
+    runner.py          # CLI: python -m ...evaluation.runner --suite <name>
+    harness.py         # Test infrastructure (isolated SQLite per run)
+    scenarios.py       # 11 scenarios across 5 suites
+```
 
-- case intake
-- evidence review
-- request-list and Q&A operations
-- flags and issue heatmaps
-- approval workflows
-- report export
+### Layer 2: Web Workbench (`apps/web/`)
 
-The first interface slice now includes:
+```
+apps/web/src/
+  app/
+    page.tsx                          # Dashboard (read-only)
+    layout.tsx                        # Root layout
+    cases/[caseId]/page.tsx           # Case workspace (read-only)
+    cases/[caseId]/runs/[runId]/page.tsx  # Run viewer (read-only)
+  lib/
+    workbench-data.ts                 # API client (GET only) + 480 lines demo fallback
+```
 
-- dashboard-level case overview
-- detailed case workspace pages
-- run-detail views for traces, syntheses, and report bundles
-- live API loading with a safe local demo fallback
+- Next.js 16 App Router, server components only
+- Pure CSS modules (no Tailwind)
+- Zero mutations — completely read-only
+- Falls back to hardcoded demo data when API unreachable (silently hides failures)
 
-### 4. Platform Infrastructure
+### Layer 3: Infrastructure
 
-The local-first dev stack uses:
-
-- PostgreSQL for the transactional store
-- Redis for background coordination and caching
-- MinIO-compatible object storage for document artifacts
+- **PostgreSQL 17** (:5432) — primary datastore
+- **Redis 7.4** (:6379) — declared, never connected
+- **MinIO** (:9000 API, :9001 console) — S3-compatible object storage
+- All managed via `docker-compose.yml` with health checks and named volumes
 
 ## Pack Model
 
-### Motion Packs
+Motion Packs x Sector Packs x India Rule Packs. Any combination is valid.
 
-- `buy_side_diligence`
-- `credit_lending`
-- `vendor_onboarding`
+**Motion Packs:** buy_side_diligence, credit_lending, vendor_onboarding
+**Sector Packs:** tech_saas_services, manufacturing_industrials, bfsi_nbfc
+**India Rule Packs:** MCA, SEBI, RBI/FEMA/FDI, CCI, GST, Labour, Privacy (DPDP 2025)
 
-### Sector Packs
+## Data Flow (7 Steps)
 
-- `tech_saas_services`
-- `manufacturing_industrials`
-- `bfsi_nbfc`
+1. `POST /cases` — Create case with motion_pack + sector_pack
+2. `POST /cases/{id}/checklist/seed` — Seed checklist from pack templates
+3. `POST /cases/{id}/documents/upload` — Parse, chunk, extract evidence
+4. `POST /cases/{id}/issues/scan` — Heuristic issue flagging
+5. `POST /cases/{id}/approvals/review` — Reviewer gate
+6. `POST /cases/{id}/runs` — Execute workflow run (traces + syntheses + reports)
+7. `POST /cases/{id}/runs/{rid}/export-package` — Generate ZIP export
 
-### Rule Packs
+## Key Conventions
 
-Rule packs capture jurisdictional and domain requirements such as:
+- ORM classes end in `Record` (CaseRecord, EvidenceNodeRecord)
+- Service classes end in `Service` (CaseService, WorkflowService)
+- Pydantic schemas: `*Create` (input), `*Summary` (list), `*Detail` (full), `*Result` (action)
+- All domain enums + Pydantic schemas in `domain/models.py`
+- All ORM models in `db/models.py`
+- All DB/storage I/O is async/await
+- Services compose via constructor injection, not inheritance
 
-- MCA / corporate records
-- SEBI / listed entity obligations
-- RBI / FEMA / FDI
-- CCI combinations
-- GST and direct tax
-- labour and privacy
+## Target Architecture
 
-The currently supported platform surface activates these pack combinations:
-
-- `buy_side_diligence` + `tech_saas_services`
-- `credit_lending` + `tech_saas_services`
-- `vendor_onboarding` + `tech_saas_services`
-- manufacturing / industrials as an active sector pack over supported motion packs
-- `bfsi_nbfc` as an active sector pack over supported motion packs
-
-## Phase 2 Additions
-
-The current implementation pass adds the first true operations layer:
-
-- SQLAlchemy persistence with startup schema creation for local development
-- case CRUD entry points and detail views
-- document upload, parsing, storage fallback, and artifact registration
-- evidence ledger entries tied to workstream domains
-- issue-register records tied back to evidence with deterministic scan heuristics
-- checklist template seeding, item status updates, and coverage summaries
-- approval reviews and executive memo generation from structured case state
-- persisted workflow runs with trace events and bundle generation
-- workstream synthesis records for domain-level diligence views
-- request-list and management Q&A tracking
-- source-adapter contracts for uploaded, public, and vendor-driven evidence
-
-## Phase 5 Additions
-
-The first quality-gate layer is now part of the product:
-
-- a deterministic evaluation harness that runs end-to-end against the live API
-- named diligence scenarios for blocked-tax, clean-approved, and
-  nonblocking-commercial-risk cases
-- isolated temporary databases and storage roots for repeatable evaluation runs
-- saved JSON scorecards under `artifacts/evaluations/`
-- tighter repo verification so `scripts/check.ps1` now includes the evaluation
-  suite in addition to lint, tests, and web checks
-
-## Phase 6 Additions
-
-The first hardening layer is now in place:
-
-- internal role-aware auth that can be enforced in production-shaped
-  environments while keeping local development friction low
-- request ID middleware for basic request correlation across API calls
-- readiness reporting that validates database access and surfaces the latest
-  evaluation baseline
-- operations assets covering deployment, runbook steps, smoke checks, and
-  release criteria
-
-## Expansion Phase 1: Credit Lending
-
-The first expansion pack is now implemented:
-
-- `credit_lending` now seeds underwriting-specific checklist templates
-- report generation is motion-aware and emits a `Credit Memo` instead of
-  reusing buy-side wording
-- issue heuristics now catch covenant stress, fund diversion, and collateral
-  perfection gaps
-- evaluation is suite-based, so the repo can grow from one flagship slice into
-  multiple supported operating modes without losing repeatability
-
-## Expansion Phase 2: Vendor Onboarding
-
-The second expansion pack is now implemented:
-
-- `vendor_onboarding` now seeds third-party onboarding and integrity checklist
-  templates
-- report generation emits a `Third-Party Risk Memo` with onboarding-specific
-  summary and action language
-- issue heuristics now catch sanctions, watchlist, and anti-bribery risk
-  signals
-- the evaluation harness now exercises all three supported motion packs under
-  one repeatable quality gate
-
-## Expansion Phase 3: Manufacturing / Industrials
-
-The third expansion pack is now implemented:
-
-- `manufacturing_industrials` now seeds sector-specific checklist templates for
-  inventory quality, plant utilisation, supplier concentration, EHS or factory
-  compliance, order-book review, and procurement leakage
-- issue heuristics now detect environmental and factory-compliance exposure,
-  inventory aging or obsolescence, single-site capacity dependence, and
-  supplier or raw-material concentration
-- the evaluation harness now proves that the manufacturing sector pack works
-  both on the flagship buy-side flow and in composition with the
-  `credit_lending` motion pack
-
-## Expansion Phase 4: Fintech / NBFC / BFSI
-
-The fourth expansion pack is now implemented:
-
-- `bfsi_nbfc` now seeds sector-specific checklist templates for asset quality,
-  ALM and liquidity, RBI registration and returns, underwriting and
-  collections governance, KYC or AML and data controls, and connected lending
-- issue heuristics now detect supervisory exposure, portfolio-quality
-  deterioration, ALM mismatch, KYC or AML control weakness, connected lending
-  or evergreening, and collections-outsourcing risk
-- the evaluation harness now proves that the BFSI sector pack works both on
-  the flagship buy-side flow and in composition with the `credit_lending`
-  motion pack
-
-## Post-Roadmap Enhancement 1: Run Export Packages
-
-The first post-roadmap enhancement adds durable report delivery:
-
-- workflow runs can now generate a persisted zip export package
-- export archives include a manifest, markdown report bundles, run-trace data,
-  workstream-synthesis data, and optional JSON case snapshots
-- export artifacts are stored through the existing storage abstraction so they
-  work in local storage or S3-compatible object storage
+See `docs/MASTERPLAN.pdf` for the 18-phase plan to reach full production state:
+- Real CrewAI multi-agent orchestration with 9 domain agents
+- pgvector hybrid search for evidence intelligence
+- Interactive frontend with full CRUD + live SSE streaming
+- Deep domain engines (Financial QoE, Legal/Tax/Regulatory, Commercial/Forensic)
+- India data connectors (MCA21, GSTIN, SEBI, CIBIL, sanctions)
+- JWT auth, multi-tenancy, audit logging
+- Rich DOCX/PDF reporting
+- OpenTelemetry + Prometheus observability
+- Production Docker images with deployment runbook

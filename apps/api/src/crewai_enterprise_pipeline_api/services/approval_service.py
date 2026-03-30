@@ -53,11 +53,14 @@ class ApprovalService:
         ready_for_export = (
             coverage.completion_ready and blocking_issue_count == 0
         )
-        decision = (
-            ApprovalDecisionKind.APPROVED.value
-            if ready_for_export
-            else ApprovalDecisionKind.CHANGES_REQUESTED.value
-        )
+        if payload.decision is not None:
+            decision = payload.decision.value
+        else:
+            decision = (
+                ApprovalDecisionKind.APPROVED.value
+                if ready_for_export
+                else ApprovalDecisionKind.CHANGES_REQUESTED.value
+            )
         rationale = self._build_rationale(
             coverage.open_mandatory_items,
             blocking_issue_count,

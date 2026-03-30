@@ -100,6 +100,8 @@ class ChecklistItemStatus(StrEnum):
 
 class ApprovalDecisionKind(StrEnum):
     APPROVED = "approved"
+    REJECTED = "rejected"
+    CONDITIONALLY_APPROVED = "conditionally_approved"
     CHANGES_REQUESTED = "changes_requested"
 
 
@@ -279,6 +281,7 @@ class ChecklistItemUpdate(BaseModel):
 class ApprovalDecisionCreate(BaseModel):
     reviewer: str = Field(min_length=2, max_length=255)
     note: str | None = Field(default=None, max_length=4000)
+    decision: ApprovalDecisionKind | None = None
 
 
 class WorkflowRunCreate(BaseModel):
