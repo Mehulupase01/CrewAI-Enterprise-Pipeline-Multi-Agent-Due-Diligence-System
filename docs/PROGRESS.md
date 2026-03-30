@@ -3,11 +3,11 @@
 > This file is the single source of truth for what has been implemented.
 > Any AI agent resuming work should read this file + CLAUDE.md first.
 
-## Status: Phase 2 Complete
+## Status: Phase 3 Complete
 
 **Last updated:** 2026-03-30
-**Completed phases:** Phase 0, Phase 1, Phase 2
-**Next phase:** Phase 3 -- Infrastructure Wiring (Alembic + arq + Redis)
+**Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3
+**Next phase:** Phase 4 -- Frontend Mutations & Live Binding
 **Blocking issues:** None
 
 ---
@@ -140,6 +140,61 @@
 **Notes for next phase:**
 - Phase 3 adds Alembic, arq worker, Redis wiring, SSE endpoint
 - API surface is now complete for frontend mutations (Phase 6)
+
+---
+
+### Phase 3: Infrastructure Wiring — Alembic + arq + Redis (2026-03-30)
+
+**What was done:**
+- Created Alembic config (alembic.ini, env.py, script.py.mako) with async migration support
+- Created initial Alembic migration (001_initial_schema.py) capturing all 14 ORM tables
+- Created arq worker module (worker.py) with run_workflow_job task, startup/shutdown hooks
+- Added WorkflowRunEnqueueResult schema for async dispatch responses
+- Modified main.py lifespan to optionally connect Redis pool (background_mode setting)
+- Modified POST /runs to enqueue via arq when Redis is available, fall back to sync otherwise
+- Added SSE stream endpoint (GET /runs/{id}/stream) for real-time run progress
+- Added settings: worker_concurrency (4), max_upload_mb (50), background_mode (false)
+- Relaxed redis dependency to >=5.0,<6 for arq 0.27 compatibility
+- Created dev-worker.ps1 launcher script
+- Added 9 new pytest tests covering all Phase 3 features
+
+**Files created:**
+- apps/api/alembic.ini -- Alembic config
+- apps/api/alembic/env.py -- async migration environment
+- apps/api/alembic/script.py.mako -- migration template
+- apps/api/alembic/versions/001_initial_schema.py -- initial migration (14 tables)
+- apps/api/src/.../worker.py -- arq WorkerSettings + job function
+- apps/api/tests/test_phase3_infrastructure.py -- 9 new test cases
+- scripts/dev-worker.ps1 -- arq worker launcher
+
+**Files modified:**
+- apps/api/pyproject.toml -- added arq>=0.26, relaxed redis to >=5.0,<6
+- apps/api/src/.../core/settings.py -- 3 new settings, updated current_phase
+- apps/api/src/.../main.py -- Redis pool wiring in lifespan
+- apps/api/src/.../domain/models.py -- WorkflowRunEnqueueResult schema
+- apps/api/src/.../services/workflow_service.py -- enqueue_run() method
+- apps/api/src/.../api/routes/cases.py -- async/sync POST /runs, SSE stream endpoint
+- apps/api/tests/test_phase1_fixes.py -- relaxed current_phase assertion
+
+**Decisions made:**
+- AD-013: background_mode defaults to false; sync execution preserved for dev/test
+- AD-014: arq 0.27 requires redis<6, so redis pin relaxed from ==7.4.0 to >=5.0,<6
+- AD-015: SSE stream polls at 1-second intervals; closes on terminal run status
+
+**Blockers encountered:**
+- None
+
+**Test results:**
+- pytest: 50/50 pass (41 existing + 9 new)
+- eval suites: 11/11 pass (all 5 suites at 100%)
+- ruff: clean
+- npm lint: clean
+- npm typecheck: clean
+
+**Notes for next phase:**
+- Phase 4 wires the Next.js frontend to POST/PATCH/DELETE endpoints
+- SSE endpoint available for live run streaming in the UI
+- Worker is standalone: `arq crewai_enterprise_pipeline_api.worker.WorkerSettings`
 
 ---
 

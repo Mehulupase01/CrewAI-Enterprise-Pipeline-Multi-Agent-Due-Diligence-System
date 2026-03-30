@@ -7,6 +7,7 @@ from sqlalchemy.orm import selectinload
 from crewai_enterprise_pipeline_api.db.models import (
     CaseRecord,
     ChecklistItemRecord,
+    ChunkRecord,
     DocumentArtifactRecord,
     EvidenceNodeRecord,
     IssueRegisterItemRecord,
@@ -22,6 +23,7 @@ from crewai_enterprise_pipeline_api.domain.models import (
     ChecklistItemCreate,
     ChecklistItemSummary,
     ChecklistItemUpdate,
+    ChunkSummary,
     DocumentArtifactCreate,
     DocumentArtifactSummary,
     EvidenceItemCreate,
@@ -338,6 +340,26 @@ class CaseService:
         if record is None:
             return None
         return DocumentArtifactSummary.model_validate(record)
+
+    async def list_chunks(
+        self,
+        case_id: str,
+        doc_id: str,
+        *,
+        skip: int = 0,
+        limit: int = 200,
+    ) -> list[ChunkSummary] | None:
+        doc = await self.get_document(case_id, doc_id)
+        if doc is None:
+            return None
+        result = await self.session.execute(
+            select(ChunkRecord)
+            .where(ChunkRecord.artifact_id == doc_id)
+            .order_by(ChunkRecord.chunk_index)
+            .offset(skip)
+            .limit(limit)
+        )
+        return [ChunkSummary.model_validate(row) for row in result.scalars().all()]
 
     async def delete_document(self, case_id: str, doc_id: str) -> bool:
         result = await self.session.execute(

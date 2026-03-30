@@ -1,6 +1,6 @@
 # Architecture Overview
 
-> **Last updated:** 2026-03-30 (Phase 2 -- API Completeness)
+> **Last updated:** 2026-03-30 (Phase 3 -- Infrastructure Wiring)
 > **Update rule:** This file is updated after every masterplan phase to reflect actual system state.
 
 ## System Summary
@@ -25,18 +25,20 @@ See `docs/MASTERPLAN.pdf` pages 3-8 for full diagrams including:
 - 14 SQLAlchemy ORM models with proper relationships, cascades, timestamps
 - 96 Pydantic schemas with consistent naming conventions
 - 9 service classes (functional but 100% deterministic — no AI)
-- 26 REST endpoints (all GET + POST, no PATCH/DELETE except one checklist PATCH)
+- 38 REST endpoints (full CRUD + SSE streaming)
 - Document parsing for 6 formats (PDF, DOCX, XLSX, CSV, JSON, TXT)
 - Header-based RBAC with 4 roles (VIEWER, ANALYST, REVIEWER, ADMIN)
 - Evaluation harness with 5 suites, 11 scenarios
-- 24 pytest unit tests
+- 50 pytest unit tests
 - Export ZIP packages (markdown only)
 - Docker Compose stack (PostgreSQL 17, Redis 7.4, MinIO)
 
+### What was WIRED in Phase 3
+- ~~Redis 7.4 — in Docker Compose, never connected~~ -- Redis pool wired in lifespan when background_mode=true; arq worker dispatches workflow jobs
+- ~~Alembic 1.18.4 — no migrations directory~~ -- alembic.ini, async env.py, initial migration (14 tables)
+
 ### What is DECLARED BUT NOT WIRED
 - **CrewAI 1.12.2** — in pyproject.toml, zero `import crewai` in any src/ file
-- **Redis 7.4** — in Docker Compose, never connected from application code
-- **Alembic 1.18.4** — in pyproject.toml, no migrations directory or files
 - **httpx 0.28.1** — in pyproject.toml, never imported in src/
 
 ### What was FIXED in Phase 1
@@ -60,8 +62,6 @@ See `docs/MASTERPLAN.pdf` pages 3-8 for full diagrams including:
 - No structured logging, tracing, or metrics
 - No JWT authentication
 - No multi-tenancy
-- No Alembic migrations (schema auto-created at startup only)
-- No async background processing (workflow runs are synchronous)
 
 ## Layers
 
@@ -69,7 +69,8 @@ See `docs/MASTERPLAN.pdf` pages 3-8 for full diagrams including:
 
 ```
 apps/api/src/crewai_enterprise_pipeline_api/
-  main.py              # App factory, lifespan, middleware
+  main.py              # App factory, lifespan (Redis pool), middleware
+  worker.py            # arq WorkerSettings + run_workflow_job background task
   config.py            # pydantic-settings based configuration
   api/
     router.py          # Mounts /system, /source-adapters, /cases under /api/v1/
@@ -125,7 +126,7 @@ apps/web/src/
 ### Layer 3: Infrastructure
 
 - **PostgreSQL 17** (:5432) — primary datastore
-- **Redis 7.4** (:6379) — declared, never connected
+- **Redis 7.4** (:6379) — arq job queue when background_mode=true
 - **MinIO** (:9000 API, :9001 console) — S3-compatible object storage
 - All managed via `docker-compose.yml` with health checks and named volumes
 

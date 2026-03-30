@@ -545,9 +545,24 @@ class SourceAdapterSummary(BaseModel):
     fallback_mode: str
 
 
+class ChunkSummary(ORMModel):
+    id: str
+    chunk_index: int
+    section_title: str | None
+    text: str
+    page_number: int | None
+    char_start: int
+    char_end: int
+    has_embedding: bool
+    created_at: datetime
+    updated_at: datetime
+
+
 class DocumentIngestionResult(BaseModel):
     artifact: DocumentArtifactSummary
     evidence_items_created: int
+    chunks_created: int = 0
+    entities_extracted: int = 0
     extracted_character_count: int
     parser_name: str
     storage_backend: StorageBackendKind
@@ -584,3 +599,10 @@ class ExecutiveMemoReport(BaseModel):
 class WorkflowRunResult(BaseModel):
     run: WorkflowRunDetail
     executive_memo: ExecutiveMemoReport
+
+
+class WorkflowRunEnqueueResult(BaseModel):
+    run_id: str
+    case_id: str
+    status: WorkflowRunStatus = WorkflowRunStatus.QUEUED
+    message: str = "Workflow run enqueued for background processing"

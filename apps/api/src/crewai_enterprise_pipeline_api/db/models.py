@@ -85,6 +85,29 @@ class DocumentArtifactRecord(TimestampedMixin, Base):
     byte_size: Mapped[int | None] = mapped_column(nullable=True)
 
     case: Mapped[CaseRecord] = relationship(back_populates="documents")
+    chunks: Mapped[list[ChunkRecord]] = relationship(
+        back_populates="artifact",
+        cascade="all, delete-orphan",
+        order_by="ChunkRecord.chunk_index",
+        lazy="selectin",
+    )
+
+
+class ChunkRecord(TimestampedMixin, Base):
+    __tablename__ = "chunks"
+
+    artifact_id: Mapped[str] = mapped_column(
+        ForeignKey("document_artifacts.id", ondelete="CASCADE"),
+    )
+    chunk_index: Mapped[int] = mapped_column(default=0)
+    section_title: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    text: Mapped[str] = mapped_column(Text)
+    page_number: Mapped[int | None] = mapped_column(nullable=True)
+    char_start: Mapped[int] = mapped_column(default=0)
+    char_end: Mapped[int] = mapped_column(default=0)
+    has_embedding: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    artifact: Mapped[DocumentArtifactRecord] = relationship(back_populates="chunks")
 
 
 class EvidenceNodeRecord(TimestampedMixin, Base):

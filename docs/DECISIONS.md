@@ -159,6 +159,47 @@ this scale. Can be upgraded to StreamingResponse when large exports justify it.
 
 ---
 
+## AD-013: background_mode defaults to false for sync fallback (2026-03-30)
+
+**Decision:** The `background_mode` setting defaults to `false`. When false (or when Redis is
+unreachable), POST /runs executes synchronously and returns `WorkflowRunResult`. When true and
+Redis is available, it enqueues via arq and returns `WorkflowRunEnqueueResult`.
+
+**Why:** All existing tests (50 pytest + 11 eval scenarios) assume synchronous execution and
+inspect the completed run result immediately. Breaking this would destroy the test safety net.
+Production deployments set `BACKGROUND_MODE=true` with Redis available.
+
+**Impact:** The POST /runs endpoint returns a union type. Frontend must handle both response shapes.
+Tests never need Redis or mocking (except the explicit enqueue test).
+
+---
+
+## AD-014: Redis dependency relaxed to >=5.0,<6 for arq compatibility (2026-03-30)
+
+**Decision:** Changed redis pin from `==7.4.0` to `>=5.0,<6` because arq 0.27 requires `redis<6`.
+
+**Why:** arq is the only production-grade async task queue for Python that integrates cleanly with
+our existing asyncio/SQLAlchemy stack. The redis 5.x line is stable and the API differences from
+7.x are negligible for our usage (basic get/set/pubsub).
+
+**Impact:** Docker Compose still runs Redis 7.4 server. The Python `redis` client library is 5.x.
+This is fine — the wire protocol is backward-compatible.
+
+---
+
+## AD-015: SSE stream polls at 1-second intervals (2026-03-30)
+
+**Decision:** The SSE endpoint (`GET /runs/{id}/stream`) polls the database every second, emits
+new trace events and status changes, and closes when the run reaches a terminal state.
+
+**Why:** Simple implementation that works with SQLite tests and PostgreSQL production. A Redis
+pub/sub approach would be more efficient but adds complexity for Phase 3. Can be upgraded later.
+
+**Impact:** The endpoint is usable for the frontend run viewer in Phase 4. For long-running AI
+runs (Phase 7+), the 1-second poll is adequate since runs take minutes, not milliseconds.
+
+---
+
 <!--
 Template for future decisions:
 

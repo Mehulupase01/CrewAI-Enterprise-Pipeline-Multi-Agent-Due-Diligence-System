@@ -18,6 +18,7 @@ from crewai_enterprise_pipeline_api.domain.models import (
     RunEventLevel,
     WorkflowRunCreate,
     WorkflowRunDetail,
+    WorkflowRunEnqueueResult,
     WorkflowRunResult,
     WorkflowRunStatus,
     WorkflowRunSummary,
@@ -61,6 +62,38 @@ class WorkflowService:
         if record is None:
             return None
         return WorkflowRunDetail.model_validate(record)
+
+    async def enqueue_run(
+        self,
+        case_id: str,
+        payload: WorkflowRunCreate,
+        redis_pool,
+    ) -> WorkflowRunEnqueueResult | None:
+        """Create a QUEUED run record and enqueue it via arq for background execution."""
+        case = await self.case_service._get_case_record(case_id)
+        if case is None:
+            return None
+
+        run = WorkflowRunRecord(
+            case_id=case_id,
+            requested_by=payload.requested_by,
+            note=payload.note,
+            status=WorkflowRunStatus.QUEUED.value,
+        )
+        self.session.add(run)
+        await self.session.commit()
+
+        from crewai_enterprise_pipeline_api.worker import run_workflow_job
+
+        await redis_pool.enqueue_job(
+            run_workflow_job.__name__,
+            case_id,
+            payload.requested_by,
+            payload.note,
+        )
+        logger.info("Enqueued workflow run %s for case %s", run.id, case_id)
+
+        return WorkflowRunEnqueueResult(run_id=run.id, case_id=case_id)
 
     async def execute_run(
         self,

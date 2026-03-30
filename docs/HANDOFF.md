@@ -7,7 +7,7 @@
 
 ## Current State
 
-**Active phase:** None (Phase 2 complete, ready to start Phase 3)
+**Active phase:** None (Phase 3 complete, ready to start Phase 4)
 **Phase status:** Complete
 **Last session:** 2026-03-30
 
@@ -16,24 +16,33 @@
 1. Read `CLAUDE.md` for project context and commands
 2. Read `docs/PROGRESS.md` for completion history
 3. Read `docs/DECISIONS.md` for design rationale
-4. Start Phase 3: Infrastructure Wiring -- Alembic + arq + Redis (see `docs/MASTERPLAN.pdf`)
+4. Start Phase 4: Frontend Mutations & Live Binding (see `docs/MASTERPLAN.pdf`)
 
 ## Files modified this phase (checkpoint)
 
-- `apps/api/src/.../domain/models.py` -- added CaseUpdate, IssueUpdate, RequestItemUpdate, QaItemUpdate, EvidenceItemUpdate schemas
-- `apps/api/src/.../services/case_service.py` -- added update_case, delete_case, get_document, delete_document, get_evidence, update_evidence, get_issue, update_issue, delete_issue, update_request_item, update_qa_item; pagination on list_cases
-- `apps/api/src/.../api/routes/cases.py` -- added PATCH, DELETE, individual GET endpoints for all sub-resources; pagination on list_cases; download endpoint for export packages
-- `apps/api/src/.../storage/service.py` -- added retrieve_bytes() method for file download
-- `apps/api/tests/test_phase2_api_completeness.py` -- 12 new tests
+- `apps/api/pyproject.toml` -- added arq>=0.26, relaxed redis pin to >=5.0,<6 (arq compat)
+- `apps/api/src/.../core/settings.py` -- added worker_concurrency, max_upload_mb, background_mode; updated current_phase
+- `apps/api/src/.../main.py` -- lifespan wires Redis pool when background_mode=true; graceful fallback
+- `apps/api/src/.../domain/models.py` -- added WorkflowRunEnqueueResult schema
+- `apps/api/src/.../services/workflow_service.py` -- added enqueue_run() method for arq dispatch
+- `apps/api/src/.../api/routes/cases.py` -- POST /runs checks redis_pool for async vs sync; added SSE stream endpoint
+- `apps/api/src/.../worker.py` -- NEW: arq WorkerSettings + run_workflow_job task
+- `apps/api/alembic.ini` -- NEW: Alembic config pointing to alembic/ dir
+- `apps/api/alembic/env.py` -- NEW: async migration environment using app Settings
+- `apps/api/alembic/script.py.mako` -- NEW: migration template
+- `apps/api/alembic/versions/001_initial_schema.py` -- NEW: initial migration (all 14 tables)
+- `apps/api/tests/test_phase3_infrastructure.py` -- NEW: 9 tests
+- `apps/api/tests/test_phase1_fixes.py` -- relaxed current_phase assertion
+- `scripts/dev-worker.ps1` -- NEW: arq worker launcher
 
 ## Files remaining this phase
 
-_None -- Phase 2 is complete._
+_None -- Phase 3 is complete._
 
 ## Tests run
 
 - ruff: clean
-- pytest: 41/41 pass (29 existing + 12 new)
+- pytest: 50/50 pass (41 existing + 9 new)
 - eval suites: 11/11 pass (5 suites, all 100%)
 - npm lint: clean
 - npm typecheck: clean
@@ -44,8 +53,9 @@ _None._
 
 ## Notes for next session
 
-- Phase 3 spec is in docs/MASTERPLAN.pdf (pages 17-18)
-- Phase 3 adds Alembic migrations, arq background worker via Redis, SSE endpoint
-- The API now has full CRUD: 5 PATCH endpoints, 3 DELETE endpoints, 3 individual GET endpoints, 1 download endpoint
-- Pagination is on list_cases only; other list endpoints can be paginated in a future pass if needed
-- The download endpoint streams the ZIP file from storage (local file:// or S3)
+- Phase 4 spec is in docs/MASTERPLAN.pdf
+- background_mode defaults to false; all existing tests pass with sync execution
+- arq 0.27 requires redis<6, so we relaxed our redis pin from ==7.4.0 to >=5.0,<6
+- SSE stream endpoint polls run status and emits trace events in real-time
+- The worker can run standalone: `arq crewai_enterprise_pipeline_api.worker.WorkerSettings`
+- Alembic initial migration captures all 14 tables; auto_create_schema still works for dev/test

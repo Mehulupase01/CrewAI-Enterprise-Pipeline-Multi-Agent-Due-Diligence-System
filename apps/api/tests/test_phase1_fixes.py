@@ -206,5 +206,5 @@ def test_health_overview_uses_config_settings(client) -> None:
     payload = response.json()
     # These should now come from Settings, not be hardcoded
     assert payload["product_name"] == "CrewAI Enterprise Pipeline"
-    assert "Phase 1" in payload["current_phase"]
+    assert "Phase" in payload["current_phase"]
     assert payload["country"] == "India"

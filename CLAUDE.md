@@ -20,7 +20,7 @@ India-focused due diligence operating system: FastAPI control plane (`apps/api/`
 
 Uses a **pack model**: motion packs (buy_side_diligence, credit_lending, vendor_onboarding) x sector packs (tech_saas_services, manufacturing_industrials, bfsi_nbfc) x India rule packs (MCA, SEBI, RBI, CCI, GST, labour, privacy).
 
-**Current state:** Phase 2 (API Completeness) complete. Full CRUD API: PATCH for cases/issues/evidence/requests/QA, DELETE for cases/documents/issues, individual GET for documents/evidence/issues, pagination on list_cases, ZIP download for export packages. CrewAI is installed but NOT wired into runtime -- `workflow_service.py` is fully deterministic. Redis is provisioned but unused. Alembic is installed but no migrations exist; schema relies on `AUTO_CREATE_SCHEMA=true`.
+**Current state:** Phase 3 (Infrastructure Wiring) complete. Full CRUD API with async background processing: arq worker dispatches workflow runs via Redis when `background_mode=true`, falls back to synchronous execution otherwise. Alembic migrations created (initial schema with 14 tables). SSE stream endpoint for real-time run progress. CrewAI is installed but NOT wired into runtime -- `workflow_service.py` is fully deterministic.
 
 ## Commands
 
@@ -32,13 +32,14 @@ Uses a **pack model**: motion packs (buy_side_diligence, credit_lending, vendor_
 ./scripts/dev-stack.ps1                          # Docker: Postgres 17, Redis 7.4, MinIO
 ./scripts/dev-api.ps1                            # FastAPI on :8000 with hot-reload
 ./scripts/dev-web.ps1                            # Next.js on :3000
+./scripts/dev-worker.ps1                         # arq background worker
 
 # Full verification gate
 ./scripts/check.ps1                              # ruff + pytest + evaluation + npm lint + typecheck
 
 # Individual checks (from apps/api/)
 python -m ruff check src tests                   # Lint
-python -m pytest                                 # All tests (41 tests)
+python -m pytest                                 # All tests (50 tests)
 python -m pytest tests/test_cases.py -k "test_name"  # Single test
 
 # Individual checks (from apps/web/)
@@ -65,7 +66,8 @@ Direct API run: `uvicorn crewai_enterprise_pipeline_api.main:app --host 0.0.0.0 
 
 Layered async: **Routes -> Services -> DB/Storage**
 
-- **`main.py`** -- App factory with lifespan. Auto-creates schema, adds `X-Request-ID` middleware.
+- **`main.py`** -- App factory with lifespan. Auto-creates schema, wires Redis pool (when background_mode=true), adds `X-Request-ID` middleware.
+- **`worker.py`** -- arq WorkerSettings + `run_workflow_job` background task. Run with: `arq crewai_enterprise_pipeline_api.worker.WorkerSettings`.
 - **`api/router.py`** -- Mounts `/system`, `/source-adapters`, `/cases` under `/api/v1/`.
 - **`api/security.py`** -- Header-based RBAC (`X-CEP-User-{Id,Name,Email,Role}`). Three tiers: read (VIEWER+), write (ANALYST+), reviewer (REVIEWER+). Auth bypassed when `APP_ENV` is development/test.
 - **`domain/models.py`** -- ~96 Pydantic schemas/enums. Naming: `*Create`, `*Summary`, `*Detail`, `*Result`. Key enums: `MotionPack`, `SectorPack`, `WorkstreamDomain`, `FlagSeverity`.
@@ -104,5 +106,5 @@ These are coupled across tests, evaluation fixtures, UI, and smoke checks:
 
 - Web fetch layer sends no auth headers; silently falls back to demo data on API errors
 - `scripts/bootstrap.ps1` hardcodes `C:\Users\Mehul-PC\anaconda3\Scripts\conda.exe`
-- No Alembic migration history; schema created at startup only
 - No frontend tests, no Playwright, no load tests
+- arq 0.27 requires redis<6; Python redis client is 5.x while Docker runs Redis 7.4 server (wire-compatible)

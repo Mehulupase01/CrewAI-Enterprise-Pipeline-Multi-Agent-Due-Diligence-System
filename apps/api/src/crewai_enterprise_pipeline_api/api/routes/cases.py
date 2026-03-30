@@ -1,7 +1,21 @@
+from __future__ import annotations
+
+import asyncio
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    Request,
+    UploadFile,
+    status,
+)
 from fastapi.responses import Response
+from starlette.responses import StreamingResponse
 
 from crewai_enterprise_pipeline_api.api.dependencies import DbSession
 from crewai_enterprise_pipeline_api.api.security import (
@@ -22,6 +36,7 @@ from crewai_enterprise_pipeline_api.domain.models import (
     ChecklistItemSummary,
     ChecklistItemUpdate,
     ChecklistSeedResult,
+    ChunkSummary,
     DocumentArtifactCreate,
     DocumentArtifactSummary,
     DocumentIngestionResult,
@@ -44,7 +59,9 @@ from crewai_enterprise_pipeline_api.domain.models import (
     RunExportPackageSummary,
     WorkflowRunCreate,
     WorkflowRunDetail,
+    WorkflowRunEnqueueResult,
     WorkflowRunResult,
+    WorkflowRunStatus,
     WorkflowRunSummary,
     WorkstreamDomain,
 )
@@ -170,6 +187,23 @@ async def delete_document(case_id: str, doc_id: str, session: DbSession) -> Resp
     if not deleted:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get(
+    "/{case_id}/documents/{doc_id}/chunks",
+    response_model=list[ChunkSummary],
+)
+async def list_chunks(
+    case_id: str,
+    doc_id: str,
+    session: DbSession,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(200, ge=1, le=1000),
+) -> list[ChunkSummary]:
+    chunks = await CaseService(session).list_chunks(case_id, doc_id, skip=skip, limit=limit)
+    if chunks is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+    return chunks
 
 
 @router.post(
@@ -567,7 +601,7 @@ async def list_runs(case_id: str, session: DbSession) -> list[WorkflowRunSummary
 
 @router.post(
     "/{case_id}/runs",
-    response_model=WorkflowRunResult,
+    response_model=WorkflowRunResult | WorkflowRunEnqueueResult,
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_write_access)],
 )
@@ -575,8 +609,17 @@ async def execute_run(
     case_id: str,
     payload: WorkflowRunCreate,
     session: DbSession,
-) -> WorkflowRunResult:
-    result = await WorkflowService(session).execute_run(case_id, payload)
+    request: Request,
+) -> WorkflowRunResult | WorkflowRunEnqueueResult:
+    service = WorkflowService(session)
+    redis_pool = getattr(request.app.state, "redis_pool", None)
+    if redis_pool is not None:
+        result = await service.enqueue_run(case_id, payload, redis_pool)
+        if result is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
+        return result
+
+    result = await service.execute_run(case_id, payload)
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
     return result
@@ -592,6 +635,63 @@ async def get_run(
     if run is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found")
     return run
+
+
+@router.get("/{case_id}/runs/{run_id}/stream")
+async def stream_run_progress(
+    case_id: str,
+    run_id: str,
+    session: DbSession,
+) -> StreamingResponse:
+    """SSE endpoint that polls run status and streams trace events.
+
+    Emits ``event: trace`` for each new trace event and ``event: status``
+    when the run status changes.  Closes the stream once the run reaches
+    a terminal state (completed / failed).
+    """
+
+    async def _event_generator():
+        last_event_count = 0
+        last_status: str | None = None
+
+        while True:
+            run = await WorkflowService(session).get_run(case_id, run_id)
+            if run is None:
+                yield f"event: error\ndata: Run {run_id} not found\n\n"
+                return
+
+            if run.status.value != last_status:
+                last_status = run.status.value
+                yield f"event: status\ndata: {last_status}\n\n"
+
+            events = run.trace_events
+            if len(events) > last_event_count:
+                for evt in events[last_event_count:]:
+                    import json
+
+                    payload = json.dumps(
+                        {
+                            "sequence_number": evt.sequence_number,
+                            "step_key": evt.step_key,
+                            "title": evt.title,
+                            "message": evt.message,
+                            "level": evt.level.value,
+                        }
+                    )
+                    yield f"event: trace\ndata: {payload}\n\n"
+                last_event_count = len(events)
+
+            if run.status in (WorkflowRunStatus.COMPLETED, WorkflowRunStatus.FAILED):
+                yield "event: done\ndata: stream closed\n\n"
+                return
+
+            await asyncio.sleep(1)
+
+    return StreamingResponse(
+        _event_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @router.post(
