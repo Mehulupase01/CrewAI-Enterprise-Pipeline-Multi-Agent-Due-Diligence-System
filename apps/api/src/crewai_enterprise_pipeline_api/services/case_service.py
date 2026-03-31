@@ -45,14 +45,9 @@ class CaseService:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def list_cases(
-        self, *, skip: int = 0, limit: int = 100
-    ) -> list[CaseSummary]:
+    async def list_cases(self, *, skip: int = 0, limit: int = 100) -> list[CaseSummary]:
         result = await self.session.execute(
-            select(CaseRecord)
-            .order_by(CaseRecord.created_at.desc())
-            .offset(skip)
-            .limit(limit)
+            select(CaseRecord).order_by(CaseRecord.created_at.desc()).offset(skip).limit(limit)
         )
         return [CaseSummary.model_validate(row) for row in result.scalars().all()]
 
@@ -245,9 +240,7 @@ class CaseService:
         case = await self._get_case_record(case_id)
         if case is None:
             return []
-        return [
-            ChecklistItemSummary.model_validate(item) for item in case.checklist_items
-        ]
+        return [ChecklistItemSummary.model_validate(item) for item in case.checklist_items]
 
     async def add_checklist_item(
         self,
@@ -327,9 +320,7 @@ class CaseService:
         await self.session.commit()
         return True
 
-    async def get_document(
-        self, case_id: str, doc_id: str
-    ) -> DocumentArtifactSummary | None:
+    async def get_document(self, case_id: str, doc_id: str) -> DocumentArtifactSummary | None:
         result = await self.session.execute(
             select(DocumentArtifactRecord).where(
                 DocumentArtifactRecord.id == doc_id,
@@ -375,9 +366,7 @@ class CaseService:
         await self.session.commit()
         return True
 
-    async def get_evidence(
-        self, case_id: str, evidence_id: str
-    ) -> EvidenceItemSummary | None:
+    async def get_evidence(self, case_id: str, evidence_id: str) -> EvidenceItemSummary | None:
         result = await self.session.execute(
             select(EvidenceNodeRecord).where(
                 EvidenceNodeRecord.id == evidence_id,
@@ -410,9 +399,7 @@ class CaseService:
         await self.session.refresh(record)
         return EvidenceItemSummary.model_validate(record)
 
-    async def get_issue(
-        self, case_id: str, issue_id: str
-    ) -> IssueRegisterItemSummary | None:
+    async def get_issue(self, case_id: str, issue_id: str) -> IssueRegisterItemSummary | None:
         result = await self.session.execute(
             select(IssueRegisterItemRecord).where(
                 IssueRegisterItemRecord.id == issue_id,

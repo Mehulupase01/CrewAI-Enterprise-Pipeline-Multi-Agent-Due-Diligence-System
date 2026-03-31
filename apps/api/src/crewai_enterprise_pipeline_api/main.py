@@ -28,9 +28,7 @@ async def _try_connect_redis(app: FastAPI) -> None:
     try:
         from arq.connections import RedisSettings, create_pool
 
-        pool = await create_pool(
-            RedisSettings(host=settings.redis_host, port=settings.redis_port)
-        )
+        pool = await create_pool(RedisSettings(host=settings.redis_host, port=settings.redis_port))
         app.state.redis_pool = pool
         logger.info("Redis pool connected (%s:%s)", settings.redis_host, settings.redis_port)
     except Exception:

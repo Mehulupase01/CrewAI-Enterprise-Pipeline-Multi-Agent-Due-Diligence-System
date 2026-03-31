@@ -119,6 +119,37 @@ class ForensicSummaryExpectation:
 
 
 @dataclass(slots=True)
+class BuySideAnalysisExpectation:
+    min_valuation_bridge_items: int = 0
+    min_spa_issue_count: int = 0
+    min_pmi_risk_count: int = 0
+    flag_substrings: tuple[str, ...] = ()
+    min_checklist_updates: int = 0
+
+
+@dataclass(slots=True)
+class BorrowerScorecardExpectation:
+    min_overall_score: int = 0
+    expected_rating: str | None = None
+    min_financial_health_score: int = 0
+    min_collateral_score: int = 0
+    min_covenant_score: int = 0
+    min_covenant_items: int = 0
+    min_checklist_updates: int = 0
+
+
+@dataclass(slots=True)
+class VendorRiskTierExpectation:
+    expected_tier: str | None = None
+    min_overall_score: int = 0
+    required_factors: tuple[str, ...] = ()
+    min_questionnaire_items: int = 0
+    required_certifications: tuple[str, ...] = ()
+    flag_substrings: tuple[str, ...] = ()
+    min_checklist_updates: int = 0
+
+
+@dataclass(slots=True)
 class ScenarioExpectation:
     approval_decision: str
     ready_for_export: bool
@@ -175,6 +206,9 @@ class EvaluationScenario:
     operations_summary_expectation: OperationsSummaryExpectation | None = None
     cyber_summary_expectation: CyberSummaryExpectation | None = None
     forensic_summary_expectation: ForensicSummaryExpectation | None = None
+    buy_side_analysis_expectation: BuySideAnalysisExpectation | None = None
+    borrower_scorecard_expectation: BorrowerScorecardExpectation | None = None
+    vendor_risk_tier_expectation: VendorRiskTierExpectation | None = None
     expectation: ScenarioExpectation = field(
         default_factory=lambda: ScenarioExpectation(
             approval_decision="changes_requested",
@@ -249,7 +283,7 @@ PHASE5_FIRST_SLICE_SCENARIOS: tuple[EvaluationScenario, ...] = (
             ready_for_export=False,
             report_status="not_ready",
             report_title="Executive Memo",
-            open_mandatory_items=9,
+            open_mandatory_items=34,
             min_blocking_issue_count=1,
             max_blocking_issue_count=1,
             min_issue_count=1,
@@ -310,8 +344,7 @@ PHASE5_FIRST_SLICE_SCENARIOS: tuple[EvaluationScenario, ...] = (
                     "question": "Have all board approvals for ESOP grants been reconciled?",
                     "requested_by": "Legal workstream",
                     "response": (
-                        "Yes, cap table and board minutes were matched to the ESOP "
-                        "register."
+                        "Yes, cap table and board minutes were matched to the ESOP register."
                     ),
                     "status": "answered",
                 }
@@ -365,10 +398,7 @@ PHASE5_FIRST_SLICE_SCENARIOS: tuple[EvaluationScenario, ...] = (
             RequestFixture(
                 payload={
                     "title": "Share top-customer renewal deck",
-                    "detail": (
-                        "Need renewal history, pricing protections, and churn "
-                        "sensitivity."
-                    ),
+                    "detail": ("Need renewal history, pricing protections, and churn sensitivity."),
                     "owner": "Commercial Lead",
                     "status": "open",
                 }
@@ -439,8 +469,7 @@ CREDIT_LENDING_EXPANSION_SCENARIOS: tuple[EvaluationScenario, ...] = (
                 payload={
                     "title": "Upload covenant waiver correspondence",
                     "detail": (
-                        "Need lender waivers, cure plan, and updated quarterly cash-flow "
-                        "forecast."
+                        "Need lender waivers, cure plan, and updated quarterly cash-flow forecast."
                     ),
                     "owner": "Treasury Lead",
                     "status": "open",
@@ -453,7 +482,7 @@ CREDIT_LENDING_EXPANSION_SCENARIOS: tuple[EvaluationScenario, ...] = (
             ready_for_export=False,
             report_status="not_ready",
             report_title="Credit Memo",
-            open_mandatory_items=11,
+            open_mandatory_items=32,
             min_blocking_issue_count=1,
             max_blocking_issue_count=1,
             min_issue_count=1,
@@ -575,7 +604,7 @@ VENDOR_ONBOARDING_EXPANSION_SCENARIOS: tuple[EvaluationScenario, ...] = (
             report_status="not_ready",
             report_title="Third-Party Risk Memo",
             min_syntheses=7,
-            open_mandatory_items=10,
+            open_mandatory_items=31,
             min_blocking_issue_count=1,
             max_blocking_issue_count=1,
             min_issue_count=1,
@@ -725,7 +754,7 @@ MANUFACTURING_INDUSTRIALS_EXPANSION_SCENARIOS: tuple[EvaluationScenario, ...] = 
             report_status="not_ready",
             report_title="Executive Memo",
             min_syntheses=7,
-            open_mandatory_items=9,
+            open_mandatory_items=34,
             min_blocking_issue_count=1,
             max_blocking_issue_count=1,
             min_issue_count=3,
@@ -876,7 +905,7 @@ BFSI_NBFC_EXPANSION_SCENARIOS: tuple[EvaluationScenario, ...] = (
             report_status="not_ready",
             report_title="Executive Memo",
             min_syntheses=7,
-            open_mandatory_items=10,
+            open_mandatory_items=38,
             min_blocking_issue_count=3,
             max_blocking_issue_count=3,
             min_issue_count=3,
@@ -1002,7 +1031,7 @@ PHASE8_FINANCIAL_QOE_SCENARIOS: tuple[EvaluationScenario, ...] = (
             ready_for_export=False,
             report_status="not_ready",
             report_title="Credit Memo",
-            open_mandatory_items=6,
+            open_mandatory_items=28,
             min_blocking_issue_count=0,
             max_blocking_issue_count=0,
             min_issue_count=0,
@@ -1155,7 +1184,7 @@ PHASE9_LEGAL_TAX_REGULATORY_SCENARIOS: tuple[EvaluationScenario, ...] = (
             ready_for_export=False,
             report_status="not_ready",
             report_title="Executive Memo",
-            open_mandatory_items=8,
+            open_mandatory_items=37,
             min_blocking_issue_count=0,
             max_blocking_issue_count=0,
             min_issue_count=0,
@@ -1293,7 +1322,7 @@ PHASE10_COMMERCIAL_OPERATIONS_CYBER_FORENSIC_SCENARIOS: tuple[EvaluationScenario
             ready_for_export=False,
             report_status="not_ready",
             report_title="Third-Party Risk Memo",
-            open_mandatory_items=3,
+            open_mandatory_items=24,
             min_blocking_issue_count=0,
             max_blocking_issue_count=0,
             min_issue_count=0,
@@ -1305,7 +1334,389 @@ PHASE10_COMMERCIAL_OPERATIONS_CYBER_FORENSIC_SCENARIOS: tuple[EvaluationScenario
 )
 
 
+PHASE11_MOTION_PACK_DEEPENING_SCENARIOS: tuple[EvaluationScenario, ...] = (
+    EvaluationScenario(
+        code="phase11_buy_side_motion_pack_case",
+        name="Phase 11 buy-side motion-pack case",
+        description=(
+            "Validates that the buy-side motion-pack engine produces valuation bridge, "
+            "SPA issue, and PMI-ready outputs with checklist automation."
+        ),
+        case_payload={
+            "name": "Project Phase11 Buy-Side",
+            "target_name": "Phase11 Buy-Side Systems Private Limited",
+            "summary": "Phase 11 evaluation scenario for buy-side motion-pack depth.",
+            "motion_pack": "buy_side_diligence",
+            "sector_pack": "tech_saas_services",
+            "country": "India",
+        },
+        upload_documents=(
+            UploadDocumentFixture(
+                title="Audited financial workbook",
+                filename="audited_financials.xlsx",
+                content="",
+                content_bytes=build_financial_workbook_bytes(bridge_variant="workflow"),
+                mime_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                document_kind="audited_financials",
+                source_kind="uploaded_dataroom",
+                workstream_domain="financial_qoe",
+                evidence_kind="metric",
+            ),
+            UploadDocumentFixture(
+                title="MCA secretarial summary",
+                filename="mca_secretarial_summary.txt",
+                content=(
+                    "MCA annual return filed and charge register current. "
+                    "Ananya Sharma DIN 01234567. "
+                    "Rohan Mehta DIN 07654321. "
+                    "Promoter shareholding 62.5% and Public shareholding 37.5%. "
+                    "Wholly owned subsidiary: Meridian Payments Private Limited. "
+                    "A current charge in favour of Axis Bank remains registered."
+                ),
+                mime_type="text/plain",
+                document_kind="mca_secretarial_summary",
+                source_kind="uploaded_dataroom",
+                workstream_domain="legal_corporate",
+                evidence_kind="fact",
+            ),
+            UploadDocumentFixture(
+                title="Enterprise customer MSA",
+                filename="enterprise_customer_msa.txt",
+                content=(
+                    "This Master Services Agreement may terminate upon a change of control. "
+                    "Assignment requires prior written consent. "
+                    "Either party may terminate for material breach. "
+                    "The supplier will indemnify the customer for third-party claims. "
+                    "Aggregate liability cap equals fees paid in the prior twelve months. "
+                    "This agreement is governed by the laws of India and subject to the "
+                    "jurisdiction of Mumbai courts."
+                ),
+                mime_type="text/plain",
+                document_kind="customer_msa",
+                source_kind="uploaded_dataroom",
+                workstream_domain="legal_corporate",
+                evidence_kind="contract",
+            ),
+            UploadDocumentFixture(
+                title="Tax statutory note",
+                filename="tax_statutory_note.txt",
+                content=(
+                    "GSTIN 27ABCDE1234F1Z5 remains active and current. "
+                    "GST returns filed on time. Income tax return current. "
+                    "TDS and payroll compliance current. "
+                    "Transfer pricing study current and arm's length. "
+                    "Deferred tax asset schedule current and compliant."
+                ),
+                mime_type="text/plain",
+                document_kind="tax_statutory_note",
+                source_kind="uploaded_dataroom",
+                workstream_domain="tax",
+                evidence_kind="fact",
+            ),
+            UploadDocumentFixture(
+                title="Commercial revenue concentration note",
+                filename="commercial_note.txt",
+                content=(
+                    "Top customer contributes 70 percent of ARR and renewal due next quarter. "
+                    "Net revenue retention remained at 118 percent while customer churn stayed "
+                    "at 4 percent. Pricing pressure increased after a discount requested by the "
+                    "top customer."
+                ),
+                mime_type="text/plain",
+                document_kind="commercial_kpi_pack",
+                source_kind="uploaded_dataroom",
+                workstream_domain="commercial",
+                evidence_kind="risk",
+            ),
+            UploadDocumentFixture(
+                title="Operations resilience note",
+                filename="operations_note.txt",
+                content=(
+                    "Top 3 suppliers account for 65 percent of raw material spend. "
+                    "A single plant handles all capacity and maintenance backlog "
+                    "remains visible. The business is founder dependent and the "
+                    "single plant head approves procurement."
+                ),
+                mime_type="text/plain",
+                document_kind="operations_review_pack",
+                source_kind="uploaded_dataroom",
+                workstream_domain="operations",
+                evidence_kind="risk",
+            ),
+            UploadDocumentFixture(
+                title="Cyber privacy assessment",
+                filename="cyber_note.txt",
+                content=(
+                    "Consent mechanism implemented and purpose limitation documented. "
+                    "Retention policy approved and breach notification procedure tested. "
+                    "Significant data fiduciary registration pending. "
+                    "ISO 27001 certified but no SOC 2 yet. "
+                    "A security incident involving unauthorized access was reported last year."
+                ),
+                mime_type="text/plain",
+                document_kind="cyber_privacy_pack",
+                source_kind="uploaded_dataroom",
+                workstream_domain="cyber_privacy",
+                evidence_kind="risk",
+            ),
+            UploadDocumentFixture(
+                title="Forensic integrity review",
+                filename="forensic_note.txt",
+                content=(
+                    "Related party sales to a promoter-linked group company were identified. "
+                    "A common director appears across the buyer and vendor entities. "
+                    "Round tripping and fund diversion concerns were flagged in the bank trail. "
+                    "Revenue recognition used a bill and hold side letter. "
+                    "A litigation claim remains pending."
+                ),
+                mime_type="text/plain",
+                document_kind="forensic_review_pack",
+                source_kind="uploaded_dataroom",
+                workstream_domain="forensic_compliance",
+                evidence_kind="risk",
+            ),
+        ),
+        requests=(
+            RequestFixture(
+                payload={
+                    "title": "Upload Day 1 owner map",
+                    "detail": "Need named owners for Day 1 and Day 100 integration dependencies.",
+                    "owner": "PMI Lead",
+                    "status": "open",
+                }
+            ),
+        ),
+        buy_side_analysis_expectation=BuySideAnalysisExpectation(
+            min_valuation_bridge_items=4,
+            min_spa_issue_count=3,
+            min_pmi_risk_count=3,
+            flag_substrings=("valuation bridge", "SPA drafting", "PMI planning"),
+            min_checklist_updates=4,
+        ),
+        expectation=ScenarioExpectation(
+            approval_decision="changes_requested",
+            ready_for_export=False,
+            report_status="not_ready",
+            report_title="Executive Memo",
+            min_issue_count=0,
+            min_open_request_count=1,
+            min_evidence_count=8,
+        ),
+    ),
+    EvaluationScenario(
+        code="phase11_credit_motion_pack_case",
+        name="Phase 11 credit motion-pack case",
+        description=(
+            "Validates that the credit motion-pack engine produces a borrower scorecard, "
+            "collateral posture, and covenant tracking with checklist automation."
+        ),
+        case_payload={
+            "name": "Project Phase11 Credit",
+            "target_name": "Phase11 Credit Systems Private Limited",
+            "summary": "Phase 11 evaluation scenario for credit motion-pack depth.",
+            "motion_pack": "credit_lending",
+            "sector_pack": "tech_saas_services",
+            "country": "India",
+        },
+        upload_documents=(
+            UploadDocumentFixture(
+                title="Borrower financial workbook",
+                filename="borrower_financial_pack.xlsx",
+                content="",
+                content_bytes=build_financial_workbook_bytes(bridge_variant="credit"),
+                mime_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                document_kind="borrower_financial_pack",
+                source_kind="uploaded_dataroom",
+                workstream_domain="financial_qoe",
+                evidence_kind="metric",
+            ),
+            UploadDocumentFixture(
+                title="MCA secretarial summary",
+                filename="mca_secretarial_summary.txt",
+                content=(
+                    "MCA annual return filed and charge register current. "
+                    "Ananya Sharma DIN 01234567. "
+                    "Rohan Mehta DIN 07654321. "
+                    "A current charge in favour of Axis Bank remains registered."
+                ),
+                mime_type="text/plain",
+                document_kind="mca_secretarial_summary",
+                source_kind="uploaded_dataroom",
+                workstream_domain="legal_corporate",
+                evidence_kind="fact",
+            ),
+            UploadDocumentFixture(
+                title="Lender monitoring note",
+                filename="lender_monitoring_note.txt",
+                content=(
+                    "The borrower breached a covenant in Q4 and debt service coverage fell "
+                    "below the internal threshold. Waiver pending. Days past due moved to 38."
+                ),
+                mime_type="text/plain",
+                document_kind="lender_monitoring_note",
+                source_kind="uploaded_dataroom",
+                workstream_domain="financial_qoe",
+                evidence_kind="risk",
+            ),
+        ),
+        borrower_scorecard_expectation=BorrowerScorecardExpectation(
+            min_overall_score=1,
+            min_financial_health_score=1,
+            min_collateral_score=1,
+            min_covenant_score=1,
+            min_covenant_items=1,
+            min_checklist_updates=3,
+        ),
+        expectation=ScenarioExpectation(
+            approval_decision="changes_requested",
+            ready_for_export=False,
+            report_status="not_ready",
+            report_title="Credit Memo",
+            min_issue_count=0,
+            min_open_request_count=0,
+            min_evidence_count=3,
+        ),
+    ),
+    EvaluationScenario(
+        code="phase11_vendor_motion_pack_case",
+        name="Phase 11 vendor motion-pack case",
+        description=(
+            "Validates that the vendor motion-pack engine produces vendor tiering, "
+            "questionnaire depth, certification asks, and checklist automation."
+        ),
+        case_payload={
+            "name": "Project Phase11 Vendor",
+            "target_name": "Phase11 Vendor Systems Private Limited",
+            "summary": "Phase 11 evaluation scenario for vendor motion-pack depth.",
+            "motion_pack": "vendor_onboarding",
+            "sector_pack": "tech_saas_services",
+            "country": "India",
+        },
+        upload_documents=(
+            UploadDocumentFixture(
+                title="Vendor financial workbook",
+                filename="vendor_financial_pack.xlsx",
+                content="",
+                content_bytes=build_financial_workbook_bytes(),
+                mime_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                document_kind="audited_financials",
+                source_kind="uploaded_dataroom",
+                workstream_domain="financial_qoe",
+                evidence_kind="metric",
+            ),
+            UploadDocumentFixture(
+                title="Vendor regulatory note",
+                filename="vendor_regulatory_note.txt",
+                content=(
+                    "Vendor registration remains current. "
+                    "No sanctions hits were detected. "
+                    "No licensing restriction was identified for the proposed scope."
+                ),
+                mime_type="text/plain",
+                document_kind="vendor_regulatory_note",
+                source_kind="uploaded_dataroom",
+                workstream_domain="regulatory",
+                evidence_kind="fact",
+            ),
+            UploadDocumentFixture(
+                title="Commercial revenue concentration note",
+                filename="commercial_note.txt",
+                content=(
+                    "Top customer contributes 70 percent of ARR and renewal due next quarter. "
+                    "Net revenue retention remained at 118 percent while customer churn stayed "
+                    "at 4 percent. Pricing pressure increased after a discount requested by the "
+                    "top customer."
+                ),
+                mime_type="text/plain",
+                document_kind="commercial_kpi_pack",
+                source_kind="uploaded_dataroom",
+                workstream_domain="commercial",
+                evidence_kind="risk",
+            ),
+            UploadDocumentFixture(
+                title="Operations resilience note",
+                filename="operations_note.txt",
+                content=(
+                    "Top 3 suppliers account for 65 percent of raw material spend. "
+                    "A single plant handles all capacity and maintenance backlog "
+                    "remains visible. The business is founder dependent and the "
+                    "single plant head approves procurement."
+                ),
+                mime_type="text/plain",
+                document_kind="operations_review_pack",
+                source_kind="uploaded_dataroom",
+                workstream_domain="operations",
+                evidence_kind="risk",
+            ),
+            UploadDocumentFixture(
+                title="Cyber privacy assessment",
+                filename="cyber_note.txt",
+                content=(
+                    "Consent mechanism implemented and purpose limitation documented. "
+                    "Retention policy approved and breach notification procedure tested. "
+                    "Significant data fiduciary registration pending. "
+                    "ISO 27001 certified but no SOC 2 yet. "
+                    "A security incident involving unauthorized access was reported last year."
+                ),
+                mime_type="text/plain",
+                document_kind="cyber_privacy_pack",
+                source_kind="uploaded_dataroom",
+                workstream_domain="cyber_privacy",
+                evidence_kind="risk",
+            ),
+            UploadDocumentFixture(
+                title="Forensic integrity review",
+                filename="forensic_note.txt",
+                content=(
+                    "Related party sales to a promoter-linked group company were identified. "
+                    "A common director appears across the buyer and vendor entities. "
+                    "Round tripping and fund diversion concerns were flagged in the bank trail. "
+                    "Revenue recognition used a bill and hold side letter. "
+                    "A litigation claim remains pending."
+                ),
+                mime_type="text/plain",
+                document_kind="forensic_review_pack",
+                source_kind="uploaded_dataroom",
+                workstream_domain="forensic_compliance",
+                evidence_kind="risk",
+            ),
+        ),
+        vendor_risk_tier_expectation=VendorRiskTierExpectation(
+            expected_tier="tier_2_high",
+            min_overall_score=1,
+            required_factors=(
+                "service_criticality",
+                "regulatory_screening",
+                "cyber_privacy_posture",
+                "integrity_risk",
+                "operational_resilience",
+                "financial_resilience",
+            ),
+            min_questionnaire_items=5,
+            required_certifications=("SOC 2 Type II", "Business Continuity Attestation"),
+            flag_substrings=("Vendor tier classified", "Additional attestations required"),
+            min_checklist_updates=4,
+        ),
+        expectation=ScenarioExpectation(
+            approval_decision="changes_requested",
+            ready_for_export=False,
+            report_status="not_ready",
+            report_title="Third-Party Risk Memo",
+            min_issue_count=0,
+            min_open_request_count=0,
+            min_evidence_count=6,
+        ),
+    ),
+)
+
+
 EVALUATION_SUITES: dict[str, EvaluationSuiteDefinition] = {
+    "phase11_motion_pack_deepening": EvaluationSuiteDefinition(
+        key="phase11_motion_pack_deepening",
+        title="Phase 11 Motion Pack Deepening Evaluation",
+        artifact_prefix="phase11-motion-pack-deepening",
+        scenarios=PHASE11_MOTION_PACK_DEEPENING_SCENARIOS,
+    ),
     "phase10_commercial_operations_cyber_forensic": EvaluationSuiteDefinition(
         key="phase10_commercial_operations_cyber_forensic",
         title="Phase 10 Commercial Operations Cyber Forensic Evaluation",

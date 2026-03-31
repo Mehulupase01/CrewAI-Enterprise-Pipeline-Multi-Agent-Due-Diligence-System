@@ -40,11 +40,7 @@ class ComplianceMatrixLookupTool(BaseTool):
     def _run(self, regulation: str | None = None) -> str:
         items = self.summary.items
         if regulation:
-            items = [
-                item
-                for item in items
-                if regulation.lower() in item.regulation.lower()
-            ]
+            items = [item for item in items if regulation.lower() in item.regulation.lower()]
         if not items:
             return "No compliance-matrix item matched the requested filter."
         lines = []
@@ -55,13 +51,9 @@ class ComplianceMatrixLookupTool(BaseTool):
                 else "evidence_ids=none"
             )
             header = (
-                f"- {item.regulation} [{item.status.value}] "
-                f"via {item.regulator} | {evidence_note}"
+                f"- {item.regulation} [{item.status.value}] via {item.regulator} | {evidence_note}"
             )
-            lines.append(
-                f"{header}\n"
-                f"  Notes: {item.notes}"
-            )
+            lines.append(f"{header}\n  Notes: {item.notes}")
         return "\n".join(lines)
 
 
@@ -83,11 +75,10 @@ class ContractReviewLookupTool(BaseTool):
             return "No contract-review item matched the requested filter."
         lines = []
         for review in reviews:
-            clauses = ", ".join(
-                clause.clause_key
-                for clause in review.clauses
-                if clause.present
-            ) or "no structured clauses detected"
+            clauses = (
+                ", ".join(clause.clause_key for clause in review.clauses if clause.present)
+                or "no structured clauses detected"
+            )
             header = (
                 f"- {review.contract_title} ({review.contract_type}) | "
                 f"governing_law={review.governing_law or 'unknown'}"
@@ -120,8 +111,7 @@ class TaxComplianceLookupTool(BaseTool):
                 else "evidence_ids=none"
             )
             lines.append(
-                f"- {item.tax_area} [{item.status.value}] | {evidence_note}\n"
-                f"  Notes: {item.notes}"
+                f"- {item.tax_area} [{item.status.value}] | {evidence_note}\n  Notes: {item.notes}"
             )
         if self.summary.gstins:
             lines.append(f"GSTINs: {', '.join(self.summary.gstins)}")
@@ -160,18 +150,14 @@ def format_phase9_snapshot(
         if legal_summary.flags:
             lines.append(f"- Legal flags: {'; '.join(legal_summary.flags[:3])}")
     if tax_summary is not None:
-        known_items = [
-            item for item in tax_summary.items if item.status.value != "unknown"
-        ]
+        known_items = [item for item in tax_summary.items if item.status.value != "unknown"]
         lines.append(
             f"- Tax: gstins={len(tax_summary.gstins)}, areas_with_evidence={len(known_items)}"
         )
         if tax_summary.flags:
             lines.append(f"- Tax flags: {'; '.join(tax_summary.flags[:3])}")
     if compliance_summary is not None:
-        known_items = [
-            item for item in compliance_summary.items if item.status.value != "unknown"
-        ]
+        known_items = [item for item in compliance_summary.items if item.status.value != "unknown"]
         lines.append(
             f"- Regulatory: matrix_items={len(compliance_summary.items)}, "
             f"known_statuses={len(known_items)}"

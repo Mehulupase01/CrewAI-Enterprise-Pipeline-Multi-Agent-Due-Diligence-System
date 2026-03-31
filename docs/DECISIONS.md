@@ -482,6 +482,16 @@ name-based).
 
 ---
 
+## AD-043: Motion-pack deepening must be deterministic structured state first, not prompt-only specialization (2026-03-31)
+
+**Decision:** Phase 11 motion-pack depth for buy-side diligence, credit/lending, and vendor onboarding must be implemented as deterministic structured state exposed through services and endpoints first. CrewAI motion-pack specialists may enrich analysis, but they cannot be the only place where valuation bridges, borrower scorecards, or vendor risk tiers exist.
+
+**Why:** Motion-pack outputs are core operating artifacts, not optional narrative garnish. Analysts, evaluation scenarios, approvals, reports, and future UI panels all need the same canonical structured state. If those outputs only exist in prompts or agent prose, the platform becomes hard to test, hard to audit, and inconsistent across deterministic and LLM-enabled runs.
+
+**Impact:** `buy_side_service.py`, `credit_service.py`, `vendor_service.py`, `cases.py`, `workflow_service.py`, `report_service.py`, `synthesis_service.py`, `agents/phase11_tools.py`, and `agents/packs/*.py` are jointly part of the Phase 11 contract. Future deepening phases should follow the same rule: new domain or pack depth lands as deterministic structured state first, then as CrewAI-specialist augmentation.
+
+---
+
 <!--
 Template for future decisions:
 

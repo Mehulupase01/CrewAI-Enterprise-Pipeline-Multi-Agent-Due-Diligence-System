@@ -26,9 +26,7 @@ class ParsedDocument:
 class DocumentParser:
     def parse(self, filename: str, mime_type: str | None, content: bytes) -> ParsedDocument:
         lower_name = filename.lower()
-        if mime_type in {"text/plain", "text/markdown"} or lower_name.endswith(
-            (".txt", ".md")
-        ):
+        if mime_type in {"text/plain", "text/markdown"} or lower_name.endswith((".txt", ".md")):
             return ParsedDocument(parser_name="plaintext", text=self._decode_text(content))
         if mime_type == "application/json" or lower_name.endswith(".json"):
             return ParsedDocument(parser_name="json", text=self._parse_json(content))

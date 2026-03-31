@@ -251,7 +251,8 @@ class RegulatoryService:
             "regulatory.licensing_and_borrowing_constraints": any(
                 item.status != ComplianceStatus.UNKNOWN
                 for item in summary.items
-                if item.regulation in {
+                if item.regulation
+                in {
                     "Licensing / Registration Restrictions",
                     "RBI NBFC Registration",
                     "RBI / Prudential Returns",
@@ -309,9 +310,7 @@ class RegulatoryService:
         if known_items:
             fragments.append(
                 "Statuses: "
-                + ", ".join(
-                    f"{item.regulation}={item.status.value}" for item in known_items[:4]
-                )
+                + ", ".join(f"{item.regulation}={item.status.value}" for item in known_items[:4])
                 + "."
             )
         return " ".join(fragments)

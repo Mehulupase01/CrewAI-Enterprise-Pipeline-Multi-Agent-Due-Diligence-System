@@ -124,35 +124,39 @@ class SearchService:
         conflicts: list[EvidenceConflict] = []
 
         for i, ev_a in enumerate(evidence_items):
-            for ev_b in evidence_items[i + 1:]:
+            for ev_b in evidence_items[i + 1 :]:
                 sim = self._evidence_similarity(ev_a, ev_b, chunk_by_text)
                 if sim is None:
                     continue
 
                 if sim > 0.98:
-                    conflicts.append(EvidenceConflict(
-                        evidence_a_id=ev_a.id,
-                        evidence_b_id=ev_b.id,
-                        similarity=round(sim, 4),
-                        conflict_type=ConflictType.DUPLICATE,
-                        explanation=(
-                            f"Evidence items are near-identical "
-                            f"(similarity {sim:.2%}): "
-                            f"'{ev_a.title}' and '{ev_b.title}'"
-                        ),
-                    ))
+                    conflicts.append(
+                        EvidenceConflict(
+                            evidence_a_id=ev_a.id,
+                            evidence_b_id=ev_b.id,
+                            similarity=round(sim, 4),
+                            conflict_type=ConflictType.DUPLICATE,
+                            explanation=(
+                                f"Evidence items are near-identical "
+                                f"(similarity {sim:.2%}): "
+                                f"'{ev_a.title}' and '{ev_b.title}'"
+                            ),
+                        )
+                    )
                 elif sim > 0.92 and ev_a.excerpt.strip() != ev_b.excerpt.strip():
-                    conflicts.append(EvidenceConflict(
-                        evidence_a_id=ev_a.id,
-                        evidence_b_id=ev_b.id,
-                        similarity=round(sim, 4),
-                        conflict_type=ConflictType.CONTRADICTORY,
-                        explanation=(
-                            f"Evidence items are highly similar "
-                            f"(similarity {sim:.2%}) but contain "
-                            f"different values: '{ev_a.title}' vs '{ev_b.title}'"
-                        ),
-                    ))
+                    conflicts.append(
+                        EvidenceConflict(
+                            evidence_a_id=ev_a.id,
+                            evidence_b_id=ev_b.id,
+                            similarity=round(sim, 4),
+                            conflict_type=ConflictType.CONTRADICTORY,
+                            explanation=(
+                                f"Evidence items are highly similar "
+                                f"(similarity {sim:.2%}) but contain "
+                                f"different values: '{ev_a.title}' vs '{ev_b.title}'"
+                            ),
+                        )
+                    )
 
         return conflicts
 
@@ -172,8 +176,9 @@ class SearchService:
             # Filter by evidence items linked to this workstream
             subquery = (
                 select(DocumentArtifactRecord.id)
-                .join(EvidenceNodeRecord,
-                      EvidenceNodeRecord.artifact_id == DocumentArtifactRecord.id)
+                .join(
+                    EvidenceNodeRecord, EvidenceNodeRecord.artifact_id == DocumentArtifactRecord.id
+                )
                 .where(
                     DocumentArtifactRecord.case_id == case_id,
                     EvidenceNodeRecord.workstream_domain == workstream_domain.value,

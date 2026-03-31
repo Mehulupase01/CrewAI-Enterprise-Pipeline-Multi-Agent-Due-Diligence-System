@@ -39,18 +39,17 @@ class SynthesisService:
         operations_summary=None,
         cyber_summary=None,
         forensic_summary=None,
+        buy_side_analysis=None,
+        borrower_scorecard=None,
+        vendor_risk_tier=None,
     ) -> list[WorkstreamSynthesisRecord]:
         syntheses: list[WorkstreamSynthesisRecord] = []
         for workstream in WorkstreamDomain:
             scoped_checklist = [
-                item
-                for item in case.checklist_items
-                if item.workstream_domain == workstream.value
+                item for item in case.checklist_items if item.workstream_domain == workstream.value
             ]
             scoped_evidence = [
-                item
-                for item in case.evidence_items
-                if item.workstream_domain == workstream.value
+                item for item in case.evidence_items if item.workstream_domain == workstream.value
             ]
             scoped_issues = [
                 item
@@ -73,14 +72,10 @@ class SynthesisService:
                 if item.status == ChecklistItemStatus.BLOCKED.value
             ]
             blocking_issues = [
-                item
-                for item in scoped_issues
-                if item.severity in BLOCKING_SEVERITIES
+                item for item in scoped_issues if item.severity in BLOCKING_SEVERITIES
             ]
 
-            blocker_count = (
-                len(blocking_issues) + len(blocked_checklist) + len(open_mandatory)
-            )
+            blocker_count = len(blocking_issues) + len(blocked_checklist) + len(open_mandatory)
             if blocking_issues or blocked_checklist:
                 status = WorkstreamSynthesisStatus.BLOCKED
             elif open_mandatory or scoped_issues:
@@ -102,6 +97,9 @@ class SynthesisService:
                 operations_summary,
                 cyber_summary,
                 forensic_summary,
+                buy_side_analysis,
+                borrower_scorecard,
+                vendor_risk_tier,
             )
             recommended_next_action = self._build_next_action(
                 scoped_issues,
@@ -187,6 +185,9 @@ class SynthesisService:
         operations_summary,
         cyber_summary,
         forensic_summary,
+        buy_side_analysis,
+        borrower_scorecard,
+        vendor_risk_tier,
     ) -> str:
         evidence_note = (
             f"The evidence ledger includes {len(scoped_evidence)} items"
@@ -211,8 +212,7 @@ class SynthesisService:
                 key=lambda issue: self._severity_rank(issue.severity),
             )[0]
             top_issue_note = (
-                f" Highest-priority concern: {top_issue.title}. "
-                f"Impact: {top_issue.business_impact}"
+                f" Highest-priority concern: {top_issue.title}. Impact: {top_issue.business_impact}"
             )
 
         financial_note = ""
@@ -228,9 +228,7 @@ class SynthesisService:
             if latest.ebitda is not None:
                 metrics.append(f"reported EBITDA {latest.ebitda:.2f}")
             if financial_summary.normalized_ebitda is not None:
-                metrics.append(
-                    f"normalized EBITDA {financial_summary.normalized_ebitda:.2f}"
-                )
+                metrics.append(f"normalized EBITDA {financial_summary.normalized_ebitda:.2f}")
             if metrics:
                 financial_note = " Parsed financial package shows " + ", ".join(metrics) + "."
             if financial_summary.flags:
@@ -247,9 +245,7 @@ class SynthesisService:
             if legal_summary.flags:
                 phase9_note += " Flags: " + "; ".join(legal_summary.flags[:3]) + "."
         elif workstream == WorkstreamDomain.TAX and tax_summary is not None:
-            known_tax_items = [
-                item for item in tax_summary.items if item.status.value != "unknown"
-            ]
+            known_tax_items = [item for item in tax_summary.items if item.status.value != "unknown"]
             phase9_note = (
                 " Structured tax analysis identified "
                 f"{len(known_tax_items)} tax areas with evidence and "
@@ -259,9 +255,7 @@ class SynthesisService:
                 phase9_note += " Flags: " + "; ".join(tax_summary.flags[:3]) + "."
         elif workstream == WorkstreamDomain.REGULATORY and compliance_summary is not None:
             known_matrix_items = [
-                item
-                for item in compliance_summary.items
-                if item.status.value != "unknown"
+                item for item in compliance_summary.items if item.status.value != "unknown"
             ]
             phase9_note = (
                 " Compliance matrix generated "
@@ -277,9 +271,7 @@ class SynthesisService:
                 f"{len(commercial_summary.renewal_signals)} renewal signals."
             )
             if commercial_summary.net_revenue_retention is not None:
-                phase9_note += (
-                    f" NRR: {commercial_summary.net_revenue_retention:.0%}."
-                )
+                phase9_note += f" NRR: {commercial_summary.net_revenue_retention:.0%}."
             if commercial_summary.churn_rate is not None:
                 phase9_note += f" Churn: {commercial_summary.churn_rate:.0%}."
             if commercial_summary.flags:
@@ -311,17 +303,63 @@ class SynthesisService:
                 phase9_note += " Flags: " + "; ".join(cyber_summary.flags[:3]) + "."
         elif workstream == WorkstreamDomain.FORENSIC_COMPLIANCE and forensic_summary is not None:
             phase9_note = (
-                " Structured forensic analysis identified "
-                f"{len(forensic_summary.flags)} red flags."
+                f" Structured forensic analysis identified {len(forensic_summary.flags)} red flags."
             )
             if forensic_summary.flags:
-                phase9_note += " Flag types: " + ", ".join(
-                    flag.flag_type.value for flag in forensic_summary.flags[:4]
-                ) + "."
+                phase9_note += (
+                    " Flag types: "
+                    + ", ".join(flag.flag_type.value for flag in forensic_summary.flags[:4])
+                    + "."
+                )
+
+        phase11_note = ""
+        if workstream == WorkstreamDomain.FINANCIAL_QOE:
+            if buy_side_analysis is not None:
+                phase11_note = (
+                    " Phase 11 buy-side deepening translated the financial lane into "
+                    f"{len(buy_side_analysis.valuation_bridge)} valuation bridge items."
+                )
+            elif borrower_scorecard is not None:
+                phase11_note = (
+                    " Phase 11 credit deepening scored financial health at "
+                    f"{borrower_scorecard.financial_health.score}/100."
+                )
+            elif vendor_risk_tier is not None:
+                financial_resilience_score = next(
+                    (
+                        item.score
+                        for item in vendor_risk_tier.scoring_breakdown
+                        if item.factor == "financial_resilience"
+                    ),
+                    0,
+                )
+                phase11_note = (
+                    " Phase 11 vendor deepening scored financial resilience at "
+                    f"{financial_resilience_score}/100."
+                )
+        elif workstream == WorkstreamDomain.LEGAL_CORPORATE and buy_side_analysis is not None:
+            phase11_note = (
+                " Phase 11 buy-side deepening translated legal findings into "
+                f"{len(buy_side_analysis.spa_issues)} SPA issue clusters."
+            )
+        elif workstream == WorkstreamDomain.REGULATORY and vendor_risk_tier is not None:
+            phase11_note = (
+                f" Phase 11 vendor deepening classified the vendor as {vendor_risk_tier.tier}."
+            )
+        elif workstream == WorkstreamDomain.CYBER_PRIVACY and vendor_risk_tier is not None:
+            phase11_note = (
+                " Phase 11 vendor deepening identified "
+                f"{len(vendor_risk_tier.certifications_required)} outstanding certification asks."
+            )
+        elif workstream == WorkstreamDomain.OPERATIONS and buy_side_analysis is not None:
+            phase11_note = (
+                " Phase 11 buy-side deepening produced "
+                f"{len(buy_side_analysis.pmi_risks)} PMI readiness items."
+            )
 
         return (
             f"{self._label_for_domain(workstream.value)} synthesis: {evidence_note} {issue_note}. "
-            f"{checklist_note}{top_issue_note}{financial_note}{phase9_note}"
+            f"{checklist_note}{top_issue_note}{financial_note}{phase9_note}{phase11_note}"
         )
 
     def _build_next_action(

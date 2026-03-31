@@ -143,8 +143,7 @@ class CyberService:
 
         snapshots = self._select_snapshots(collect_artifact_snapshots(case))
         controls = [
-            self._evaluate_control(definition, snapshots)
-            for definition in CONTROL_DEFINITIONS
+            self._evaluate_control(definition, snapshots) for definition in CONTROL_DEFINITIONS
         ]
         certifications = self._extract_certifications(controls)
         breach_history = self._extract_breach_history(snapshots)
@@ -201,8 +200,10 @@ class CyberService:
             for snapshot in matched_snapshots
             for window in self._keyword_windows(snapshot.text, definition.keywords)
         ]
-        joined = "\n".join(windows).lower() if windows else "\n".join(
-            snapshot.text.lower() for snapshot in matched_snapshots
+        joined = (
+            "\n".join(windows).lower()
+            if windows
+            else "\n".join(snapshot.text.lower() for snapshot in matched_snapshots)
         )
         positive_patterns = self._positive_patterns_for_control(definition.control_key)
         negative = self._contains_signal(joined, definition.negative_patterns)
@@ -280,14 +281,10 @@ class CyberService:
             if control.status == ComplianceStatus.NON_COMPLIANT:
                 flags.append(f"{label} appears non-compliant.")
             elif control.status == ComplianceStatus.PARTIALLY_COMPLIANT:
-                flags.append(
-                    f"{label} appears partially compliant or under "
-                    "remediation."
-                )
+                flags.append(f"{label} appears partially compliant or under remediation.")
         if not certifications:
             flags.append(
-                "No ISO 27001 or SOC 2 certification signal was detected in cyber "
-                "materials."
+                "No ISO 27001 or SOC 2 certification signal was detected in cyber materials."
             )
         if breach_history:
             flags.append("Cyber or privacy incident history was detected in uploaded materials.")
@@ -410,7 +407,5 @@ class CyberService:
 
     def _sentences(self, text: str) -> list[str]:
         return [
-            segment.strip()
-            for segment in re.split(r"(?<=[.!?])\s+|\n+", text)
-            if segment.strip()
+            segment.strip() for segment in re.split(r"(?<=[.!?])\s+|\n+", text) if segment.strip()
         ]

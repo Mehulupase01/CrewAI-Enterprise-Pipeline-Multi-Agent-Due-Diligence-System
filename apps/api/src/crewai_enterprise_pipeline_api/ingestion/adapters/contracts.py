@@ -32,8 +32,7 @@ def get_adapter_catalog() -> list[SourceAdapterSummary]:
             category=SourceAdapterCategory.PUBLIC,
             title="Listed Company Disclosures",
             purpose=(
-                "Capture listed-entity filings, disclosures, and exchange-linked "
-                "evidence trails."
+                "Capture listed-entity filings, disclosures, and exchange-linked evidence trails."
             ),
             supports_india=True,
             supports_live_credentials=False,

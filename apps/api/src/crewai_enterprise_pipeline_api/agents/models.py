@@ -10,8 +10,7 @@ class WorkstreamAnalysisOutput(BaseModel):
 
     status: str = Field(
         description=(
-            "Workstream status. Must be one of: "
-            "ready_for_review, needs_follow_up, blocked"
+            "Workstream status. Must be one of: ready_for_review, needs_follow_up, blocked"
         ),
     )
     headline: str = Field(
@@ -54,4 +53,27 @@ class ExecutiveSummaryOutput(BaseModel):
     )
     recommended_next_steps: list[str] = Field(
         description="Top 3-5 recommended next steps for the review committee.",
+    )
+
+
+class MotionPackAnalysisOutput(BaseModel):
+    """Structured output from the Phase 11 motion-pack specialist agent."""
+
+    status: str = Field(
+        description="Motion-pack status. Must be ready_for_review, needs_follow_up, or blocked.",
+    )
+    headline: str = Field(
+        description="One-line summary of the motion-pack posture.",
+    )
+    narrative: str = Field(
+        description=(
+            "2-4 paragraph analysis focused on the motion-pack specific outputs such as "
+            "valuation bridge, borrower scorecard, or vendor risk tier."
+        ),
+    )
+    key_items: list[str] = Field(
+        description="Top 3-6 motion-pack findings or decision points.",
+    )
+    recommended_actions: list[str] = Field(
+        description="Top 3-5 recommended follow-up actions for the motion pack.",
     )

@@ -25,9 +25,11 @@ from crewai_enterprise_pipeline_api.domain.models import (
     WorkflowRunSummary,
     WorkstreamSynthesisStatus,
 )
+from crewai_enterprise_pipeline_api.services.buy_side_service import BuySideService
 from crewai_enterprise_pipeline_api.services.case_service import CaseService
 from crewai_enterprise_pipeline_api.services.checklist_service import ChecklistService
 from crewai_enterprise_pipeline_api.services.commercial_service import CommercialService
+from crewai_enterprise_pipeline_api.services.credit_service import CreditService
 from crewai_enterprise_pipeline_api.services.cyber_service import CyberService
 from crewai_enterprise_pipeline_api.services.financial_qoe_service import FinancialQoEService
 from crewai_enterprise_pipeline_api.services.forensic_service import ForensicService
@@ -37,6 +39,7 @@ from crewai_enterprise_pipeline_api.services.regulatory_service import Regulator
 from crewai_enterprise_pipeline_api.services.report_service import ReportService
 from crewai_enterprise_pipeline_api.services.synthesis_service import SynthesisService
 from crewai_enterprise_pipeline_api.services.tax_service import TaxService
+from crewai_enterprise_pipeline_api.services.vendor_service import VendorService
 
 logger = logging.getLogger(__name__)
 
@@ -44,9 +47,11 @@ logger = logging.getLogger(__name__)
 class WorkflowService:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+        self.buy_side_service = BuySideService(session)
         self.case_service = CaseService(session)
         self.checklist_service = ChecklistService(session)
         self.commercial_service = CommercialService(session)
+        self.credit_service = CreditService(session)
         self.cyber_service = CyberService(session)
         self.financial_qoe_service = FinancialQoEService(session)
         self.forensic_service = ForensicService(session)
@@ -56,6 +61,7 @@ class WorkflowService:
         self.regulatory_service = RegulatoryService(session)
         self.report_service = ReportService(session)
         self.synthesis_service = SynthesisService()
+        self.vendor_service = VendorService(session)
 
     async def list_runs(self, case_id: str) -> list[WorkflowRunSummary]:
         result = await self.session.execute(
@@ -200,18 +206,32 @@ class WorkflowService:
             case_id,
             persist_checklist=True,
         )
+        buy_side_analysis = None
+        borrower_scorecard = None
+        vendor_risk_tier = None
+        if case.motion_pack == "buy_side_diligence":
+            buy_side_analysis = await self.buy_side_service.build_buy_side_analysis(
+                case_id,
+                persist_checklist=True,
+            )
+        elif case.motion_pack == "credit_lending":
+            borrower_scorecard = await self.credit_service.build_borrower_scorecard(
+                case_id,
+                persist_checklist=True,
+            )
+        elif case.motion_pack == "vendor_onboarding":
+            vendor_risk_tier = await self.vendor_service.build_vendor_risk_tier(
+                case_id,
+                persist_checklist=True,
+            )
         case = await self.case_service._get_case_record(case_id)
         if case is None:
             return None
 
         coverage = await self.checklist_service.get_coverage_summary(case_id)
         executive_memo = await self.report_service.build_executive_memo(case_id)
-        executive_memo_markdown = await self.report_service.render_executive_memo_markdown(
-            case_id
-        )
-        issue_register_markdown = await self.report_service.render_issue_register_markdown(
-            case_id
-        )
+        executive_memo_markdown = await self.report_service.render_executive_memo_markdown(case_id)
+        issue_register_markdown = await self.report_service.render_issue_register_markdown(case_id)
         if coverage is None or executive_memo is None:
             return None
 
@@ -226,6 +246,9 @@ class WorkflowService:
             operations_summary,
             cyber_summary,
             forensic_summary,
+            buy_side_analysis,
+            borrower_scorecard,
+            vendor_risk_tier,
         )
         synthesis_markdown = self.synthesis_service.render_markdown(case, syntheses)
 
@@ -242,6 +265,9 @@ class WorkflowService:
             operations_summary,
             cyber_summary,
             forensic_summary,
+            buy_side_analysis,
+            borrower_scorecard,
+            vendor_risk_tier,
         )
         report_bundles = self._build_report_bundles(
             case_id,
@@ -261,7 +287,8 @@ class WorkflowService:
             f"Generated {len(report_bundles)} report bundles, "
             f"{len(syntheses)} workstream syntheses, with "
             f"{len(case.issues)} issues and "
-            f"{coverage.open_mandatory_items} open mandatory checklist items."
+            f"{coverage.open_mandatory_items} open mandatory checklist items. "
+            f"Motion pack: {case.motion_pack}."
         )
 
         await self.session.commit()
@@ -325,6 +352,24 @@ class WorkflowService:
             case_id,
             persist_checklist=True,
         )
+        buy_side_analysis = None
+        borrower_scorecard = None
+        vendor_risk_tier = None
+        if case.motion_pack == "buy_side_diligence":
+            buy_side_analysis = await self.buy_side_service.build_buy_side_analysis(
+                case_id,
+                persist_checklist=True,
+            )
+        elif case.motion_pack == "credit_lending":
+            borrower_scorecard = await self.credit_service.build_borrower_scorecard(
+                case_id,
+                persist_checklist=True,
+            )
+        elif case.motion_pack == "vendor_onboarding":
+            vendor_risk_tier = await self.vendor_service.build_vendor_risk_tier(
+                case_id,
+                persist_checklist=True,
+            )
         case = await self.case_service._get_case_record(case_id)
         if case is None:
             return None
@@ -380,6 +425,22 @@ class WorkflowService:
             )
         )
         seq += 1
+        self.session.add(
+            RunTraceEventRecord(
+                run_id=run_id,
+                sequence_number=seq,
+                step_key="motion_pack_deepening_refresh",
+                title="Motion-pack deepening summary refreshed",
+                message=self._phase11_refresh_note(
+                    case.motion_pack,
+                    buy_side_analysis,
+                    borrower_scorecard,
+                    vendor_risk_tier,
+                ),
+                level=RunEventLevel.INFO.value,
+            )
+        )
+        seq += 1
         await self.session.commit()
 
         # 1. Build case context
@@ -395,6 +456,9 @@ class WorkflowService:
             operations_summary=operations_summary,
             cyber_summary=cyber_summary,
             forensic_summary=forensic_summary,
+            buy_side_analysis=buy_side_analysis,
+            borrower_scorecard=borrower_scorecard,
+            vendor_risk_tier=vendor_risk_tier,
         )
         total_tools = sum(len(tools) for tools in tool_map.values())
         self.session.add(
@@ -470,6 +534,27 @@ class WorkflowService:
             )
             seq += 1
 
+        motion_pack_task_output = None
+        if hasattr(crew_output, "tasks_output"):
+            for task_output in crew_output.tasks_output:
+                if getattr(task_output, "name", None) == "motion_pack_analysis":
+                    motion_pack_task_output = task_output
+                    break
+        if motion_pack_task_output is not None:
+            raw_preview = str(getattr(motion_pack_task_output, "raw", ""))[:240]
+            motion_tool_summary = summarize_tool_usage(tool_map.get("motion_pack_specialist", []))
+            self.session.add(
+                RunTraceEventRecord(
+                    run_id=run_id,
+                    sequence_number=seq,
+                    step_key="motion_pack_analysis",
+                    title="Motion-pack specialist analysis complete",
+                    message=f"{raw_preview} Tools: {motion_tool_summary}",
+                    level=RunEventLevel.INFO.value,
+                )
+            )
+            seq += 1
+
         # 4. Parse coordinator output → executive memo
         exec_output = self._find_executive_output(crew_output)
         if exec_output is not None:
@@ -508,24 +593,24 @@ class WorkflowService:
             f"Motion Pack: {case.motion_pack}\n\n"
             f"{coordinator_narrative}"
         )
-        issue_register_markdown = await self.report_service.render_issue_register_markdown(
-            case_id
-        )
+        issue_register_markdown = await self.report_service.render_issue_register_markdown(case_id)
         synthesis_lines = [f"# Workstream Syntheses: {case.name}\n"]
         for s in syntheses:
-            synthesis_lines.extend([
-                f"\n## {s.workstream_domain.replace('_', ' ').title()}",
-                f"Status: {s.status}",
-                f"Headline: {s.headline}",
-                "",
-                s.narrative,
-                "",
-                f"Findings: {s.finding_count}",
-                f"Blockers: {s.blocker_count}",
-                f"Confidence: {s.confidence:.2f}",
-                f"Next action: {s.recommended_next_action}",
-                "",
-            ])
+            synthesis_lines.extend(
+                [
+                    f"\n## {s.workstream_domain.replace('_', ' ').title()}",
+                    f"Status: {s.status}",
+                    f"Headline: {s.headline}",
+                    "",
+                    s.narrative,
+                    "",
+                    f"Findings: {s.finding_count}",
+                    f"Blockers: {s.blocker_count}",
+                    f"Confidence: {s.confidence:.2f}",
+                    f"Next action: {s.recommended_next_action}",
+                    "",
+                ]
+            )
         synthesis_markdown = "\n".join(synthesis_lines)
 
         report_bundles = self._build_report_bundles(
@@ -561,7 +646,7 @@ class WorkflowService:
             f"CrewAI run: {len(syntheses)} workstream analyses, "
             f"{len(report_bundles)} report bundles. "
             f"LLM: {settings.llm_provider}/{settings.llm_model}. "
-            f"Tool calls: {total_tool_calls(tool_map)}."
+            f"Tool calls: {total_tool_calls(tool_map)}. Motion pack: {case.motion_pack}."
         )
 
         # Build executive memo via deterministic service for the response object
@@ -600,9 +685,7 @@ class WorkflowService:
 
         if hasattr(crew_output, "tasks_output"):
             for to in crew_output.tasks_output:
-                if hasattr(to, "pydantic") and isinstance(
-                    to.pydantic, ExecutiveSummaryOutput
-                ):
+                if hasattr(to, "pydantic") and isinstance(to.pydantic, ExecutiveSummaryOutput):
                     return to.pydantic
         return None
 
@@ -644,6 +727,9 @@ class WorkflowService:
         operations_summary,
         cyber_summary,
         forensic_summary,
+        buy_side_analysis,
+        borrower_scorecard,
+        vendor_risk_tier,
     ) -> list[RunTraceEventRecord]:
         latest_approval = case.approvals[-1] if case.approvals else None
         approval_note = (
@@ -661,11 +747,7 @@ class WorkflowService:
         )
         phase9_note = (
             "No structured legal/tax/regulatory summaries detected yet."
-            if (
-                legal_summary is None
-                and tax_summary is None
-                and compliance_summary is None
-            )
+            if (legal_summary is None and tax_summary is None and compliance_summary is None)
             else (
                 "Legal artifacts: "
                 f"{0 if legal_summary is None else legal_summary.artifact_count}; "
@@ -690,6 +772,12 @@ class WorkflowService:
                 forensic_summary,
                 cyber_label="cyber controls with evidence",
             )
+        )
+        phase11_note = self._phase11_refresh_note(
+            case.motion_pack,
+            buy_side_analysis,
+            borrower_scorecard,
+            vendor_risk_tier,
         )
         return [
             RunTraceEventRecord(
@@ -730,6 +818,14 @@ class WorkflowService:
             RunTraceEventRecord(
                 run_id=run_id,
                 sequence_number=5,
+                step_key="motion_pack_deepening_refresh",
+                title="Motion-pack deepening summary refreshed",
+                message=phase11_note,
+                level=RunEventLevel.INFO.value,
+            ),
+            RunTraceEventRecord(
+                run_id=run_id,
+                sequence_number=6,
                 step_key="issue_triage",
                 title="Issue register reviewed",
                 message=(
@@ -739,12 +835,10 @@ class WorkflowService:
             ),
             RunTraceEventRecord(
                 run_id=run_id,
-                sequence_number=6,
+                sequence_number=7,
                 step_key="coverage_check",
                 title="Checklist coverage computed",
-                message=(
-                    f"{coverage.open_mandatory_items} mandatory checklist items remain open."
-                ),
+                message=(f"{coverage.open_mandatory_items} mandatory checklist items remain open."),
                 level=(
                     RunEventLevel.WARNING.value
                     if coverage.open_mandatory_items
@@ -753,7 +847,7 @@ class WorkflowService:
             ),
             RunTraceEventRecord(
                 run_id=run_id,
-                sequence_number=7,
+                sequence_number=8,
                 step_key="approval_snapshot",
                 title="Approval state captured",
                 message=approval_note,
@@ -761,17 +855,15 @@ class WorkflowService:
             ),
             RunTraceEventRecord(
                 run_id=run_id,
-                sequence_number=8,
+                sequence_number=9,
                 step_key="workstream_synthesis",
                 title="Workstream syntheses generated",
-                message=(
-                    f"Generated {len(syntheses)} workstream summaries for the current run."
-                ),
+                message=(f"Generated {len(syntheses)} workstream summaries for the current run."),
                 level=RunEventLevel.INFO.value,
             ),
             RunTraceEventRecord(
                 run_id=run_id,
-                sequence_number=9,
+                sequence_number=10,
                 step_key="report_bundle_generation",
                 title="Report bundles generated",
                 message=(
@@ -864,3 +956,30 @@ class WorkflowService:
             f"{cyber_label}: {cyber_count}; "
             f"forensic flags: {forensic_count}."
         )
+
+    def _phase11_refresh_note(
+        self,
+        motion_pack: str,
+        buy_side_analysis,
+        borrower_scorecard,
+        vendor_risk_tier,
+    ) -> str:
+        if motion_pack == "buy_side_diligence" and buy_side_analysis is not None:
+            return (
+                f"Valuation bridge items: {len(buy_side_analysis.valuation_bridge)}; "
+                f"SPA issues: {len(buy_side_analysis.spa_issues)}; "
+                f"PMI risks: {len(buy_side_analysis.pmi_risks)}."
+            )
+        if motion_pack == "credit_lending" and borrower_scorecard is not None:
+            return (
+                f"Borrower score: {borrower_scorecard.overall_score}/100; "
+                f"collateral score: {borrower_scorecard.collateral.score}/100; "
+                f"covenant items: {len(borrower_scorecard.covenant_tracking)}."
+            )
+        if motion_pack == "vendor_onboarding" and vendor_risk_tier is not None:
+            return (
+                f"Vendor tier: {vendor_risk_tier.tier}; "
+                f"overall score: {vendor_risk_tier.overall_score}/100; "
+                f"questionnaire sections: {len(vendor_risk_tier.questionnaire)}."
+            )
+        return "No structured motion-pack summary detected yet."

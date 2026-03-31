@@ -42,8 +42,7 @@ class ForensicLookupArgs(BaseModel):
 class CommercialSignalLookupTool(BaseTool):
     name: str = "review_commercial_signals"
     description: str = (
-        "Inspect structured commercial concentration, churn, pricing, and renewal "
-        "findings."
+        "Inspect structured commercial concentration, churn, pricing, and renewal findings."
     )
     args_schema: type[BaseModel] = CommercialLookupArgs
     summary: CommercialSummary = Field(repr=False)
@@ -93,19 +92,13 @@ class OperationsRiskLookupTool(BaseTool):
     def _run(self, dependency_type: str | None = None) -> str:
         signals = self.summary.dependency_signals
         if dependency_type:
-            signals = [
-                signal
-                for signal in signals
-                if signal.dependency_type == dependency_type
-            ]
+            signals = [signal for signal in signals if signal.dependency_type == dependency_type]
         if not signals and self.summary.supplier_concentration_top_3 is None:
             return "No structured operations risks are available."
 
         lines: list[str] = []
         if self.summary.supplier_concentration_top_3 is not None:
-            lines.append(
-                f"Supplier concentration: {self.summary.supplier_concentration_top_3:.0%}"
-            )
+            lines.append(f"Supplier concentration: {self.summary.supplier_concentration_top_3:.0%}")
         for signal in signals[:6]:
             lines.append(
                 f"- {signal.label} [{signal.dependency_type}] | "
@@ -194,9 +187,7 @@ def build_phase10_tools(
         else [item for item in cyber_summary.controls if item.status.value != "unknown"]
     )
     if cyber_summary is not None and (
-        known_cyber_controls
-        or cyber_summary.certifications
-        or cyber_summary.breach_history
+        known_cyber_controls or cyber_summary.certifications or cyber_summary.breach_history
     ):
         tools.append(CyberControlLookupTool(summary=cyber_summary))
     if forensic_summary is not None and forensic_summary.flags:

@@ -47,12 +47,9 @@ class ApprovalService:
         blocking_issue_count = sum(
             1
             for issue in case.issues
-            if issue.status in ACTIVE_ISSUE_STATUSES
-            and issue.severity in BLOCKING_SEVERITIES
+            if issue.status in ACTIVE_ISSUE_STATUSES and issue.severity in BLOCKING_SEVERITIES
         )
-        ready_for_export = (
-            coverage.completion_ready and blocking_issue_count == 0
-        )
+        ready_for_export = coverage.completion_ready and blocking_issue_count == 0
         if payload.decision is not None:
             decision = payload.decision.value
         else:
@@ -96,11 +93,7 @@ class ApprovalService:
 
         reasons: list[str] = []
         if open_mandatory_items:
-            reasons.append(
-                f"{open_mandatory_items} mandatory checklist items remain unresolved"
-            )
+            reasons.append(f"{open_mandatory_items} mandatory checklist items remain unresolved")
         if blocking_issue_count:
-            reasons.append(
-                f"{blocking_issue_count} high-severity issues still require resolution"
-            )
+            reasons.append(f"{blocking_issue_count} high-severity issues still require resolution")
         return "Case is not ready for export because " + " and ".join(reasons) + "."

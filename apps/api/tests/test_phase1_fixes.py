@@ -192,9 +192,7 @@ def test_workflow_run_failure(client) -> None:
     detail_response = client.get(f"/api/v1/cases/{case_id}/runs/{run_id}")
     assert detail_response.status_code == 200
     detail = detail_response.json()
-    failure_events = [
-        e for e in detail["trace_events"] if e["step_key"] == "run_failure"
-    ]
+    failure_events = [e for e in detail["trace_events"] if e["step_key"] == "run_failure"]
     assert len(failure_events) == 1
     assert "Simulated failure" in failure_events[0]["message"]
 

@@ -182,8 +182,7 @@ class TaxService:
             ComplianceStatus.PARTIALLY_COMPLIANT,
         }:
             flags.append(
-                "GST compliance signals suggest notices, reconciliation gaps, "
-                "or payment exposure."
+                "GST compliance signals suggest notices, reconciliation gaps, or payment exposure."
             )
         if by_area["transfer_pricing"].status != ComplianceStatus.UNKNOWN:
             flags.append(
@@ -212,9 +211,7 @@ class TaxService:
         case,
         summary: TaxComplianceSummary,
     ) -> list[ChecklistAutoUpdate]:
-        known_items = [
-            item for item in summary.items if item.status != ComplianceStatus.UNKNOWN
-        ]
+        known_items = [item for item in summary.items if item.status != ComplianceStatus.UNKNOWN]
         condition_map = {
             "tax.notice_register": bool(known_items or summary.gstins),
             "tax.compliance_borrower_status": bool(known_items or summary.gstins),
@@ -251,10 +248,7 @@ class TaxService:
         ]
         if summary.gstins:
             fragments.append(f"GSTINs detected: {', '.join(summary.gstins[:3])}.")
-        flagged = [
-            f"{item.tax_area}={item.status.value}"
-            for item in known_items[:4]
-        ]
+        flagged = [f"{item.tax_area}={item.status.value}" for item in known_items[:4]]
         if flagged:
             fragments.append("Statuses: " + ", ".join(flagged) + ".")
         return " ".join(fragments)

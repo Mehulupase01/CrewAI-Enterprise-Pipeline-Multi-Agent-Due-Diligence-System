@@ -86,9 +86,7 @@ def test_get_single_document(client) -> None:
             "title": "Test Memo",
             "evidence_kind": "fact",
         },
-        files={
-            "file": ("memo.txt", b"Revenue grew 32 percent.", "text/plain")
-        },
+        files={"file": ("memo.txt", b"Revenue grew 32 percent.", "text/plain")},
     )
     assert upload_response.status_code == 201
     doc_id = upload_response.json()["artifact"]["id"]
@@ -308,9 +306,9 @@ def test_404_on_nonexistent_resources(client) -> None:
     fake_id = "00000000-0000-0000-0000-000000000000"
 
     # Non-existent case
-    assert client.patch(
-        f"/api/v1/cases/{fake_id}", json={"name": "Not Found Case"}
-    ).status_code == 404
+    assert (
+        client.patch(f"/api/v1/cases/{fake_id}", json={"name": "Not Found Case"}).status_code == 404
+    )
     assert client.delete(f"/api/v1/cases/{fake_id}").status_code == 404
 
     # Non-existent sub-resources

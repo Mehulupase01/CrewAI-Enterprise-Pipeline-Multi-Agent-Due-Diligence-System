@@ -6,6 +6,8 @@ from crewai_enterprise_pipeline_api.evaluation.scenarios import (
     PHASE5_FIRST_SLICE_SCENARIOS,
     PHASE8_FINANCIAL_QOE_SCENARIOS,
     PHASE9_LEGAL_TAX_REGULATORY_SCENARIOS,
+    PHASE10_COMMERCIAL_OPERATIONS_CYBER_FORENSIC_SCENARIOS,
+    PHASE11_MOTION_PACK_DEEPENING_SCENARIOS,
     VENDOR_ONBOARDING_EXPANSION_SCENARIOS,
 )
 
@@ -17,6 +19,11 @@ def test_evaluation_scenarios_are_unique_and_well_formed() -> None:
         ("phase5_first_slice", PHASE5_FIRST_SLICE_SCENARIOS),
         ("phase8_financial_qoe", PHASE8_FINANCIAL_QOE_SCENARIOS),
         ("phase9_legal_tax_regulatory", PHASE9_LEGAL_TAX_REGULATORY_SCENARIOS),
+        (
+            "phase10_commercial_operations_cyber_forensic",
+            PHASE10_COMMERCIAL_OPERATIONS_CYBER_FORENSIC_SCENARIOS,
+        ),
+        ("phase11_motion_pack_deepening", PHASE11_MOTION_PACK_DEEPENING_SCENARIOS),
         ("credit_lending_expansion", CREDIT_LENDING_EXPANSION_SCENARIOS),
         ("vendor_onboarding_expansion", VENDOR_ONBOARDING_EXPANSION_SCENARIOS),
         (
@@ -46,6 +53,17 @@ def test_evaluation_scenarios_are_unique_and_well_formed() -> None:
                 assert scenario.tax_summary_expectation is not None
                 assert scenario.compliance_matrix_expectation is not None
                 assert scenario.case_payload["sector_pack"] == "bfsi_nbfc"
+            if suite_key == "phase10_commercial_operations_cyber_forensic":
+                assert scenario.commercial_summary_expectation is not None
+                assert scenario.operations_summary_expectation is not None
+                assert scenario.cyber_summary_expectation is not None
+                assert scenario.forensic_summary_expectation is not None
+            if suite_key == "phase11_motion_pack_deepening":
+                assert (
+                    scenario.buy_side_analysis_expectation is not None
+                    or scenario.borrower_scorecard_expectation is not None
+                    or scenario.vendor_risk_tier_expectation is not None
+                )
             if suite_key == "credit_lending_expansion":
                 assert scenario.case_payload["motion_pack"] == "credit_lending"
             if suite_key == "vendor_onboarding_expansion":

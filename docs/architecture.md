@@ -1,6 +1,6 @@
 # Architecture Overview
 
-> **Last updated:** 2026-03-31 (Phase 10 complete)
+> **Last updated:** 2026-03-31 (Phase 11 complete)
 > **Update rule:** This file is updated after every masterplan phase to reflect actual system state.
 
 ## System Summary
@@ -23,9 +23,9 @@ See `docs/MASTERPLAN.docx` (preferred) or `docs/MASTERPLAN.pdf` for the roadmap 
 
 ### What is REAL and WORKING
 - 14 SQLAlchemy ORM models with proper relationships, cascades, timestamps
-- 97 domain models and enums with consistent naming conventions across API, workflow, and evaluation surfaces
-- 19 service and engine classes + CrewAI multi-agent orchestration (activates with LLM config)
-- 55 REST endpoints (full CRUD + SSE streaming + chunks + search + conflicts + financial/legal/tax/compliance plus Phase 10 summaries)
+- 107 domain models and enums with consistent naming conventions across API, workflow, and evaluation surfaces
+- 23 service and engine classes + CrewAI multi-agent orchestration (activates with LLM config)
+- 58 REST endpoints (full CRUD + SSE streaming + chunks + search + conflicts + financial/legal/tax/compliance plus Phase 10 summaries and Phase 11 motion-pack endpoints)
 - Document parsing for 6 formats (PDF with tables, DOCX with headings+tables, XLSX multi-sheet, CSV, JSON, TXT)
 - Structured financial workbook parsing for annual periods, QoE adjustments, normalized EBITDA, ratios, and financial flags
 - Structured legal, tax, and regulatory parsing for directors, DINs, shareholding, contract clauses, GST posture, and compliance-matrix generation
@@ -33,8 +33,8 @@ See `docs/MASTERPLAN.docx` (preferred) or `docs/MASTERPLAN.pdf` for the roadmap 
 - Rule-based entity extraction (financial, legal, regulatory, India identifiers)
 - SHA256 document dedup (same content returns existing artifact)
 - Header-based RBAC with 4 roles (VIEWER, ANALYST, REVIEWER, ADMIN)
-- Evaluation harness with 8 suites, 14 scenarios
-- 100 pytest unit tests
+- Evaluation harness with 9 suites, 17 scenarios
+- 105 pytest unit tests
 - Export ZIP packages (markdown + JSON metadata / snapshots)
 - Docker Compose stack (PostgreSQL 17, Redis 7.4, MinIO)
 
@@ -72,6 +72,16 @@ See `docs/MASTERPLAN.docx` (preferred) or `docs/MASTERPLAN.pdf` for the roadmap 
 - Workflow-integrated Phase 10 refresh so syntheses, reports, trace events, and CrewAI prompts consume the same structured commercial/operations/cyber/forensic state
 - `agents/phase10_tools.py` plus phase-aware prompt context so commercial, operations, cyber/privacy, forensic, and coordinator agents can drill into structured Phase 10 outputs directly
 - Dedicated Phase 10 evaluation coverage and three focused pytest cases for summary extraction, tool attachment, checklist automation, and workflow integration
+
+### What was ADDED in Phase 11
+- `services/checklist_catalog.py` as the centralized motion-pack and sector-pack checklist source of truth with duplicate template-key protection
+- `services/buy_side_service.py` for deterministic valuation bridge, SPA issue matrix, PMI risk generation, and related checklist automation
+- `services/credit_service.py` for deterministic borrower scorecard, covenant tracking, and credit checklist automation
+- `services/vendor_service.py` for deterministic vendor risk-tiering, questionnaire generation, certification requirements, and onboarding checklist automation
+- `GET /cases/{id}/buy-side-analysis`, `GET /cases/{id}/borrower-scorecard`, and `GET /cases/{id}/vendor-risk-tier`
+- Workflow-integrated Phase 11 refresh so syntheses, reports, trace events, and CrewAI prompts consume the same structured motion-pack state
+- `agents/phase11_tools.py` plus `agents/packs/*.py` so buy-side, credit, and vendor motion-pack specialists can review structured Phase 11 outputs directly
+- Dedicated Phase 11 evaluation coverage and five focused pytest cases for endpoint behavior, checklist automation, crew attachment, and workflow integration
 
 ### What was ADDED in Phase 7
 - CrewAI multi-agent orchestration (`agents/` package) — 9 workstream agents + 1 coordinator
@@ -145,6 +155,7 @@ See `docs/MASTERPLAN.docx` (preferred) or `docs/MASTERPLAN.pdf` for the roadmap 
 - No dedicated financial summary panel in the Next.js case workspace yet; Phase 8 is currently exposed through the API, workflow output, and reports rather than a bespoke UI view
 - No dedicated legal/tax/regulatory analyst panels in the Next.js workspace yet; Phase 9 is currently exposed through APIs, workflow outputs, and evaluation surfaces rather than bespoke UI views
 - No dedicated commercial/operations/cyber/forensic analyst panels in the Next.js workspace yet; Phase 10 is currently exposed through APIs, workflow outputs, and evaluation surfaces rather than bespoke UI views
+- No dedicated motion-pack analyst panels yet for valuation bridges, borrower scorecards, or vendor tiering; Phase 11 is currently exposed through APIs, workflow outputs, reports, and evaluation surfaces rather than bespoke UI views
 
 ## Layers
 
@@ -163,6 +174,8 @@ apps/api/src/crewai_enterprise_pipeline_api/
     compliance_tools.py # Structured legal/tax/regulatory lookup tools for CrewAI
     financial_tools.py # Structured financial ratio and sector benchmark tools for CrewAI
     phase10_tools.py   # Structured commercial/operations/cyber/forensic lookup tools for CrewAI
+    phase11_tools.py   # Structured buy-side, credit, and vendor motion-pack review tools for CrewAI
+    packs/             # Motion-pack specialist prompts/configs for buy-side, credit, and vendor flows
     tools.py           # Scoped read-only CrewAI tools over pre-loaded evidence, issues, checklist, chunks, and phase-specific summaries
   api/
     router.py          # Mounts /system, /source-adapters, /cases under /api/v1/
@@ -172,10 +185,10 @@ apps/api/src/crewai_enterprise_pipeline_api/
       cases.py         # All case CRUD + sub-resource endpoints
       source_adapters.py  # GET /source-adapters (read-only catalog)
   domain/
-    models.py          # ~96 Pydantic schemas + all StrEnums
+    models.py          # 107 Pydantic schemas and StrEnums
   db/
     base.py            # UUID generation, TimestampedMixin
-    models.py          # 15 SQLAlchemy ORM models (CaseRecord is aggregate root, ChunkRecord for embeddings)
+    models.py          # 14 SQLAlchemy ORM models (CaseRecord is aggregate root, ChunkRecord for embeddings)
     session.py         # AsyncSession factory
   services/
     case_service.py        # Case CRUD + sub-resource operations
@@ -195,6 +208,10 @@ apps/api/src/crewai_enterprise_pipeline_api/
     operations_service.py     # Phase 10 dependency and supply-continuity analysis
     cyber_service.py          # Phase 10 cyber/privacy control and incident analysis
     forensic_service.py       # Phase 10 forensic flag detection and checklist automation
+    checklist_catalog.py   # Centralized motion-pack + sector-pack checklist definitions
+    buy_side_service.py    # Phase 11 buy-side valuation bridge, SPA, and PMI analysis
+    credit_service.py      # Phase 11 borrower scorecard and covenant-tracking analysis
+    vendor_service.py      # Phase 11 vendor risk-tiering and questionnaire analysis
     embedding_service.py   # Vector embedding generation (none/openai/local providers)
     export_service.py      # ZIP export package creation
     search_service.py      # Hybrid BM25+cosine search, evidence conflict detection
@@ -208,7 +225,7 @@ apps/api/src/crewai_enterprise_pipeline_api/
   evaluation/
     runner.py          # CLI: python -m ...evaluation.runner --suite <name>
     harness.py         # Test infrastructure (isolated SQLite per run)
-    scenarios.py       # 14 scenarios across 8 suites
+    scenarios.py       # 17 scenarios across 9 suites
 ```
 
 ### Layer 2: Web Workbench (`apps/web/`)
@@ -284,6 +301,7 @@ See `docs/MASTERPLAN.docx` for the 18-phase plan to reach full production state:
 - pgvector hybrid search for evidence intelligence
 - Interactive frontend with full CRUD + live SSE streaming
 - Deep domain engines (Financial QoE, Legal/Tax/Regulatory, Commercial/Forensic)
+- Deep motion-pack and sector-pack specialization beyond the current Phase 11 depth
 - India data connectors (MCA21, GSTIN, SEBI, CIBIL, sanctions)
 - JWT auth, multi-tenancy, audit logging
 - Rich DOCX/PDF reporting

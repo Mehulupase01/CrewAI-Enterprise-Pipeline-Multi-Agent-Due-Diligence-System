@@ -109,9 +109,7 @@ class OperationsService:
             signal.dependency_type == "site" for signal in dependency_signals
         )
         key_person_dependencies = [
-            signal.detail
-            for signal in dependency_signals
-            if signal.dependency_type == "key_person"
+            signal.detail for signal in dependency_signals if signal.dependency_type == "key_person"
         ][:5]
         flags = self._build_flags(
             supplier_concentration_top_3,
@@ -255,8 +253,7 @@ class OperationsService:
             "operations.plant_capacity_utilisation": bool(
                 summary.single_site_dependency
                 or any(
-                    signal.dependency_type == "capacity"
-                    for signal in summary.dependency_signals
+                    signal.dependency_type == "capacity" for signal in summary.dependency_signals
                 )
             ),
             "operations.supplier_concentration": bool(
@@ -267,8 +264,7 @@ class OperationsService:
                 )
             ),
             "operations.underwriting_and_collections_governance": any(
-                signal.dependency_type == "governance"
-                for signal in summary.dependency_signals
+                signal.dependency_type == "governance" for signal in summary.dependency_signals
             ),
         }
 
@@ -301,16 +297,12 @@ class OperationsService:
             f"Dependency signals: {len(summary.dependency_signals)}.",
         ]
         if summary.supplier_concentration_top_3 is not None:
-            fragments.append(
-                f"Supplier concentration: {summary.supplier_concentration_top_3:.0%}."
-            )
+            fragments.append(f"Supplier concentration: {summary.supplier_concentration_top_3:.0%}.")
         if summary.key_person_dependencies:
             fragments.append(f"Key-person signals: {len(summary.key_person_dependencies)}.")
         return " ".join(fragments)
 
     def _sentences(self, text: str) -> list[str]:
         return [
-            segment.strip()
-            for segment in re.split(r"(?<=[.!?])\s+|\n+", text)
-            if segment.strip()
+            segment.strip() for segment in re.split(r"(?<=[.!?])\s+|\n+", text) if segment.strip()
         ]

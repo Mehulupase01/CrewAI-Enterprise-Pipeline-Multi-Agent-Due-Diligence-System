@@ -61,8 +61,7 @@ def test_case_workflow_persists_documents_evidence_and_trackers(client) -> None:
         json={
             "title": "Provide monthly churn bridge",
             "detail": (
-                "Need a monthly logo churn and net revenue retention bridge "
-                "for the last 24 months."
+                "Need a monthly logo churn and net revenue retention bridge for the last 24 months."
             ),
             "owner": "Finance Controller",
             "status": "open",
@@ -76,8 +75,7 @@ def test_case_workflow_persists_documents_evidence_and_trackers(client) -> None:
             "question": "Why did implementation revenue spike in Q3 FY25?",
             "requested_by": "Financial workstream",
             "response": (
-                "Two enterprise onboarding projects were recognized after "
-                "acceptance milestones."
+                "Two enterprise onboarding projects were recognized after acceptance milestones."
             ),
             "status": "answered",
         },
@@ -392,8 +390,7 @@ def test_workflow_run_generates_traces_and_report_bundles(client) -> None:
     assert "issue_register_markdown" in bundle_kinds
     assert "workstream_synthesis_markdown" in bundle_kinds
     synthesis_domains = {
-        synthesis["workstream_domain"]
-        for synthesis in detail_payload["workstream_syntheses"]
+        synthesis["workstream_domain"] for synthesis in detail_payload["workstream_syntheses"]
     }
     assert "financial_qoe" in synthesis_domains
     assert "commercial" in synthesis_domains
@@ -806,8 +803,7 @@ def test_run_export_package_creates_zip_artifact(client) -> None:
             "workstream_domain": "commercial",
             "citation": "Commercial review pack FY26",
             "excerpt": (
-                "Retention remained strong and no material concentration concerns were "
-                "escalated."
+                "Retention remained strong and no material concentration concerns were escalated."
             ),
             "confidence": 0.9,
         },

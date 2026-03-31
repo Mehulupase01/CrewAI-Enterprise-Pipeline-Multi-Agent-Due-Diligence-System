@@ -202,9 +202,7 @@ class FinancialQoEService:
 
         latest = periods[-1]
         if latest.customer_concentration_top_3 and latest.customer_concentration_top_3 > 0.60:
-            flags.append(
-                "Revenue concentration: top 3 customers exceed 60% of the latest period."
-            )
+            flags.append("Revenue concentration: top 3 customers exceed 60% of the latest period.")
         if (
             latest.operating_cash_flow is not None
             and latest.operating_cash_flow < 0
@@ -281,8 +279,7 @@ class FinancialQoEService:
         has_multi_period_financials = len(summary.periods) >= 3 and latest is not None
         has_bridge_signal = "monthly" in document_tokens or "bridge" in document_tokens
         has_debt_metrics = any(
-            summary.ratios.get(key) is not None
-            for key in ("debt_to_ebitda", "interest_coverage")
+            summary.ratios.get(key) is not None for key in ("debt_to_ebitda", "interest_coverage")
         )
         has_working_capital = summary.ratios.get("working_capital_days") is not None
         has_inventory_signal = "inventory" in document_tokens and has_working_capital
@@ -291,9 +288,8 @@ class FinancialQoEService:
             and has_multi_period_financials
             and any(token in document_tokens for token in ("portfolio", "provision", "asset"))
         )
-        has_alm_signal = (
-            case.sector_pack == SectorPack.BFSI_NBFC.value
-            and any(token in document_tokens for token in ("alm", "liquidity", "treasury"))
+        has_alm_signal = case.sector_pack == SectorPack.BFSI_NBFC.value and any(
+            token in document_tokens for token in ("alm", "liquidity", "treasury")
         )
 
         return {
@@ -313,12 +309,9 @@ class FinancialQoEService:
         summary: FinancialMetricSummary,
     ) -> str:
         latest = summary.periods[-1] if summary.periods else None
-        period_labels = (
-            ", ".join(period.label for period in summary.periods[:5]) or "no periods"
-        )
+        period_labels = ", ".join(period.label for period in summary.periods[:5]) or "no periods"
         fragments = [
-            "Auto-satisfied by Phase 8 Financial QoE engine from periods: "
-            f"{period_labels}."
+            f"Auto-satisfied by Phase 8 Financial QoE engine from periods: {period_labels}."
         ]
         if latest and latest.revenue is not None:
             fragments.append(f"Latest revenue: {latest.revenue:.2f}.")

@@ -40,9 +40,7 @@ ENV_KEYS = (
 
 def _ensure_success(step: str, response, expected_status: int) -> dict[str, Any]:
     if response.status_code != expected_status:
-        raise RuntimeError(
-            f"{step} failed with status {response.status_code}: {response.text}"
-        )
+        raise RuntimeError(f"{step} failed with status {response.status_code}: {response.text}")
     return response.json()
 
 
@@ -282,6 +280,27 @@ def _evaluate_scenario(scenario: EvaluationScenario) -> dict[str, Any]:
                     client.get(f"/api/v1/cases/{case_id}/forensic-flags"),
                     200,
                 )
+            buy_side_analysis: dict[str, Any] | None = None
+            if scenario.buy_side_analysis_expectation is not None:
+                buy_side_analysis = _ensure_success(
+                    "buy-side analysis",
+                    client.get(f"/api/v1/cases/{case_id}/buy-side-analysis"),
+                    200,
+                )
+            borrower_scorecard: dict[str, Any] | None = None
+            if scenario.borrower_scorecard_expectation is not None:
+                borrower_scorecard = _ensure_success(
+                    "borrower scorecard",
+                    client.get(f"/api/v1/cases/{case_id}/borrower-scorecard"),
+                    200,
+                )
+            vendor_risk_tier: dict[str, Any] | None = None
+            if scenario.vendor_risk_tier_expectation is not None:
+                vendor_risk_tier = _ensure_success(
+                    "vendor risk tier",
+                    client.get(f"/api/v1/cases/{case_id}/vendor-risk-tier"),
+                    200,
+                )
 
             approval = _ensure_success(
                 "approval review",
@@ -362,16 +381,12 @@ def _evaluate_scenario(scenario: EvaluationScenario) -> dict[str, Any]:
             [item for item in compliance_matrix if item["status"] != "unknown"]
         )
     if commercial_summary is not None:
-        metrics["commercial_concentration_count"] = len(
-            commercial_summary["concentration_signals"]
-        )
+        metrics["commercial_concentration_count"] = len(commercial_summary["concentration_signals"])
         metrics["commercial_checklist_update_count"] = len(
             commercial_summary.get("checklist_updates", [])
         )
     if operations_summary is not None:
-        metrics["operations_dependency_count"] = len(
-            operations_summary["dependency_signals"]
-        )
+        metrics["operations_dependency_count"] = len(operations_summary["dependency_signals"])
         metrics["operations_checklist_update_count"] = len(
             operations_summary.get("checklist_updates", [])
         )
@@ -379,12 +394,29 @@ def _evaluate_scenario(scenario: EvaluationScenario) -> dict[str, Any]:
         metrics["cyber_known_control_count"] = len(
             [item for item in cyber_summary["controls"] if item["status"] != "unknown"]
         )
-        metrics["cyber_checklist_update_count"] = len(
-            cyber_summary.get("checklist_updates", [])
-        )
+        metrics["cyber_checklist_update_count"] = len(cyber_summary.get("checklist_updates", []))
         metrics["cyber_breach_history_count"] = len(cyber_summary["breach_history"])
     if forensic_flags is not None:
         metrics["forensic_flag_count"] = len(forensic_flags)
+    if buy_side_analysis is not None:
+        metrics["buy_side_valuation_bridge_count"] = len(buy_side_analysis["valuation_bridge"])
+        metrics["buy_side_spa_issue_count"] = len(buy_side_analysis["spa_issues"])
+        metrics["buy_side_pmi_risk_count"] = len(buy_side_analysis["pmi_risks"])
+        metrics["buy_side_checklist_update_count"] = len(
+            buy_side_analysis.get("checklist_updates", [])
+        )
+    if borrower_scorecard is not None:
+        metrics["borrower_scorecard_overall_score"] = borrower_scorecard["overall_score"]
+        metrics["borrower_covenant_item_count"] = len(borrower_scorecard["covenant_tracking"])
+        metrics["borrower_checklist_update_count"] = len(
+            borrower_scorecard.get("checklist_updates", [])
+        )
+    if vendor_risk_tier is not None:
+        metrics["vendor_tier_overall_score"] = vendor_risk_tier["overall_score"]
+        metrics["vendor_tier_questionnaire_count"] = len(vendor_risk_tier["questionnaire"])
+        metrics["vendor_tier_checklist_update_count"] = len(
+            vendor_risk_tier.get("checklist_updates", [])
+        )
 
     checks: list[dict[str, Any]] = []
     expectation = scenario.expectation
@@ -546,9 +578,10 @@ def _evaluate_scenario(scenario: EvaluationScenario) -> dict[str, Any]:
         )
         if fin_expectation.expected_normalized_ebitda is not None:
             actual_normalized = financial_summary["normalized_ebitda"]
-            passed = actual_normalized is not None and abs(
-                actual_normalized - fin_expectation.expected_normalized_ebitda
-            ) < 0.0001
+            passed = (
+                actual_normalized is not None
+                and abs(actual_normalized - fin_expectation.expected_normalized_ebitda) < 0.0001
+            )
             _append_check(
                 checks,
                 name="financial_normalized_ebitda",
@@ -615,8 +648,7 @@ def _evaluate_scenario(scenario: EvaluationScenario) -> dict[str, Any]:
         _append_check(
             checks,
             name="legal_contract_review_count",
-            passed=len(legal_summary["contract_reviews"])
-            >= legal_expectation.min_contract_reviews,
+            passed=len(legal_summary["contract_reviews"]) >= legal_expectation.min_contract_reviews,
             actual=len(legal_summary["contract_reviews"]),
             expected=f">= {legal_expectation.min_contract_reviews}",
             detail="Contract review extraction should find the expected number of contracts.",
@@ -707,14 +739,9 @@ def _evaluate_scenario(scenario: EvaluationScenario) -> dict[str, Any]:
             expected=f">= {tax_expectation.min_checklist_updates}",
             detail="Tax engine should auto-satisfy the expected minimum checklist items.",
         )
-    if (
-        scenario.compliance_matrix_expectation is not None
-        and compliance_matrix is not None
-    ):
+    if scenario.compliance_matrix_expectation is not None and compliance_matrix is not None:
         compliance_expectation = scenario.compliance_matrix_expectation
-        regulation_status_map = {
-            item["regulation"]: item["status"] for item in compliance_matrix
-        }
+        regulation_status_map = {item["regulation"]: item["status"] for item in compliance_matrix}
         actual_regulations = sorted(regulation_status_map)
         if compliance_expectation.required_regulations:
             _append_check(
@@ -778,9 +805,10 @@ def _evaluate_scenario(scenario: EvaluationScenario) -> dict[str, Any]:
                 if not commercial_summary["concentration_signals"]
                 else commercial_summary["concentration_signals"][0]["share_of_revenue"]
             )
-            passed = actual_top_share is not None and abs(
-                actual_top_share - commercial_expectation.expected_top_share
-            ) < 0.0001
+            passed = (
+                actual_top_share is not None
+                and abs(actual_top_share - commercial_expectation.expected_top_share) < 0.0001
+            )
             _append_check(
                 checks,
                 name="commercial_top_share",
@@ -791,9 +819,10 @@ def _evaluate_scenario(scenario: EvaluationScenario) -> dict[str, Any]:
             )
         if commercial_expectation.expected_nrr is not None:
             actual_nrr = commercial_summary["net_revenue_retention"]
-            passed = actual_nrr is not None and abs(
-                actual_nrr - commercial_expectation.expected_nrr
-            ) < 0.0001
+            passed = (
+                actual_nrr is not None
+                and abs(actual_nrr - commercial_expectation.expected_nrr) < 0.0001
+            )
             _append_check(
                 checks,
                 name="commercial_nrr",
@@ -804,9 +833,10 @@ def _evaluate_scenario(scenario: EvaluationScenario) -> dict[str, Any]:
             )
         if commercial_expectation.expected_churn is not None:
             actual_churn = commercial_summary["churn_rate"]
-            passed = actual_churn is not None and abs(
-                actual_churn - commercial_expectation.expected_churn
-            ) < 0.0001
+            passed = (
+                actual_churn is not None
+                and abs(actual_churn - commercial_expectation.expected_churn) < 0.0001
+            )
             _append_check(
                 checks,
                 name="commercial_churn",
@@ -850,10 +880,14 @@ def _evaluate_scenario(scenario: EvaluationScenario) -> dict[str, Any]:
         )
         if operations_expectation.expected_supplier_concentration is not None:
             actual_supplier_concentration = operations_summary["supplier_concentration_top_3"]
-            passed = actual_supplier_concentration is not None and abs(
-                actual_supplier_concentration
-                - operations_expectation.expected_supplier_concentration
-            ) < 0.0001
+            passed = (
+                actual_supplier_concentration is not None
+                and abs(
+                    actual_supplier_concentration
+                    - operations_expectation.expected_supplier_concentration
+                )
+                < 0.0001
+            )
             _append_check(
                 checks,
                 name="operations_supplier_concentration",
@@ -934,8 +968,7 @@ def _evaluate_scenario(scenario: EvaluationScenario) -> dict[str, Any]:
         _append_check(
             checks,
             name="cyber_breach_history",
-            passed=len(cyber_summary["breach_history"])
-            >= cyber_expectation.min_breach_history,
+            passed=len(cyber_summary["breach_history"]) >= cyber_expectation.min_breach_history,
             actual=len(cyber_summary["breach_history"]),
             expected=f">= {cyber_expectation.min_breach_history}",
             detail="Cyber summary should surface the expected breach-history volume.",
@@ -977,13 +1010,195 @@ def _evaluate_scenario(scenario: EvaluationScenario) -> dict[str, Any]:
             _append_check(
                 checks,
                 name="forensic_flag_types",
-                passed=set(forensic_expectation.required_flag_types).issubset(
-                    actual_flag_types
-                ),
+                passed=set(forensic_expectation.required_flag_types).issubset(actual_flag_types),
                 actual=actual_flag_types,
                 expected=list(forensic_expectation.required_flag_types),
                 detail="Expected forensic flag types should appear in the endpoint response.",
             )
+    if scenario.buy_side_analysis_expectation is not None and buy_side_analysis is not None:
+        buy_side_expectation = scenario.buy_side_analysis_expectation
+        _append_check(
+            checks,
+            name="buy_side_valuation_bridge_count",
+            passed=len(buy_side_analysis["valuation_bridge"])
+            >= buy_side_expectation.min_valuation_bridge_items,
+            actual=len(buy_side_analysis["valuation_bridge"]),
+            expected=f">= {buy_side_expectation.min_valuation_bridge_items}",
+            detail="Buy-side analysis should produce the expected valuation bridge depth.",
+        )
+        _append_check(
+            checks,
+            name="buy_side_spa_issue_count",
+            passed=len(buy_side_analysis["spa_issues"]) >= buy_side_expectation.min_spa_issue_count,
+            actual=len(buy_side_analysis["spa_issues"]),
+            expected=f">= {buy_side_expectation.min_spa_issue_count}",
+            detail="Buy-side analysis should produce the expected SPA issue depth.",
+        )
+        _append_check(
+            checks,
+            name="buy_side_pmi_risk_count",
+            passed=len(buy_side_analysis["pmi_risks"]) >= buy_side_expectation.min_pmi_risk_count,
+            actual=len(buy_side_analysis["pmi_risks"]),
+            expected=f">= {buy_side_expectation.min_pmi_risk_count}",
+            detail="Buy-side analysis should produce the expected PMI risk depth.",
+        )
+        if buy_side_expectation.flag_substrings:
+            _append_check(
+                checks,
+                name="buy_side_flags",
+                passed=all(
+                    any(fragment.lower() in flag.lower() for flag in buy_side_analysis["flags"])
+                    for fragment in buy_side_expectation.flag_substrings
+                ),
+                actual=buy_side_analysis["flags"],
+                expected=list(buy_side_expectation.flag_substrings),
+                detail="Expected buy-side flag phrases should appear in the summary.",
+            )
+        _append_check(
+            checks,
+            name="buy_side_checklist_updates",
+            passed=len(buy_side_analysis.get("checklist_updates", []))
+            >= buy_side_expectation.min_checklist_updates,
+            actual=len(buy_side_analysis.get("checklist_updates", [])),
+            expected=f">= {buy_side_expectation.min_checklist_updates}",
+            detail="Buy-side engine should auto-satisfy the expected minimum checklist items.",
+        )
+    if scenario.borrower_scorecard_expectation is not None and borrower_scorecard is not None:
+        borrower_expectation = scenario.borrower_scorecard_expectation
+        _append_check(
+            checks,
+            name="borrower_overall_score",
+            passed=borrower_scorecard["overall_score"] >= borrower_expectation.min_overall_score,
+            actual=borrower_scorecard["overall_score"],
+            expected=f">= {borrower_expectation.min_overall_score}",
+            detail="Borrower scorecard should produce the expected overall score floor.",
+        )
+        if borrower_expectation.expected_rating is not None:
+            _append_check(
+                checks,
+                name="borrower_rating",
+                passed=borrower_scorecard["overall_rating"] == borrower_expectation.expected_rating,
+                actual=borrower_scorecard["overall_rating"],
+                expected=borrower_expectation.expected_rating,
+                detail="Borrower scorecard rating should match the expected motion-pack outcome.",
+            )
+        _append_check(
+            checks,
+            name="borrower_financial_health_score",
+            passed=borrower_scorecard["financial_health"]["score"]
+            >= borrower_expectation.min_financial_health_score,
+            actual=borrower_scorecard["financial_health"]["score"],
+            expected=f">= {borrower_expectation.min_financial_health_score}",
+            detail="Financial-health scoring should meet the expected floor.",
+        )
+        _append_check(
+            checks,
+            name="borrower_collateral_score",
+            passed=borrower_scorecard["collateral"]["score"]
+            >= borrower_expectation.min_collateral_score,
+            actual=borrower_scorecard["collateral"]["score"],
+            expected=f">= {borrower_expectation.min_collateral_score}",
+            detail="Collateral scoring should meet the expected floor.",
+        )
+        _append_check(
+            checks,
+            name="borrower_covenant_score",
+            passed=borrower_scorecard["covenants"]["score"]
+            >= borrower_expectation.min_covenant_score,
+            actual=borrower_scorecard["covenants"]["score"],
+            expected=f">= {borrower_expectation.min_covenant_score}",
+            detail="Covenant scoring should meet the expected floor.",
+        )
+        _append_check(
+            checks,
+            name="borrower_covenant_items",
+            passed=len(borrower_scorecard["covenant_tracking"])
+            >= borrower_expectation.min_covenant_items,
+            actual=len(borrower_scorecard["covenant_tracking"]),
+            expected=f">= {borrower_expectation.min_covenant_items}",
+            detail="Borrower scorecard should expose the expected covenant-tracking depth.",
+        )
+        _append_check(
+            checks,
+            name="borrower_checklist_updates",
+            passed=len(borrower_scorecard.get("checklist_updates", []))
+            >= borrower_expectation.min_checklist_updates,
+            actual=len(borrower_scorecard.get("checklist_updates", [])),
+            expected=f">= {borrower_expectation.min_checklist_updates}",
+            detail="Credit engine should auto-satisfy the expected minimum checklist items.",
+        )
+    if scenario.vendor_risk_tier_expectation is not None and vendor_risk_tier is not None:
+        vendor_expectation = scenario.vendor_risk_tier_expectation
+        _append_check(
+            checks,
+            name="vendor_overall_score",
+            passed=vendor_risk_tier["overall_score"] >= vendor_expectation.min_overall_score,
+            actual=vendor_risk_tier["overall_score"],
+            expected=f">= {vendor_expectation.min_overall_score}",
+            detail="Vendor tiering should produce the expected overall score floor.",
+        )
+        if vendor_expectation.expected_tier is not None:
+            _append_check(
+                checks,
+                name="vendor_expected_tier",
+                passed=vendor_risk_tier["tier"] == vendor_expectation.expected_tier,
+                actual=vendor_risk_tier["tier"],
+                expected=vendor_expectation.expected_tier,
+                detail="Vendor tier should match the expected motion-pack outcome.",
+            )
+        if vendor_expectation.required_factors:
+            actual_factors = sorted(
+                item["factor"] for item in vendor_risk_tier["scoring_breakdown"]
+            )
+            _append_check(
+                checks,
+                name="vendor_required_factors",
+                passed=set(vendor_expectation.required_factors).issubset(actual_factors),
+                actual=actual_factors,
+                expected=list(vendor_expectation.required_factors),
+                detail="Vendor score breakdown should include the expected factors.",
+            )
+        _append_check(
+            checks,
+            name="vendor_questionnaire_items",
+            passed=len(vendor_risk_tier["questionnaire"])
+            >= vendor_expectation.min_questionnaire_items,
+            actual=len(vendor_risk_tier["questionnaire"]),
+            expected=f">= {vendor_expectation.min_questionnaire_items}",
+            detail="Vendor questionnaire should include the expected section depth.",
+        )
+        if vendor_expectation.required_certifications:
+            _append_check(
+                checks,
+                name="vendor_required_certifications",
+                passed=set(vendor_expectation.required_certifications).issubset(
+                    vendor_risk_tier["certifications_required"]
+                ),
+                actual=vendor_risk_tier["certifications_required"],
+                expected=list(vendor_expectation.required_certifications),
+                detail="Vendor tiering should request the expected certification set.",
+            )
+        if vendor_expectation.flag_substrings:
+            _append_check(
+                checks,
+                name="vendor_flags",
+                passed=all(
+                    any(fragment.lower() in flag.lower() for flag in vendor_risk_tier["flags"])
+                    for fragment in vendor_expectation.flag_substrings
+                ),
+                actual=vendor_risk_tier["flags"],
+                expected=list(vendor_expectation.flag_substrings),
+                detail="Expected vendor flag phrases should appear in the summary.",
+            )
+        _append_check(
+            checks,
+            name="vendor_checklist_updates",
+            passed=len(vendor_risk_tier.get("checklist_updates", []))
+            >= vendor_expectation.min_checklist_updates,
+            actual=len(vendor_risk_tier.get("checklist_updates", [])),
+            expected=f">= {vendor_expectation.min_checklist_updates}",
+            detail="Vendor engine should auto-satisfy the expected minimum checklist items.",
+        )
 
     return {
         "code": scenario.code,
@@ -1004,6 +1219,9 @@ def _evaluate_scenario(scenario: EvaluationScenario) -> dict[str, Any]:
         "operations_summary": operations_summary,
         "cyber_summary": cyber_summary,
         "forensic_flags": forensic_flags,
+        "buy_side_analysis": buy_side_analysis,
+        "borrower_scorecard": borrower_scorecard,
+        "vendor_risk_tier": vendor_risk_tier,
         "scenario": {
             "case_payload": scenario.case_payload,
             "satisfy_all_checklist_items": scenario.satisfy_all_checklist_items,
@@ -1059,9 +1277,7 @@ def _run_suite_definition(suite: EvaluationSuiteDefinition) -> dict[str, Any]:
                         "case_payload": scenario.case_payload,
                         "satisfy_all_checklist_items": scenario.satisfy_all_checklist_items,
                         "scan_issues": scenario.scan_issues,
-                        "checklist_updates": [
-                            asdict(item) for item in scenario.checklist_updates
-                        ],
+                        "checklist_updates": [asdict(item) for item in scenario.checklist_updates],
                     },
                 }
             )

@@ -20,9 +20,7 @@ def collect_artifact_snapshots(case) -> list[ArtifactTextSnapshot]:
     snapshots_by_artifact: dict[str | None, ArtifactTextSnapshot] = {}
     evidence_by_artifact: dict[str | None, list[Any]] = {}
     for evidence in case.evidence_items:
-        evidence_by_artifact.setdefault(getattr(evidence, "artifact_id", None), []).append(
-            evidence
-        )
+        evidence_by_artifact.setdefault(getattr(evidence, "artifact_id", None), []).append(evidence)
 
     for document in case.documents:
         chunk_text = "\n\n".join(chunk.text for chunk in getattr(document, "chunks", []))

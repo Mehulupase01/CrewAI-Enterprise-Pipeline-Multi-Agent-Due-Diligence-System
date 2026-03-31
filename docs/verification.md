@@ -13,7 +13,7 @@ No phase is considered complete until all of the following exist together:
 
 ## Current Checks
 
-The current gate now covers the foundation plus the implemented canonical engine layers through Phase 10:
+The current gate now covers the foundation plus the implemented canonical engine layers through Phase 11:
 
 - backend app boot and schema lifecycle
 - typed configuration loading
@@ -44,6 +44,13 @@ The current gate now covers the foundation plus the implemented canonical engine
 - structured forensic related-party, round-tripping, revenue-anomaly, and litigation flag detection
 - automatic checklist satisfaction for commercial, operations, cyber/privacy, and forensic workstream items
 - dedicated Phase 10 commercial/operations/cyber/forensic evaluation coverage
+- centralized motion-pack and sector-pack checklist composition with duplicate template-key protection
+- structured buy-side valuation bridge, SPA issue matrix, and PMI risk generation
+- structured borrower scorecard and covenant tracking generation for credit/lending motion packs
+- structured vendor risk tiering, questionnaire generation, and certification tracking for vendor onboarding motion packs
+- automatic checklist satisfaction for motion-pack-specific buy-side, credit, and vendor onboarding items
+- workflow refresh, trace-event enrichment, synthesis updates, and executive memo highlights for motion-pack depth
+- dedicated Phase 11 motion-pack deepening evaluation coverage
 - deterministic end-to-end evaluation scenarios with saved JSON scorecards
 - repeat-scan regression checks for issue fingerprint reuse
 - enforced-auth and role-guard tests
@@ -100,6 +107,15 @@ The current gate now covers the foundation plus the implemented canonical engine
   related-party, round-tripping, revenue-anomaly, and litigation flags.
 - Phase 10 summaries must refresh inside workflow runs and enrich trace events,
   syntheses, reports, and CrewAI tool surfaces consistently.
+- The API can build a structured buy-side analysis from uploaded evidence,
+  including valuation bridge items, SPA issue tracking, and PMI risks.
+- The API can build a structured borrower scorecard from uploaded evidence,
+  including covenant tracking, weighted section scores, and overall rating.
+- The API can build a structured vendor risk tier from uploaded evidence,
+  including score breakdown, questionnaire outputs, certification requirements,
+  and next-review guidance.
+- Phase 11 motion-pack outputs must refresh inside workflow runs and enrich
+  trace events, syntheses, reports, and CrewAI tool surfaces consistently.
 - The first-slice evaluation suite passes blocked, clean-approved, and
   approved-nonblocking-risk scenarios.
 - Every quality-gate run writes a machine-readable artifact under
@@ -110,7 +126,8 @@ The current gate now covers the foundation plus the implemented canonical engine
 - The evaluation runner passes all supported suites, including credit lending,
   vendor onboarding, manufacturing / industrials, BFSI / NBFC, the dedicated
   Phase 9 legal/tax/regulatory suite, and the dedicated Phase 10
-  commercial/operations/cyber/forensic suite.
+  commercial/operations/cyber/forensic suite, and the dedicated Phase 11
+  motion-pack deepening suite.
 - The web app exposes a dashboard, case workspace, and run viewer over the shared case model.
 - The workbench reflects the actual platform surface instead of generator boilerplate.
 - The repo contains reproducible scripts for bootstrap, dev, and checks.

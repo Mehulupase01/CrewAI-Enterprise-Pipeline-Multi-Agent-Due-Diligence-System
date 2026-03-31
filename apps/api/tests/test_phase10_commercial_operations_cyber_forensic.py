@@ -150,9 +150,7 @@ def test_phase10_endpoints_return_structured_summaries_and_flags(client) -> None
     assert commercial_summary["concentration_signals"][0]["share_of_revenue"] == 0.7
     assert commercial_summary["net_revenue_retention"] == 1.18
     assert commercial_summary["churn_rate"] == 0.04
-    assert any(
-        signal["status"] == "due_soon" for signal in commercial_summary["renewal_signals"]
-    )
+    assert any(signal["status"] == "due_soon" for signal in commercial_summary["renewal_signals"])
     assert any("pricing pressure" in flag.lower() for flag in commercial_summary["flags"])
     assert {update["template_key"] for update in commercial_summary["checklist_updates"]} == {
         "commercial.customer_concentration"
@@ -321,18 +319,10 @@ def test_phase10_tools_attach_for_relevant_workstreams() -> None:
         forensic_summary=forensic_summary,
     )
 
-    assert "review_commercial_signals" in {
-        tool.name for tool in tool_map["commercial"]
-    }
-    assert "review_operations_risks" in {
-        tool.name for tool in tool_map["operations"]
-    }
-    assert "review_cyber_controls" in {
-        tool.name for tool in tool_map["cyber_privacy"]
-    }
-    assert "review_forensic_flags" in {
-        tool.name for tool in tool_map["forensic_compliance"]
-    }
+    assert "review_commercial_signals" in {tool.name for tool in tool_map["commercial"]}
+    assert "review_operations_risks" in {tool.name for tool in tool_map["operations"]}
+    assert "review_cyber_controls" in {tool.name for tool in tool_map["cyber_privacy"]}
+    assert "review_forensic_flags" in {tool.name for tool in tool_map["forensic_compliance"]}
 
     coordinator_tools = {tool.name for tool in tool_map["coordinator"]}
     assert {
@@ -402,12 +392,8 @@ def test_workflow_run_persists_phase10_refresh_and_enriched_syntheses(client) ->
     }
     assert "Structured commercial analysis identified" in syntheses["commercial"]["narrative"]
     assert "Structured operations analysis identified" in syntheses["operations"]["narrative"]
+    assert "Structured cyber/privacy analysis identified" in syntheses["cyber_privacy"]["narrative"]
     assert (
-        "Structured cyber/privacy analysis identified"
-        in syntheses["cyber_privacy"]["narrative"]
-    )
-    assert (
-        "Structured forensic analysis identified"
-        in syntheses["forensic_compliance"]["narrative"]
+        "Structured forensic analysis identified" in syntheses["forensic_compliance"]["narrative"]
     )
     assert "Phase 10 engines identified" in payload["executive_memo"]["executive_summary"]

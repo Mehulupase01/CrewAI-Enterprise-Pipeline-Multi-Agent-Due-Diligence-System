@@ -13,6 +13,7 @@ from crewai_enterprise_pipeline_api.domain.models import (
     IssueRegisterItemSummary,
     IssueScanResult,
     IssueStatus,
+    MotionPack,
     WorkstreamDomain,
 )
 from crewai_enterprise_pipeline_api.services.case_service import CaseService
@@ -26,6 +27,7 @@ class HeuristicIssueRule:
     recommended_action: str
     patterns: tuple[str, ...]
     workstream_override: WorkstreamDomain | None = None
+    motion_packs: tuple[MotionPack, ...] | None = None
 
 
 HEURISTIC_RULES: tuple[HeuristicIssueRule, ...] = (
@@ -126,6 +128,7 @@ HEURISTIC_RULES: tuple[HeuristicIssueRule, ...] = (
         ),
         patterns=("covenant breach", "default", "dscr", "debt service", "days past due"),
         workstream_override=WorkstreamDomain.FINANCIAL_QOE,
+        motion_packs=(MotionPack.CREDIT_LENDING,),
     ),
     HeuristicIssueRule(
         title="Fund diversion or end-use deviation risk",
@@ -140,6 +143,7 @@ HEURISTIC_RULES: tuple[HeuristicIssueRule, ...] = (
         ),
         patterns=("fund diversion", "end use deviation", "end-use deviation", "round tripping"),
         workstream_override=WorkstreamDomain.FORENSIC_COMPLIANCE,
+        motion_packs=(MotionPack.CREDIT_LENDING,),
     ),
     HeuristicIssueRule(
         title="Collateral perfection gap",
@@ -154,6 +158,22 @@ HEURISTIC_RULES: tuple[HeuristicIssueRule, ...] = (
         ),
         patterns=("collateral gap", "security not perfected", "charge not filed", "unperfected"),
         workstream_override=WorkstreamDomain.LEGAL_CORPORATE,
+        motion_packs=(MotionPack.CREDIT_LENDING,),
+    ),
+    HeuristicIssueRule(
+        title="Borrowing-base or collateral shortfall",
+        severity=FlagSeverity.HIGH,
+        business_impact=(
+            "A weak borrowing base or collateral shortfall can reduce sanctioned capacity, "
+            "tighten covenants, or require additional support."
+        ),
+        recommended_action=(
+            "Rebuild the borrowing base, validate eligibility haircuts, and confirm whether "
+            "additional collateral or promoter support is needed."
+        ),
+        patterns=("borrowing base", "collateral shortfall", "security cover", "margin shortfall"),
+        workstream_override=WorkstreamDomain.LEGAL_CORPORATE,
+        motion_packs=(MotionPack.CREDIT_LENDING,),
     ),
     HeuristicIssueRule(
         title="Third-party integrity or bribery concern",
@@ -168,6 +188,7 @@ HEURISTIC_RULES: tuple[HeuristicIssueRule, ...] = (
         ),
         patterns=("bribery", "kickback", "integrity concern", "conflict of interest"),
         workstream_override=WorkstreamDomain.FORENSIC_COMPLIANCE,
+        motion_packs=(MotionPack.VENDOR_ONBOARDING,),
     ),
     HeuristicIssueRule(
         title="Sanctions or watchlist screening concern",
@@ -182,6 +203,91 @@ HEURISTIC_RULES: tuple[HeuristicIssueRule, ...] = (
         ),
         patterns=("sanctions", "watchlist", "pep", "aml alert"),
         workstream_override=WorkstreamDomain.REGULATORY,
+        motion_packs=(MotionPack.VENDOR_ONBOARDING,),
+    ),
+    HeuristicIssueRule(
+        title="Vendor questionnaire or certification gap",
+        severity=FlagSeverity.HIGH,
+        business_impact=(
+            "Incomplete questionnaires or missing certifications can block vendor approval "
+            "and increase third-party oversight requirements."
+        ),
+        recommended_action=(
+            "Collect the missing questionnaire responses, attestations, and certification evidence "
+            "before approval."
+        ),
+        patterns=(
+            "questionnaire incomplete",
+            "missing certification",
+            "soc 2",
+            "iso certificate expired",
+        ),
+        workstream_override=WorkstreamDomain.CYBER_PRIVACY,
+        motion_packs=(MotionPack.VENDOR_ONBOARDING,),
+    ),
+    HeuristicIssueRule(
+        title="Critical vendor continuity dependency",
+        severity=FlagSeverity.HIGH,
+        business_impact=(
+            "Single-vendor or single-location dependence can create service disruption and "
+            "business continuity risk."
+        ),
+        recommended_action=(
+            "Escalate continuity planning, confirm failover expectations, and document approval "
+            "conditions for critical dependencies."
+        ),
+        patterns=("critical vendor", "single vendor", "single location", "single point of failure"),
+        workstream_override=WorkstreamDomain.OPERATIONS,
+        motion_packs=(MotionPack.VENDOR_ONBOARDING,),
+    ),
+    HeuristicIssueRule(
+        title="Purchase-price adjustment or valuation sensitivity",
+        severity=FlagSeverity.HIGH,
+        business_impact=(
+            "A valuation sensitivity can affect equity value, SPA economics, and the "
+            "investment committee recommendation."
+        ),
+        recommended_action=(
+            "Translate the issue into the valuation bridge and define the corresponding SPA "
+            "protection or pricing adjustment."
+        ),
+        patterns=(
+            "purchase price adjustment",
+            "working capital peg",
+            "valuation adjustment",
+            "closing accounts",
+        ),
+        workstream_override=WorkstreamDomain.FINANCIAL_QOE,
+        motion_packs=(MotionPack.BUY_SIDE_DILIGENCE,),
+    ),
+    HeuristicIssueRule(
+        title="SPA protection or indemnity hotspot",
+        severity=FlagSeverity.HIGH,
+        business_impact=(
+            "Unresolved indemnity, consent, or CP items can delay signing or closing and weaken "
+            "deal protection."
+        ),
+        recommended_action=(
+            "Escalate into the SPA issue matrix and map the item to indemnity, escrow, or "
+            "condition-precedent treatment."
+        ),
+        patterns=("indemnity", "condition precedent", "consent required", "change of control"),
+        workstream_override=WorkstreamDomain.LEGAL_CORPORATE,
+        motion_packs=(MotionPack.BUY_SIDE_DILIGENCE,),
+    ),
+    HeuristicIssueRule(
+        title="PMI readiness or integration dependency",
+        severity=FlagSeverity.MEDIUM,
+        business_impact=(
+            "Unclear Day 1 ownership, system dependencies, or people transitions can delay "
+            "integration benefits and create continuity risk."
+        ),
+        recommended_action=(
+            "Move the issue into the PMI plan with Day 1 owners, TSA needs, and Day 100 actions."
+        ),
+        patterns=("day 1", "day 100", "integration risk", "tsa", "transition service"),
+        workstream_override=WorkstreamDomain.OPERATIONS,
+        motion_packs=(MotionPack.BUY_SIDE_DILIGENCE,),
     ),
     HeuristicIssueRule(
         title="Environmental or factory compliance exposure",
@@ -365,7 +471,7 @@ class IssueService:
         candidates: list[IssueRegisterItemRecord] = []
         fingerprints: set[str] = set()
         for evidence in case.evidence_items:
-            candidate = self._candidate_from_evidence(case_id, evidence)
+            candidate = self._candidate_from_evidence(case_id, case.motion_pack, evidence)
             if candidate is None or candidate.fingerprint in fingerprints:
                 continue
             fingerprints.add(candidate.fingerprint)
@@ -404,6 +510,7 @@ class IssueService:
     def _candidate_from_evidence(
         self,
         case_id: str,
+        motion_pack: str,
         evidence: EvidenceNodeRecord,
     ) -> IssueRegisterItemRecord | None:
         haystack = " ".join(
@@ -413,6 +520,7 @@ class IssueService:
             (
                 rule
                 for rule in HEURISTIC_RULES
+                if rule.motion_packs is None or MotionPack(motion_pack) in rule.motion_packs
                 if any(
                     re.search(r"\b" + re.escape(pattern) + r"\b", haystack, re.IGNORECASE)
                     for pattern in rule.patterns

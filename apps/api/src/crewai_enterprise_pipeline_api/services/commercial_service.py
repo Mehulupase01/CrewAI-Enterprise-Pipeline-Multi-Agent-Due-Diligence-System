@@ -203,8 +203,7 @@ class CommercialService:
                     continue
                 status = "monitor"
                 if any(
-                    token in lowered
-                    for token in ("at risk", "termination", "non-renew", "churn")
+                    token in lowered for token in ("at risk", "termination", "non-renew", "churn")
                 ):
                     status = "at_risk"
                 elif any(
@@ -252,25 +251,18 @@ class CommercialService:
                     f"{top_signal.share_of_revenue:.0%} of revenue."
                 )
         if net_revenue_retention is not None and net_revenue_retention < 1.0:
-            flags.append(
-                f"Net revenue retention is below 100% at {net_revenue_retention:.0%}."
-            )
+            flags.append(f"Net revenue retention is below 100% at {net_revenue_retention:.0%}.")
         if churn_rate is not None and churn_rate >= 0.10:
             flags.append(f"Customer churn is elevated at {churn_rate:.0%}.")
         if pricing_signals:
             flags.append(
-                "Pricing pressure or discounting signals were detected in "
-                "commercial materials."
+                "Pricing pressure or discounting signals were detected in commercial materials."
             )
         if any(signal.status == "at_risk" for signal in renewal_signals):
-            flags.append(
-                "At-risk renewal language was detected in customer or channel "
-                "materials."
-            )
+            flags.append("At-risk renewal language was detected in customer or channel materials.")
         elif any(signal.status == "due_soon" for signal in renewal_signals):
             flags.append(
-                "Material renewal timing should be monitored in the next reporting "
-                "window."
+                "Material renewal timing should be monitored in the next reporting window."
             )
         return flags
 
@@ -345,9 +337,7 @@ class CommercialService:
 
     def _sentences(self, text: str) -> list[str]:
         return [
-            segment.strip()
-            for segment in re.split(r"(?<=[.!?])\s+|\n+", text)
-            if segment.strip()
+            segment.strip() for segment in re.split(r"(?<=[.!?])\s+|\n+", text) if segment.strip()
         ]
 
     def _excerpt_around(self, text: str, start: int, end: int) -> str:

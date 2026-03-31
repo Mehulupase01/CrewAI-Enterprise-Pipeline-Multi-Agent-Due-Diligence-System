@@ -13,7 +13,10 @@ from crewai_enterprise_pipeline_api.agents.compliance_tools import (
 )
 from crewai_enterprise_pipeline_api.agents.financial_tools import build_financial_tools
 from crewai_enterprise_pipeline_api.agents.phase10_tools import build_phase10_tools
+from crewai_enterprise_pipeline_api.agents.phase11_tools import build_phase11_tools
 from crewai_enterprise_pipeline_api.domain.models import (
+    BorrowerScorecard,
+    BuySideAnalysis,
     CommercialSummary,
     ComplianceMatrixSummary,
     CyberPrivacySummary,
@@ -22,6 +25,7 @@ from crewai_enterprise_pipeline_api.domain.models import (
     LegalStructureSummary,
     OperationsSummary,
     TaxComplianceSummary,
+    VendorRiskTier,
 )
 
 
@@ -233,19 +237,21 @@ class IssueRegisterLookupTool(InstrumentedReadOnlyTool):
                 continue
             if status_filter and issue.status.lower() != status_filter:
                 continue
-            if query_text and _score_text(
-                query_text,
-                issue.title,
-                issue.business_impact,
-                issue.recommended_action or "",
-            ) <= 0:
+            if (
+                query_text
+                and _score_text(
+                    query_text,
+                    issue.title,
+                    issue.business_impact,
+                    issue.recommended_action or "",
+                )
+                <= 0
+            ):
                 continue
             filtered.append(issue)
 
         if not filtered:
-            message = (
-                f"No issues matched the requested filters in the {self.scope_label} scope."
-            )
+            message = f"No issues matched the requested filters in the {self.scope_label} scope."
             self._record_usage(
                 query=query_text or "(filtered lookup)",
                 result_count=0,
@@ -307,12 +313,16 @@ class ChecklistGapLookupTool(InstrumentedReadOnlyTool):
                 continue
             if status_filter and item.status.lower() != status_filter:
                 continue
-            if query_text and _score_text(
-                query_text,
-                item.title,
-                item.detail,
-                item.owner or "",
-            ) <= 0:
+            if (
+                query_text
+                and _score_text(
+                    query_text,
+                    item.title,
+                    item.detail,
+                    item.owner or "",
+                )
+                <= 0
+            ):
                 continue
             filtered.append(item)
 
@@ -416,6 +426,7 @@ def _build_checklist_catalog(items: list[Any]) -> list[ChecklistCatalogEntry]:
 def build_workstream_tools(
     *,
     workstream_domain: str,
+    motion_pack: str = "",
     evidence_items: list[Any],
     issues: list[Any],
     checklist_items: list[Any],
@@ -431,6 +442,9 @@ def build_workstream_tools(
     cyber_summary: CyberPrivacySummary | None = None,
     forensic_summary: ForensicSummary | None = None,
     sector_pack: str = "tech_saas_services",
+    buy_side_analysis: BuySideAnalysis | None = None,
+    borrower_scorecard: BorrowerScorecard | None = None,
+    vendor_risk_tier: VendorRiskTier | None = None,
 ) -> list[BaseTool]:
     scope_label = workstream_domain.replace("_", " ")
     scope_slug = workstream_domain.lower()
@@ -502,11 +516,20 @@ def build_workstream_tools(
             if tool.name in phase10_tool_names_by_workstream.get(workstream_domain, set())
         ]
     )
+    tools.extend(
+        build_phase11_tools(
+            motion_pack=motion_pack,
+            buy_side_analysis=buy_side_analysis,
+            borrower_scorecard=borrower_scorecard,
+            vendor_risk_tier=vendor_risk_tier,
+        )
+    )
     return tools
 
 
 def build_case_tools(
     *,
+    motion_pack: str = "",
     evidence_items: list[Any],
     issues: list[Any],
     checklist_items: list[Any],
@@ -522,6 +545,9 @@ def build_case_tools(
     cyber_summary: CyberPrivacySummary | None = None,
     forensic_summary: ForensicSummary | None = None,
     sector_pack: str = "tech_saas_services",
+    buy_side_analysis: BuySideAnalysis | None = None,
+    borrower_scorecard: BorrowerScorecard | None = None,
+    vendor_risk_tier: VendorRiskTier | None = None,
 ) -> list[BaseTool]:
     tools: list[Any] = [
         EvidenceSearchTool(
@@ -571,6 +597,14 @@ def build_case_tools(
             forensic_summary=forensic_summary,
         )
     )
+    tools.extend(
+        build_phase11_tools(
+            motion_pack=motion_pack,
+            buy_side_analysis=buy_side_analysis,
+            borrower_scorecard=borrower_scorecard,
+            vendor_risk_tier=vendor_risk_tier,
+        )
+    )
     return tools
 
 
@@ -597,7 +631,5 @@ def summarize_tool_usage(tools: list[BaseTool]) -> str:
 
 def total_tool_calls(tool_map: dict[str, list[BaseTool]]) -> int:
     return sum(
-        getattr(tool, "current_usage_count", 0)
-        for tools in tool_map.values()
-        for tool in tools
+        getattr(tool, "current_usage_count", 0) for tools in tool_map.values() for tool in tools
     )

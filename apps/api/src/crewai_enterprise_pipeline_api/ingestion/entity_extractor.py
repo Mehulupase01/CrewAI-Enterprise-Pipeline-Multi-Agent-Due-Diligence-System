@@ -159,66 +159,78 @@ def _extract_financial(
     results: list[EvidenceItemCreate] = []
 
     for match in _REVENUE_RE.finditer(text):
-        results.append(_make_evidence(
-            title="Revenue / Turnover",
-            excerpt=match.group(0).strip(),
-            kind=EvidenceKind.METRIC,
-            domain=WorkstreamDomain.FINANCIAL_QOE,
-            artifact_id=artifact_id,
-            citation=f"{citation_prefix} :: revenue",
-        ))
+        results.append(
+            _make_evidence(
+                title="Revenue / Turnover",
+                excerpt=match.group(0).strip(),
+                kind=EvidenceKind.METRIC,
+                domain=WorkstreamDomain.FINANCIAL_QOE,
+                artifact_id=artifact_id,
+                citation=f"{citation_prefix} :: revenue",
+            )
+        )
 
     for match in _EBITDA_RE.finditer(text):
-        results.append(_make_evidence(
-            title="EBITDA",
-            excerpt=match.group(0).strip(),
-            kind=EvidenceKind.METRIC,
-            domain=WorkstreamDomain.FINANCIAL_QOE,
-            artifact_id=artifact_id,
-            citation=f"{citation_prefix} :: ebitda",
-        ))
+        results.append(
+            _make_evidence(
+                title="EBITDA",
+                excerpt=match.group(0).strip(),
+                kind=EvidenceKind.METRIC,
+                domain=WorkstreamDomain.FINANCIAL_QOE,
+                artifact_id=artifact_id,
+                citation=f"{citation_prefix} :: ebitda",
+            )
+        )
 
     for match in _PAT_RE.finditer(text):
-        results.append(_make_evidence(
-            title="Profit After Tax",
-            excerpt=match.group(0).strip(),
-            kind=EvidenceKind.METRIC,
-            domain=WorkstreamDomain.FINANCIAL_QOE,
-            artifact_id=artifact_id,
-            citation=f"{citation_prefix} :: pat",
-        ))
+        results.append(
+            _make_evidence(
+                title="Profit After Tax",
+                excerpt=match.group(0).strip(),
+                kind=EvidenceKind.METRIC,
+                domain=WorkstreamDomain.FINANCIAL_QOE,
+                artifact_id=artifact_id,
+                citation=f"{citation_prefix} :: pat",
+            )
+        )
 
     for match in _NET_DEBT_RE.finditer(text):
-        results.append(_make_evidence(
-            title="Net Debt / Borrowings",
-            excerpt=match.group(0).strip(),
-            kind=EvidenceKind.METRIC,
-            domain=WorkstreamDomain.FINANCIAL_QOE,
-            artifact_id=artifact_id,
-            citation=f"{citation_prefix} :: debt",
-        ))
+        results.append(
+            _make_evidence(
+                title="Net Debt / Borrowings",
+                excerpt=match.group(0).strip(),
+                kind=EvidenceKind.METRIC,
+                domain=WorkstreamDomain.FINANCIAL_QOE,
+                artifact_id=artifact_id,
+                citation=f"{citation_prefix} :: debt",
+            )
+        )
 
     for match in _AUDITOR_RE.finditer(text):
-        results.append(_make_evidence(
-            title="Statutory Auditor",
-            excerpt=match.group(0).strip(),
-            kind=EvidenceKind.FACT,
-            domain=WorkstreamDomain.FINANCIAL_QOE,
-            artifact_id=artifact_id,
-            citation=f"{citation_prefix} :: auditor",
-            confidence=0.85,
-        ))
+        results.append(
+            _make_evidence(
+                title="Statutory Auditor",
+                excerpt=match.group(0).strip(),
+                kind=EvidenceKind.FACT,
+                domain=WorkstreamDomain.FINANCIAL_QOE,
+                artifact_id=artifact_id,
+                citation=f"{citation_prefix} :: auditor",
+                confidence=0.85,
+            )
+        )
 
     for match in _AUDIT_OPINION_RE.finditer(text):
-        results.append(_make_evidence(
-            title="Audit Opinion",
-            excerpt=match.group(0).strip(),
-            kind=EvidenceKind.FACT,
-            domain=WorkstreamDomain.FINANCIAL_QOE,
-            artifact_id=artifact_id,
-            citation=f"{citation_prefix} :: audit-opinion",
-            confidence=0.9,
-        ))
+        results.append(
+            _make_evidence(
+                title="Audit Opinion",
+                excerpt=match.group(0).strip(),
+                kind=EvidenceKind.FACT,
+                domain=WorkstreamDomain.FINANCIAL_QOE,
+                artifact_id=artifact_id,
+                citation=f"{citation_prefix} :: audit-opinion",
+                confidence=0.9,
+            )
+        )
 
     return results
 
@@ -231,34 +243,40 @@ def _extract_legal(
     results: list[EvidenceItemCreate] = []
 
     for match in _PARTY_RE.finditer(text):
-        results.append(_make_evidence(
-            title="Contract Party",
-            excerpt=match.group(0).strip(),
-            kind=EvidenceKind.CONTRACT,
-            domain=WorkstreamDomain.LEGAL_CORPORATE,
-            artifact_id=artifact_id,
-            citation=f"{citation_prefix} :: party",
-        ))
+        results.append(
+            _make_evidence(
+                title="Contract Party",
+                excerpt=match.group(0).strip(),
+                kind=EvidenceKind.CONTRACT,
+                domain=WorkstreamDomain.LEGAL_CORPORATE,
+                artifact_id=artifact_id,
+                citation=f"{citation_prefix} :: party",
+            )
+        )
 
     for match in _EXECUTION_DATE_RE.finditer(text):
-        results.append(_make_evidence(
-            title="Execution Date",
-            excerpt=match.group(0).strip(),
-            kind=EvidenceKind.FACT,
-            domain=WorkstreamDomain.LEGAL_CORPORATE,
-            artifact_id=artifact_id,
-            citation=f"{citation_prefix} :: execution-date",
-        ))
+        results.append(
+            _make_evidence(
+                title="Execution Date",
+                excerpt=match.group(0).strip(),
+                kind=EvidenceKind.FACT,
+                domain=WorkstreamDomain.LEGAL_CORPORATE,
+                artifact_id=artifact_id,
+                citation=f"{citation_prefix} :: execution-date",
+            )
+        )
 
     for match in _GOVERNING_LAW_RE.finditer(text):
-        results.append(_make_evidence(
-            title="Governing Law",
-            excerpt=match.group(0).strip(),
-            kind=EvidenceKind.GOVERNANCE,
-            domain=WorkstreamDomain.LEGAL_CORPORATE,
-            artifact_id=artifact_id,
-            citation=f"{citation_prefix} :: governing-law",
-        ))
+        results.append(
+            _make_evidence(
+                title="Governing Law",
+                excerpt=match.group(0).strip(),
+                kind=EvidenceKind.GOVERNANCE,
+                domain=WorkstreamDomain.LEGAL_CORPORATE,
+                artifact_id=artifact_id,
+                citation=f"{citation_prefix} :: governing-law",
+            )
+        )
 
     return results
 
@@ -271,24 +289,28 @@ def _extract_regulatory(
     results: list[EvidenceItemCreate] = []
 
     for match in _REG_NUMBER_RE.finditer(text):
-        results.append(_make_evidence(
-            title="Registration / License Number",
-            excerpt=match.group(0).strip(),
-            kind=EvidenceKind.FACT,
-            domain=WorkstreamDomain.REGULATORY,
-            artifact_id=artifact_id,
-            citation=f"{citation_prefix} :: reg-number",
-        ))
+        results.append(
+            _make_evidence(
+                title="Registration / License Number",
+                excerpt=match.group(0).strip(),
+                kind=EvidenceKind.FACT,
+                domain=WorkstreamDomain.REGULATORY,
+                artifact_id=artifact_id,
+                citation=f"{citation_prefix} :: reg-number",
+            )
+        )
 
     for match in _VALIDITY_DATE_RE.finditer(text):
-        results.append(_make_evidence(
-            title="License Validity Date",
-            excerpt=match.group(0).strip(),
-            kind=EvidenceKind.FACT,
-            domain=WorkstreamDomain.REGULATORY,
-            artifact_id=artifact_id,
-            citation=f"{citation_prefix} :: validity-date",
-        ))
+        results.append(
+            _make_evidence(
+                title="License Validity Date",
+                excerpt=match.group(0).strip(),
+                kind=EvidenceKind.FACT,
+                domain=WorkstreamDomain.REGULATORY,
+                artifact_id=artifact_id,
+                citation=f"{citation_prefix} :: validity-date",
+            )
+        )
 
     return results
 
@@ -305,28 +327,32 @@ def _extract_india_identifiers(
         cin = match.group(1)
         if cin not in seen:
             seen.add(cin)
-            results.append(_make_evidence(
-                title=f"CIN: {cin}",
-                excerpt=f"Corporate Identity Number: {cin}",
-                kind=EvidenceKind.FACT,
-                domain=WorkstreamDomain.LEGAL_CORPORATE,
-                artifact_id=artifact_id,
-                citation=f"{citation_prefix} :: cin",
-                confidence=0.95,
-            ))
+            results.append(
+                _make_evidence(
+                    title=f"CIN: {cin}",
+                    excerpt=f"Corporate Identity Number: {cin}",
+                    kind=EvidenceKind.FACT,
+                    domain=WorkstreamDomain.LEGAL_CORPORATE,
+                    artifact_id=artifact_id,
+                    citation=f"{citation_prefix} :: cin",
+                    confidence=0.95,
+                )
+            )
 
     for match in _GSTIN_RE.finditer(text):
         gstin = match.group(1)
         if gstin not in seen:
             seen.add(gstin)
-            results.append(_make_evidence(
-                title=f"GSTIN: {gstin}",
-                excerpt=f"GST Identification Number: {gstin}",
-                kind=EvidenceKind.FACT,
-                domain=WorkstreamDomain.TAX,
-                artifact_id=artifact_id,
-                citation=f"{citation_prefix} :: gstin",
-                confidence=0.95,
-            ))
+            results.append(
+                _make_evidence(
+                    title=f"GSTIN: {gstin}",
+                    excerpt=f"GST Identification Number: {gstin}",
+                    kind=EvidenceKind.FACT,
+                    domain=WorkstreamDomain.TAX,
+                    artifact_id=artifact_id,
+                    citation=f"{citation_prefix} :: gstin",
+                    confidence=0.95,
+                )
+            )
 
     return results

@@ -10,9 +10,11 @@ from crewai_enterprise_pipeline_api.domain.models import (
     FlagSeverity,
     MotionPack,
 )
+from crewai_enterprise_pipeline_api.services.buy_side_service import BuySideService
 from crewai_enterprise_pipeline_api.services.case_service import CaseService
 from crewai_enterprise_pipeline_api.services.checklist_service import ChecklistService
 from crewai_enterprise_pipeline_api.services.commercial_service import CommercialService
+from crewai_enterprise_pipeline_api.services.credit_service import CreditService
 from crewai_enterprise_pipeline_api.services.cyber_service import CyberService
 from crewai_enterprise_pipeline_api.services.financial_qoe_service import FinancialQoEService
 from crewai_enterprise_pipeline_api.services.forensic_service import ForensicService
@@ -20,6 +22,7 @@ from crewai_enterprise_pipeline_api.services.legal_service import LegalService
 from crewai_enterprise_pipeline_api.services.operations_service import OperationsService
 from crewai_enterprise_pipeline_api.services.regulatory_service import RegulatoryService
 from crewai_enterprise_pipeline_api.services.tax_service import TaxService
+from crewai_enterprise_pipeline_api.services.vendor_service import VendorService
 
 SEVERITY_ORDER = {
     FlagSeverity.CRITICAL.value: 0,
@@ -33,9 +36,11 @@ SEVERITY_ORDER = {
 class ReportService:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+        self.buy_side_service = BuySideService(session)
         self.case_service = CaseService(session)
         self.checklist_service = ChecklistService(session)
         self.commercial_service = CommercialService(session)
+        self.credit_service = CreditService(session)
         self.cyber_service = CyberService(session)
         self.financial_qoe_service = FinancialQoEService(session)
         self.forensic_service = ForensicService(session)
@@ -43,6 +48,7 @@ class ReportService:
         self.operations_service = OperationsService(session)
         self.tax_service = TaxService(session)
         self.regulatory_service = RegulatoryService(session)
+        self.vendor_service = VendorService(session)
 
     async def build_executive_memo(self, case_id: str) -> ExecutiveMemoReport | None:
         case = await self.case_service._get_case_record(case_id)
@@ -55,17 +61,15 @@ class ReportService:
 
         sorted_issues = self._sorted_issues(case.issues)
         latest_approval = case.approvals[-1] if case.approvals else None
-        approval_state = None if latest_approval is None else ApprovalDecisionKind(
-            latest_approval.decision
+        approval_state = (
+            None if latest_approval is None else ApprovalDecisionKind(latest_approval.decision)
         )
         report_status = (
             "ready_for_export"
             if latest_approval is not None and latest_approval.ready_for_export
             else "not_ready"
         )
-        open_requests = [
-            request for request in case.request_items if request.status != "closed"
-        ]
+        open_requests = [request for request in case.request_items if request.status != "closed"]
         motion_pack = MotionPack(case.motion_pack)
         report_title = self._report_title_for_motion(motion_pack)
         financial_summary = await self.financial_qoe_service.build_financial_summary(
@@ -100,6 +104,24 @@ class ReportService:
             case_id,
             persist_checklist=False,
         )
+        buy_side_analysis = None
+        borrower_scorecard = None
+        vendor_risk_tier = None
+        if motion_pack == MotionPack.BUY_SIDE_DILIGENCE:
+            buy_side_analysis = await self.buy_side_service.build_buy_side_analysis(
+                case_id,
+                persist_checklist=False,
+            )
+        elif motion_pack == MotionPack.CREDIT_LENDING:
+            borrower_scorecard = await self.credit_service.build_borrower_scorecard(
+                case_id,
+                persist_checklist=False,
+            )
+        elif motion_pack == MotionPack.VENDOR_ONBOARDING:
+            vendor_risk_tier = await self.vendor_service.build_vendor_risk_tier(
+                case_id,
+                persist_checklist=False,
+            )
 
         executive_summary = self._build_summary(
             motion_pack,
@@ -116,6 +138,15 @@ class ReportService:
             operations_summary,
             cyber_summary,
             forensic_summary,
+            buy_side_analysis,
+            borrower_scorecard,
+            vendor_risk_tier,
+        )
+        motion_pack_highlights = self._build_motion_pack_highlights(
+            motion_pack,
+            buy_side_analysis,
+            borrower_scorecard,
+            vendor_risk_tier,
         )
         next_actions = self._build_next_actions(
             motion_pack,
@@ -138,6 +169,7 @@ class ReportService:
             top_issues=sorted_issues[:5],
             open_requests=open_requests[:5],
             checklist_coverage=coverage,
+            motion_pack_highlights=motion_pack_highlights,
             next_actions=next_actions,
         )
 
@@ -151,12 +183,14 @@ class ReportService:
             for issue in memo.top_issues
         ] or ["- No issues have been recorded yet."]
         request_lines = [
-            f"- {request.title} ({request.status})"
-            for request in memo.open_requests
+            f"- {request.title} ({request.status})" for request in memo.open_requests
         ] or ["- No open diligence requests."]
-        next_action_lines = [
-            f"- {action}" for action in memo.next_actions
-        ] or ["- No immediate next actions recorded."]
+        next_action_lines = [f"- {action}" for action in memo.next_actions] or [
+            "- No immediate next actions recorded."
+        ]
+        motion_pack_lines = [f"- {item}" for item in memo.motion_pack_highlights] or [
+            "- No motion-pack highlights generated yet."
+        ]
 
         return "\n".join(
             [
@@ -174,11 +208,11 @@ class ReportService:
                 *issue_lines,
                 "",
                 "## Checklist Coverage",
-                (
-                    f"- Mandatory open items: "
-                    f"{memo.checklist_coverage.open_mandatory_items}"
-                ),
+                (f"- Mandatory open items: {memo.checklist_coverage.open_mandatory_items}"),
                 f"- Completion ready: {memo.checklist_coverage.completion_ready}",
+                "",
+                "## Motion Pack Highlights",
+                *motion_pack_lines,
                 "",
                 "## Open Requests",
                 *request_lines,
@@ -289,6 +323,9 @@ class ReportService:
         operations_summary,
         cyber_summary,
         forensic_summary,
+        buy_side_analysis,
+        borrower_scorecard,
+        vendor_risk_tier,
     ) -> str:
         financial_note = ""
         if financial_summary is not None and financial_summary.periods:
@@ -299,9 +336,7 @@ class ReportService:
             if latest.ebitda is not None:
                 fragments.append(f"reported EBITDA {latest.ebitda:.2f}")
             if financial_summary.normalized_ebitda is not None:
-                fragments.append(
-                    f"normalized EBITDA {financial_summary.normalized_ebitda:.2f}"
-                )
+                fragments.append(f"normalized EBITDA {financial_summary.normalized_ebitda:.2f}")
             if fragments:
                 financial_note = " Financial QoE parsing extracted " + ", ".join(fragments) + "."
 
@@ -312,22 +347,14 @@ class ReportService:
                     f"{len(legal_summary.contract_reviews)} contract reviews"
                 )
             if legal_summary.flags:
-                compliance_fragments.append(
-                    f"{len(legal_summary.flags)} legal governance flags"
-                )
+                compliance_fragments.append(f"{len(legal_summary.flags)} legal governance flags")
         if tax_summary is not None:
-            known_tax_items = [
-                item for item in tax_summary.items if item.status.value != "unknown"
-            ]
+            known_tax_items = [item for item in tax_summary.items if item.status.value != "unknown"]
             if known_tax_items:
-                compliance_fragments.append(
-                    f"{len(known_tax_items)} tax areas with evidence"
-                )
+                compliance_fragments.append(f"{len(known_tax_items)} tax areas with evidence")
         if compliance_summary is not None:
             known_matrix_items = [
-                item
-                for item in compliance_summary.items
-                if item.status.value != "unknown"
+                item for item in compliance_summary.items if item.status.value != "unknown"
             ]
             if known_matrix_items:
                 compliance_fragments.append(
@@ -363,35 +390,100 @@ class ReportService:
                     f"{len(known_controls)} cyber/privacy controls with evidence"
                 )
         if forensic_summary is not None and forensic_summary.flags:
-            phase10_fragments.append(
-                f"{len(forensic_summary.flags)} forensic red flags"
-            )
+            phase10_fragments.append(f"{len(forensic_summary.flags)} forensic red flags")
         phase10_note = (
             ""
             if not phase10_fragments
             else " Phase 10 engines identified " + ", ".join(phase10_fragments) + "."
         )
+        phase11_note = ""
+        if motion_pack == MotionPack.BUY_SIDE_DILIGENCE and buy_side_analysis is not None:
+            phase11_note = (
+                " Phase 11 buy-side deepening identified "
+                f"{len(buy_side_analysis.valuation_bridge)} valuation bridge items, "
+                f"{len(buy_side_analysis.spa_issues)} SPA issue clusters, and "
+                f"{len(buy_side_analysis.pmi_risks)} PMI risks."
+            )
+        elif motion_pack == MotionPack.CREDIT_LENDING and borrower_scorecard is not None:
+            phase11_note = (
+                " Phase 11 credit deepening produced a borrower score of "
+                f"{borrower_scorecard.overall_score}/100 with "
+                f"{len(borrower_scorecard.covenant_tracking)} covenant tracking items."
+            )
+        elif motion_pack == MotionPack.VENDOR_ONBOARDING and vendor_risk_tier is not None:
+            phase11_note = (
+                " Phase 11 vendor deepening classified the vendor as "
+                f"{vendor_risk_tier.tier} with score {vendor_risk_tier.overall_score}/100 and "
+                f"{len(vendor_risk_tier.certifications_required)} outstanding certification asks."
+            )
 
         if motion_pack == MotionPack.CREDIT_LENDING:
             return (
                 f"{case_name} for {target_name} currently has {issue_count} tracked credit-risk "
                 f"items, {open_mandatory_items} open mandatory underwriting checklist items, "
                 f"and {open_request_count} open borrower information requests."
-                f"{financial_note}{compliance_note}{phase10_note}"
+                f"{financial_note}{compliance_note}{phase10_note}{phase11_note}"
             )
         if motion_pack == MotionPack.VENDOR_ONBOARDING:
             return (
                 f"{case_name} for {target_name} currently has {issue_count} tracked "
                 f"third-party risk items, {open_mandatory_items} open mandatory onboarding "
                 f"checklist items, and {open_request_count} open vendor follow-up requests."
-                f"{financial_note}{compliance_note}{phase10_note}"
+                f"{financial_note}{compliance_note}{phase10_note}{phase11_note}"
             )
         return (
             f"{case_name} for {target_name} currently has {issue_count} tracked issues, "
             f"{open_mandatory_items} open mandatory checklist items, and "
             f"{open_request_count} open diligence requests."
-            f"{financial_note}{compliance_note}{phase10_note}"
+            f"{financial_note}{compliance_note}{phase10_note}{phase11_note}"
         )
+
+    def _build_motion_pack_highlights(
+        self,
+        motion_pack: MotionPack,
+        buy_side_analysis,
+        borrower_scorecard,
+        vendor_risk_tier,
+    ) -> list[str]:
+        if motion_pack == MotionPack.BUY_SIDE_DILIGENCE and buy_side_analysis is not None:
+            highlights: list[str] = []
+            if buy_side_analysis.valuation_bridge:
+                highlights.append(
+                    f"{len(buy_side_analysis.valuation_bridge)} valuation bridge "
+                    "items are ready for IC review."
+                )
+            if buy_side_analysis.spa_issues:
+                highlights.append(
+                    f"{len(buy_side_analysis.spa_issues)} SPA issue clusters "
+                    "should be translated into deal protections."
+                )
+            if buy_side_analysis.pmi_risks:
+                highlights.append(
+                    f"{len(buy_side_analysis.pmi_risks)} PMI risks should be "
+                    "assigned into Day 1 / Day 100 planning."
+                )
+            return highlights[:4]
+        if motion_pack == MotionPack.CREDIT_LENDING and borrower_scorecard is not None:
+            return [
+                "Borrower scorecard: "
+                f"{borrower_scorecard.overall_score}/100 "
+                f"({borrower_scorecard.overall_rating}).",
+                f"Financial health score: {borrower_scorecard.financial_health.score}/100.",
+                f"Collateral score: {borrower_scorecard.collateral.score}/100.",
+                f"Covenant tracking items: {len(borrower_scorecard.covenant_tracking)}.",
+            ]
+        if motion_pack == MotionPack.VENDOR_ONBOARDING and vendor_risk_tier is not None:
+            return [
+                f"Vendor tier: {vendor_risk_tier.tier}.",
+                f"Overall vendor score: {vendor_risk_tier.overall_score}/100.",
+                f"Questionnaire sections assessed: {len(vendor_risk_tier.questionnaire)}.",
+                (
+                    "Outstanding certifications: "
+                    + (", ".join(vendor_risk_tier.certifications_required) or "none")
+                    + "."
+                ),
+            ]
+        return []
 
     def _report_title_for_motion(self, motion_pack: MotionPack) -> str:
         if motion_pack == MotionPack.CREDIT_LENDING:

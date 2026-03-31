@@ -46,16 +46,18 @@ docker-compose.yml
 
 ## Current Phase
 
-The repository has completed Phases 0-10 from the current master-plan execution
+The repository has completed Phases 0-11 from the current master-plan execution
 sequence. After Phase 7, the repo also received an additional CrewAI depth
 enhancement: tool-grounded evidence access for the LLM path. Phase 8 is closed
 as the canonical Financial Quality of Earnings (QoE) engine, Phase 9 is closed
-as the canonical Legal / Tax / Regulatory engine, and Phase 10 is now closed as
-the canonical Commercial / Operations / Cyber / Forensic engine. The current
-build includes the first flagship buy-side slice, all planned motion and sector
-expansions, analyst-ready export archives, scoped CrewAI evidence tools, and
-workflow-integrated financial, legal/compliance, and Phase 10 domain-analysis
-layers on top of the existing hardened platform spine:
+as the canonical Legal / Tax / Regulatory engine, Phase 10 is closed as the
+canonical Commercial / Operations / Cyber / Forensic engine, and Phase 11 is
+closed as the canonical Motion Pack Deepening layer. The current build includes
+the first flagship buy-side slice, all planned motion and sector expansions,
+analyst-ready export archives, scoped CrewAI evidence tools, and
+workflow-integrated financial, legal/compliance, Phase 10 domain-analysis, and
+Phase 11 motion-pack-analysis layers on top of the existing hardened platform
+spine:
 
 - persisted case operations backed by SQLAlchemy
 - document upload, parsing, storage, and evidence extraction
@@ -91,6 +93,18 @@ layers on top of the existing hardened platform spine:
   and forensic workstream items
 - CrewAI Phase 10 tools for commercial signals, operations risks, cyber
   controls, and forensic flags
+- `GET /api/v1/cases/{case_id}/buy-side-analysis` for valuation bridge items,
+  SPA issue tracking, and PMI risk analysis
+- `GET /api/v1/cases/{case_id}/borrower-scorecard` for weighted credit section
+  scoring, covenant tracking, and borrower rating
+- `GET /api/v1/cases/{case_id}/vendor-risk-tier` for vendor tiering, scoring
+  breakdown, certification requirements, and review cadence
+- automatic checklist satisfaction for motion-pack-specific buy-side, credit,
+  and vendor-onboarding items
+- executive memo motion-pack highlights plus workflow-integrated motion-pack
+  refresh across traces and syntheses
+- CrewAI Phase 11 motion-pack specialist tools and prompts for buy-side,
+  credit, and vendor review
 - tool-grounded CrewAI workstream analysis with scoped evidence, issue, and
   checklist review tools over pre-loaded case snapshots
 - analyst workbench dashboard, case workspace, and run viewer with live API support
@@ -209,6 +223,12 @@ To run only the Phase 10 commercial / operations / cyber / forensic suite:
 
 ```powershell
 ./scripts/evaluate.ps1 -Suite phase10_commercial_operations_cyber_forensic
+```
+
+To run only the Phase 11 motion-pack deepening suite:
+
+```powershell
+./scripts/evaluate.ps1 -Suite phase11_motion_pack_deepening
 ```
 
 To run a live API smoke check after the stack is up:

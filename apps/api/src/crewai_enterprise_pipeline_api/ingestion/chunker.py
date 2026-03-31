@@ -68,14 +68,16 @@ def semantic_chunk(
 
             if buffer:
                 page = _detect_page(cleaned, buffer_start)
-                chunks.append(SemanticChunk(
-                    chunk_index=chunk_index,
-                    section_title=section_title,
-                    text=buffer,
-                    page_number=page,
-                    char_start=buffer_start,
-                    char_end=buffer_start + len(buffer),
-                ))
+                chunks.append(
+                    SemanticChunk(
+                        chunk_index=chunk_index,
+                        section_title=section_title,
+                        text=buffer,
+                        page_number=page,
+                        char_start=buffer_start,
+                        char_end=buffer_start + len(buffer),
+                    )
+                )
                 chunk_index += 1
 
             if len(para_text) <= max_chars:
@@ -84,28 +86,32 @@ def semantic_chunk(
             else:
                 for sub_text, sub_offset in _split_sentences(para_text, para_offset, max_chars):
                     page = _detect_page(cleaned, sub_offset)
-                    chunks.append(SemanticChunk(
-                        chunk_index=chunk_index,
-                        section_title=section_title,
-                        text=sub_text,
-                        page_number=page,
-                        char_start=sub_offset,
-                        char_end=sub_offset + len(sub_text),
-                    ))
+                    chunks.append(
+                        SemanticChunk(
+                            chunk_index=chunk_index,
+                            section_title=section_title,
+                            text=sub_text,
+                            page_number=page,
+                            char_start=sub_offset,
+                            char_end=sub_offset + len(sub_text),
+                        )
+                    )
                     chunk_index += 1
                 buffer = ""
                 buffer_start = -1
 
         if buffer:
             page = _detect_page(cleaned, buffer_start)
-            chunks.append(SemanticChunk(
-                chunk_index=chunk_index,
-                section_title=section_title,
-                text=buffer,
-                page_number=page,
-                char_start=buffer_start,
-                char_end=buffer_start + len(buffer),
-            ))
+            chunks.append(
+                SemanticChunk(
+                    chunk_index=chunk_index,
+                    section_title=section_title,
+                    text=buffer,
+                    page_number=page,
+                    char_start=buffer_start,
+                    char_end=buffer_start + len(buffer),
+                )
+            )
             chunk_index += 1
 
     return chunks

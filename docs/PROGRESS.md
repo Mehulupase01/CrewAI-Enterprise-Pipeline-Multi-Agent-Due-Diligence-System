@@ -4,11 +4,11 @@
 > Any AI agent resuming work should read this file + CLAUDE.md first.
 > Strategic roadmap comes from `docs/MASTERPLAN.docx` (preferred) and `docs/MASTERPLAN.pdf` (companion export); execution truth comes from the actual repo state.
 
-## Status: Phase 10 Complete
+## Status: Phase 11 Complete
 
 **Last updated:** 2026-03-31
-**Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7, Phase 8, Phase 9, Phase 10
-**Next phase:** Phase 11 (confirm exact title from `MASTERPLAN.docx` before implementation)
+**Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7, Phase 8, Phase 9, Phase 10, Phase 11
+**Next phase:** Phase 12: Sector Pack Deepening
 **Blocking issues:** None
 
 ---
@@ -628,6 +628,71 @@
 **Notes for next phase:**
 - Start canonical Phase 11 only after confirming its exact title and scope from `MASTERPLAN.docx`
 - Phase 10 currently exposes a complete backend, workflow, evaluation, and CrewAI-tooling surface; dedicated analyst UI panels for commercial/operations/cyber/forensic depth remain optional future UX depth, not a blocker for canonical Phase 10 closure
+
+---
+
+### Phase 11: Motion Pack Deepening (2026-03-31)
+
+**What was done:**
+- Deepened motion-pack behavior from broad checklist composition into deterministic structured motion-pack analysis for buy-side diligence, credit/lending, and vendor onboarding
+- Added a centralized checklist catalog so motion-pack and sector-pack templates compose through one source of truth with duplicate template-key protection
+- Added buy-side analysis generation for valuation bridge items, SPA issue matrix items, and PMI risks
+- Added borrower scorecard generation for credit/lending with weighted sections, covenant tracking, overall score, and rating
+- Added vendor risk tiering for vendor onboarding with score breakdown, questionnaire output, certification requirements, and next-review guidance
+- Added `GET /cases/{case_id}/buy-side-analysis`, `GET /cases/{case_id}/borrower-scorecard`, and `GET /cases/{case_id}/vendor-risk-tier`
+- Wired Phase 11 refresh into workflow execution so motion-pack state enriches trace events, workstream syntheses, executive memo highlights, and CrewAI prompt/tool surfaces
+- Added CrewAI motion-pack specialist prompts and read-only structured review tools for buy-side, credit, and vendor motion-pack outputs
+- Added a dedicated Phase 11 evaluation suite plus focused pytest coverage for endpoints, checklist auto-satisfaction, workflow integration, and motion-pack specialist crew attachment
+- Reconciled older blocked evaluation suites to the truthful post-run checklist state after Phase 11 deepened workflow coverage
+
+**Files created:**
+- apps/api/src/.../services/checklist_catalog.py -- centralized motion-pack and sector-pack checklist catalog
+- apps/api/src/.../services/buy_side_service.py -- deterministic buy-side analysis engine
+- apps/api/src/.../services/credit_service.py -- deterministic borrower scorecard and covenant tracking engine
+- apps/api/src/.../services/vendor_service.py -- deterministic vendor risk-tiering and questionnaire engine
+- apps/api/src/.../agents/phase11_tools.py -- structured CrewAI tools for Phase 11 motion-pack review
+- apps/api/src/.../agents/packs/__init__.py -- motion-pack specialist package init
+- apps/api/src/.../agents/packs/buy_side_crew.py -- buy-side specialist prompt/config
+- apps/api/src/.../agents/packs/credit_crew.py -- credit specialist prompt/config
+- apps/api/src/.../agents/packs/vendor_crew.py -- vendor specialist prompt/config
+- apps/api/tests/test_phase11_motion_pack_deepening.py -- 5 focused Phase 11 test cases
+
+**Files modified:**
+- apps/api/src/.../domain/models.py -- new motion-pack analysis, scorecard, valuation, covenant, tiering, and memo-highlight models
+- apps/api/src/.../agents/models.py -- MotionPackAnalysisOutput
+- apps/api/src/.../agents/tools.py -- motion-pack tool wiring and backward-compatible defaults
+- apps/api/src/.../agents/crew.py -- motion-pack specialist crew/task assembly and snapshot injection
+- apps/api/src/.../api/routes/cases.py -- new buy-side-analysis, borrower-scorecard, and vendor-risk-tier endpoints
+- apps/api/src/.../services/checklist_service.py -- centralized catalog composition and duplicate template-key protection
+- apps/api/src/.../services/issue_service.py -- motion-pack-aware heuristic enrichment
+- apps/api/src/.../services/report_service.py -- motion-pack highlights in executive memo output
+- apps/api/src/.../services/synthesis_service.py -- motion-pack-aware narrative enrichment
+- apps/api/src/.../services/workflow_service.py -- motion-pack refresh, trace events, and CrewAI integration
+- apps/api/src/.../evaluation/scenarios.py -- Phase 11 scenario contracts and updated integrated checklist expectations
+- apps/api/src/.../evaluation/runner.py -- Phase 11 endpoint assertions and reporting
+- apps/api/tests/test_evaluation.py -- Phase 11 suite registration
+- apps/api/src/.../core/settings.py -- current_phase updated to Phase 11 complete
+
+**Decisions made:**
+- AD-043: Motion-pack deepening must be deterministic structured state first, not prompt-only specialization
+
+**Blockers encountered:**
+- Initial checklist seeding for deeper motion-pack coverage triggered duplicate `template_key` collisions when motion-pack and sector-pack catalogs overlapped; this was fixed with central catalog composition and dedupe logic before phase closure
+- Older blocked evaluation scenarios had to be reconciled to the truthful integrated post-run checklist state because Phase 11 auto-satisfies additional motion-pack items by design
+
+**Test results:**
+- pytest: 105/105 pass (100 existing + 5 new)
+- eval suites: 17/17 pass (all 9 suites at 100%)
+- ruff: clean
+- npm lint: clean
+- npm typecheck: clean
+- check gate: `./scripts/check.ps1` passed
+- dedicated Phase 11 eval artifact: `artifacts/evaluations/phase11-motion-pack-deepening-20260331T153537Z.json`
+- latest full-gate eval artifact: `artifacts/evaluations/all-supported-suites-20260331T154838Z.json`
+
+**Notes for next phase:**
+- Start canonical Phase 12: Sector Pack Deepening from `MASTERPLAN.docx`
+- Phase 11 now exposes a complete backend, workflow, report, evaluation, and CrewAI-tooling surface for motion-pack depth; dedicated analyst UI panels for motion-pack-specific valuation bridges, borrower scorecards, and vendor tiering remain future UX depth rather than blockers for canonical Phase 11 closure
 
 ---
 

@@ -18,9 +18,23 @@ from crewai_enterprise_pipeline_api.agents.config import (
 from crewai_enterprise_pipeline_api.agents.financial_tools import format_financial_snapshot
 from crewai_enterprise_pipeline_api.agents.models import (
     ExecutiveSummaryOutput,
+    MotionPackAnalysisOutput,
     WorkstreamAnalysisOutput,
 )
+from crewai_enterprise_pipeline_api.agents.packs.buy_side_crew import (
+    BUY_SIDE_SPECIALIST_CONFIG,
+    build_buy_side_prompt,
+)
+from crewai_enterprise_pipeline_api.agents.packs.credit_crew import (
+    CREDIT_SPECIALIST_CONFIG,
+    build_credit_prompt,
+)
+from crewai_enterprise_pipeline_api.agents.packs.vendor_crew import (
+    VENDOR_SPECIALIST_CONFIG,
+    build_vendor_prompt,
+)
 from crewai_enterprise_pipeline_api.agents.phase10_tools import format_phase10_snapshot
+from crewai_enterprise_pipeline_api.agents.phase11_tools import format_phase11_snapshot
 from crewai_enterprise_pipeline_api.agents.tools import (
     build_case_tools,
     build_workstream_tools,
@@ -200,10 +214,7 @@ def _phase9_snapshot_block(
         tax_summary=tax_summary,
         compliance_summary=compliance_summary,
     )
-    return (
-        "## Legal / Tax / Regulatory Snapshot\n"
-        f"{phase9_snapshot}\n\n"
-    )
+    return f"## Legal / Tax / Regulatory Snapshot\n{phase9_snapshot}\n\n"
 
 
 def _phase10_snapshot_block(
@@ -218,10 +229,23 @@ def _phase10_snapshot_block(
         cyber_summary=cyber_summary,
         forensic_summary=forensic_summary,
     )
-    return (
-        "## Commercial / Operations / Cyber / Forensic Snapshot\n"
-        f"{phase10_snapshot}\n\n"
+    return f"## Commercial / Operations / Cyber / Forensic Snapshot\n{phase10_snapshot}\n\n"
+
+
+def _phase11_snapshot_block(
+    *,
+    motion_pack: str,
+    buy_side_analysis=None,
+    borrower_scorecard=None,
+    vendor_risk_tier=None,
+) -> str:
+    phase11_snapshot = format_phase11_snapshot(
+        motion_pack=motion_pack,
+        buy_side_analysis=buy_side_analysis,
+        borrower_scorecard=borrower_scorecard,
+        vendor_risk_tier=vendor_risk_tier,
     )
+    return f"## Motion Pack Deepening Snapshot\n{phase11_snapshot}\n\n"
 
 
 def _build_llm(settings) -> LLM:
@@ -249,6 +273,9 @@ def build_due_diligence_crew(
     operations_summary=None,
     cyber_summary=None,
     forensic_summary=None,
+    buy_side_analysis=None,
+    borrower_scorecard=None,
+    vendor_risk_tier=None,
 ) -> tuple[Crew, dict[str, str], dict[str, list[Any]]]:
     """Build a CrewAI crew for the given case context."""
     llm = _build_llm(settings)
@@ -277,6 +304,7 @@ def build_due_diligence_crew(
 
         tools = build_workstream_tools(
             workstream_domain=ws_domain,
+            motion_pack=case_ctx.motion_pack,
             evidence_items=ws_ctx.evidence_items,
             issues=ws_ctx.issues,
             checklist_items=ws_ctx.checklist_items,
@@ -292,6 +320,9 @@ def build_due_diligence_crew(
             cyber_summary=cyber_summary,
             forensic_summary=forensic_summary,
             sector_pack=case_ctx.sector_pack,
+            buy_side_analysis=buy_side_analysis,
+            borrower_scorecard=borrower_scorecard,
+            vendor_risk_tier=vendor_risk_tier,
         )
         agent = Agent(
             role=agent_cfg["role"],
@@ -309,8 +340,7 @@ def build_due_diligence_crew(
 
         task_name = f"analyze_{ws_domain}"
         financial_block = (
-            "## Financial QoE Snapshot\n"
-            f"{format_financial_snapshot(financial_summary)}\n\n"
+            f"## Financial QoE Snapshot\n{format_financial_snapshot(financial_summary)}\n\n"
             if ws_domain == WorkstreamDomain.FINANCIAL_QOE.value
             else ""
         )
@@ -344,10 +374,13 @@ def build_due_diligence_crew(
             }
             else ""
         )
-        available_tools_block = (
-            "## Available Tools\n"
-            f"{', '.join(tool.name for tool in tools)}\n\n"
+        phase11_block = _phase11_snapshot_block(
+            motion_pack=case_ctx.motion_pack,
+            buy_side_analysis=buy_side_analysis,
+            borrower_scorecard=borrower_scorecard,
+            vendor_risk_tier=vendor_risk_tier,
         )
+        available_tools_block = f"## Available Tools\n{', '.join(tool.name for tool in tools)}\n\n"
         task = Task(
             name=task_name,
             description=(
@@ -361,9 +394,9 @@ def build_due_diligence_crew(
                 + financial_block
                 + phase9_block
                 + phase10_block
+                + phase11_block
                 + available_tools_block
-                +
-                "Requirements:\n"
+                + "Requirements:\n"
                 "1. Ground material claims in the snapshot or tool results only.\n"
                 "2. Use the evidence search tool when you need cited support.\n"
                 "3. Use the issue and checklist tools to confirm blockers and open gaps.\n"
@@ -381,7 +414,8 @@ def build_due_diligence_crew(
         task_map[ws_domain] = task_name
         tool_map[ws_domain] = tools
 
-    coordinator_tools = build_case_tools(
+    motion_pack_tools = build_case_tools(
+        motion_pack=case_ctx.motion_pack,
         evidence_items=[
             evidence_item
             for ws_ctx in case_ctx.workstreams.values()
@@ -403,6 +437,106 @@ def build_due_diligence_crew(
         cyber_summary=cyber_summary,
         forensic_summary=forensic_summary,
         sector_pack=case_ctx.sector_pack,
+        buy_side_analysis=buy_side_analysis,
+        borrower_scorecard=borrower_scorecard,
+        vendor_risk_tier=vendor_risk_tier,
+    )
+
+    motion_pack_config = None
+    motion_pack_prompt = None
+    motion_pack_state_available = False
+    if case_ctx.motion_pack == "buy_side_diligence":
+        motion_pack_config = BUY_SIDE_SPECIALIST_CONFIG
+        motion_pack_state_available = buy_side_analysis is not None
+        motion_pack_prompt = build_buy_side_prompt(
+            format_phase11_snapshot(
+                motion_pack=case_ctx.motion_pack,
+                buy_side_analysis=buy_side_analysis,
+            )
+        )
+    elif case_ctx.motion_pack == "credit_lending":
+        motion_pack_config = CREDIT_SPECIALIST_CONFIG
+        motion_pack_state_available = borrower_scorecard is not None
+        motion_pack_prompt = build_credit_prompt(
+            format_phase11_snapshot(
+                motion_pack=case_ctx.motion_pack,
+                borrower_scorecard=borrower_scorecard,
+            )
+        )
+    elif case_ctx.motion_pack == "vendor_onboarding":
+        motion_pack_config = VENDOR_SPECIALIST_CONFIG
+        motion_pack_state_available = vendor_risk_tier is not None
+        motion_pack_prompt = build_vendor_prompt(
+            format_phase11_snapshot(
+                motion_pack=case_ctx.motion_pack,
+                vendor_risk_tier=vendor_risk_tier,
+            )
+        )
+
+    if (
+        motion_pack_config is not None
+        and motion_pack_prompt is not None
+        and motion_pack_state_available
+    ):
+        motion_pack_agent = Agent(
+            role=motion_pack_config["role"],
+            goal=motion_pack_config["goal"],
+            backstory=motion_pack_config["backstory"],
+            llm=llm,
+            verbose=settings.crew_verbose,
+            allow_delegation=False,
+            max_iter=3,
+            max_rpm=settings.crew_max_rpm,
+            tools=motion_pack_tools,
+            respect_context_window=True,
+        )
+        agents.append(motion_pack_agent)
+        tool_map["motion_pack_specialist"] = motion_pack_tools
+        pack_task = Task(
+            name="motion_pack_analysis",
+            description=(
+                f"{preamble}\n\n"
+                f"{motion_pack_prompt}\n"
+                "Requirements:\n"
+                "1. Focus on the motion-pack specific outputs only.\n"
+                "2. Use the relevant tool before making material assertions.\n"
+                "3. Surface the top decision points for reviewers and approvers.\n"
+                "4. Do not restate generic workstream analysis without tying it to the motion pack."
+            ),
+            expected_output=(
+                "A JSON object with: status, headline, narrative, key_items, recommended_actions."
+            ),
+            agent=motion_pack_agent,
+            output_pydantic=MotionPackAnalysisOutput,
+        )
+        tasks.append(pack_task)
+
+    coordinator_tools = build_case_tools(
+        motion_pack=case_ctx.motion_pack,
+        evidence_items=[
+            evidence_item
+            for ws_ctx in case_ctx.workstreams.values()
+            for evidence_item in ws_ctx.evidence_items
+        ],
+        issues=[issue for ws_ctx in case_ctx.workstreams.values() for issue in ws_ctx.issues],
+        checklist_items=[
+            item for ws_ctx in case_ctx.workstreams.values() for item in ws_ctx.checklist_items
+        ],
+        chunk_items=case_ctx.chunks,
+        default_top_k=settings.crew_tool_top_k,
+        max_usage_count=settings.crew_tool_max_usage,
+        financial_summary=financial_summary,
+        legal_summary=legal_summary,
+        tax_summary=tax_summary,
+        compliance_summary=compliance_summary,
+        commercial_summary=commercial_summary,
+        operations_summary=operations_summary,
+        cyber_summary=cyber_summary,
+        forensic_summary=forensic_summary,
+        sector_pack=case_ctx.sector_pack,
+        buy_side_analysis=buy_side_analysis,
+        borrower_scorecard=borrower_scorecard,
+        vendor_risk_tier=vendor_risk_tier,
     )
     coordinator = Agent(
         role=COORDINATOR_CONFIG["role"],
@@ -419,8 +553,7 @@ def build_due_diligence_crew(
     agents.append(coordinator)
     tool_map["coordinator"] = coordinator_tools
     coordinator_tools_block = (
-        "## Available Tools\n"
-        f"{', '.join(tool.name for tool in coordinator_tools)}\n\n"
+        f"## Available Tools\n{', '.join(tool.name for tool in coordinator_tools)}\n\n"
     )
 
     summary_task = Task(
@@ -444,9 +577,14 @@ def build_due_diligence_crew(
                 cyber_summary,
                 forensic_summary,
             )
+            + _phase11_snapshot_block(
+                motion_pack=case_ctx.motion_pack,
+                buy_side_analysis=buy_side_analysis,
+                borrower_scorecard=borrower_scorecard,
+                vendor_risk_tier=vendor_risk_tier,
+            )
             + coordinator_tools_block
-            +
-            "Synthesize the workstream findings into a cohesive executive summary. "
+            + "Synthesize the workstream findings into a cohesive executive summary. "
             "Use the case-wide tools if you need to validate the top risks or inspect "
             "underlying evidence before finalizing the recommendation."
         ),

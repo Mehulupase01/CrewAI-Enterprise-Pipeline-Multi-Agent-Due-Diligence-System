@@ -41,9 +41,7 @@ def get_current_principal(
     if missing_headers:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=(
-                "Missing authentication headers: " + ", ".join(missing_headers)
-            ),
+            detail=("Missing authentication headers: " + ", ".join(missing_headers)),
         )
 
     try:
@@ -74,8 +72,7 @@ def require_roles(*allowed_roles: UserRole):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=(
-                    f"Role '{principal.role.value}' cannot access this route. "
-                    f"Allowed: {allowed}."
+                    f"Role '{principal.role.value}' cannot access this route. Allowed: {allowed}."
                 ),
             )
         return principal

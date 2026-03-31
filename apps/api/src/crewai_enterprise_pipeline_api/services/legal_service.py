@@ -246,8 +246,7 @@ class LegalService:
                 )
             if self._clause_present(clauses, "change_of_control"):
                 flags.append(
-                    "Change-of-control clause detected; "
-                    "review assignment and consent mechanics."
+                    "Change-of-control clause detected; review assignment and consent mechanics."
                 )
             if self._clause_present(clauses, "indemnity") and not self._clause_present(
                 clauses,
@@ -277,14 +276,10 @@ class LegalService:
         haystack = "\n".join(snapshot.text for snapshot in structure_snapshots).lower()
         flags: list[str] = []
         if "circular shareholding" in haystack:
-            flags.append(
-                "Potential circular shareholding reference "
-                "detected in legal materials."
-            )
+            flags.append("Potential circular shareholding reference detected in legal materials.")
         if "nominee director" in haystack:
             flags.append(
-                "Nominee director reference detected; "
-                "confirm governance rights and vetoes."
+                "Nominee director reference detected; confirm governance rights and vetoes."
             )
         if "struck off" in haystack or "struck-off" in haystack:
             flags.append(
@@ -298,8 +293,7 @@ class LegalService:
             )
         if len(subsidiary_mentions) >= 3:
             flags.append(
-                "Multiple subsidiary references detected; "
-                "confirm full corporate structure mapping."
+                "Multiple subsidiary references detected; confirm full corporate structure mapping."
             )
         flags.extend(flag for review in contract_reviews for flag in review.flags)
         return sorted(set(flags))

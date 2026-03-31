@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -607,7 +607,95 @@ class ExecutiveMemoReport(BaseModel):
     top_issues: list[IssueRegisterItemSummary]
     open_requests: list[RequestItemSummary]
     checklist_coverage: ChecklistCoverageSummary
+    motion_pack_highlights: list[str] = Field(default_factory=list)
     next_actions: list[str]
+
+
+class ValuationBridgeItem(BaseModel):
+    label: str
+    category: str
+    amount: float | None = None
+    impact: str
+    evidence_ids: list[str] = Field(default_factory=list)
+
+
+class SpaIssueItem(BaseModel):
+    title: str
+    severity: FlagSeverity
+    rationale: str
+    recommendation: str
+    evidence_ids: list[str] = Field(default_factory=list)
+
+
+class PmiRiskItem(BaseModel):
+    area: str
+    severity: FlagSeverity
+    description: str
+    day_one_action: str
+    evidence_ids: list[str] = Field(default_factory=list)
+
+
+class BuySideAnalysis(BaseModel):
+    case_id: str
+    valuation_bridge: list[ValuationBridgeItem] = Field(default_factory=list)
+    spa_issues: list[SpaIssueItem] = Field(default_factory=list)
+    pmi_risks: list[PmiRiskItem] = Field(default_factory=list)
+    flags: list[str] = Field(default_factory=list)
+    checklist_updates: list[ChecklistAutoUpdate] = Field(default_factory=list)
+
+
+class BorrowerScoreSection(BaseModel):
+    score: int = Field(ge=0, le=100)
+    rating: str
+    rationale: str
+    flags: list[str] = Field(default_factory=list)
+    evidence_ids: list[str] = Field(default_factory=list)
+
+
+class CovenantTrackingItem(BaseModel):
+    name: str
+    status: str
+    threshold: str | None = None
+    current_value: str | None = None
+    note: str
+    evidence_ids: list[str] = Field(default_factory=list)
+
+
+class BorrowerScorecard(BaseModel):
+    case_id: str
+    financial_health: BorrowerScoreSection
+    collateral: BorrowerScoreSection
+    covenants: BorrowerScoreSection
+    overall_score: int = Field(ge=0, le=100)
+    overall_rating: str
+    covenant_tracking: list[CovenantTrackingItem] = Field(default_factory=list)
+    checklist_updates: list[ChecklistAutoUpdate] = Field(default_factory=list)
+
+
+class VendorScoreBreakdownItem(BaseModel):
+    factor: str
+    score: int = Field(ge=0, le=100)
+    weight: float = Field(ge=0.0, le=1.0)
+    rationale: str
+    evidence_ids: list[str] = Field(default_factory=list)
+
+
+class VendorQuestionnaireItem(BaseModel):
+    section: str
+    status: str
+    detail: str
+
+
+class VendorRiskTier(BaseModel):
+    case_id: str
+    tier: str
+    overall_score: int = Field(ge=0, le=100)
+    scoring_breakdown: list[VendorScoreBreakdownItem] = Field(default_factory=list)
+    questionnaire: list[VendorQuestionnaireItem] = Field(default_factory=list)
+    certifications_required: list[str] = Field(default_factory=list)
+    next_review_date: date
+    flags: list[str] = Field(default_factory=list)
+    checklist_updates: list[ChecklistAutoUpdate] = Field(default_factory=list)
 
 
 class WorkflowRunResult(BaseModel):

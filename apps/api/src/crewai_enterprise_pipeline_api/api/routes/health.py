@@ -34,14 +34,10 @@ def health() -> AppHealth:
         default_actor_role=UserRole(settings.default_actor_role),
         request_id_header_name=settings.request_id_header_name,
         enabled_motion_packs=[
-            MotionPack(p.strip())
-            for p in settings.enabled_motion_packs.split(",")
-            if p.strip()
+            MotionPack(p.strip()) for p in settings.enabled_motion_packs.split(",") if p.strip()
         ],
         enabled_sector_packs=[
-            SectorPack(p.strip())
-            for p in settings.enabled_sector_packs.split(",")
-            if p.strip()
+            SectorPack(p.strip()) for p in settings.enabled_sector_packs.split(",") if p.strip()
         ],
     )
 
@@ -82,9 +78,7 @@ async def readiness(session: DbSession) -> ReadinessReport:
     if artifacts:
         latest_artifact = artifacts[-1]
         evaluation_status = "ok"
-        evaluation_detail = (
-            f"Latest evaluation artifact: {latest_artifact.name}"
-        )
+        evaluation_detail = f"Latest evaluation artifact: {latest_artifact.name}"
     else:
         evaluation_status = "warning"
         evaluation_detail = "No evaluation artifact has been generated yet."

@@ -101,10 +101,7 @@ def test_india_identifiers():
     """CIN and GSTIN are extracted regardless of document kind."""
     from crewai_enterprise_pipeline_api.ingestion.entity_extractor import extract_entities
 
-    text = (
-        "Company CIN: U72200MH2015PTC123456. "
-        "GSTIN: 27AAACR5055K1Z5."
-    )
+    text = "Company CIN: U72200MH2015PTC123456. GSTIN: 27AAACR5055K1Z5."
 
     entities = extract_entities(
         text, document_kind="general", artifact_id="art-3", citation_prefix="doc.pdf"

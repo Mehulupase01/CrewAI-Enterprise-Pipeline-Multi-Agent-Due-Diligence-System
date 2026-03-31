@@ -231,9 +231,7 @@ def test_crewai_run_trace_includes_tool_usage(client) -> None:
 
     assert response.status_code == 201
     payload = response.json()
-    trace_messages = {
-        item["step_key"]: item["message"] for item in payload["run"]["trace_events"]
-    }
+    trace_messages = {item["step_key"]: item["message"] for item in payload["run"]["trace_events"]}
     assert "search_financial_qoe_evidence x1" in trace_messages["agent_financial_qoe"]
     assert "search_case_evidence x1" in trace_messages["coordinator_synthesis"]
     assert "Tool calls recorded: 2" in trace_messages["report_bundle_generation"]

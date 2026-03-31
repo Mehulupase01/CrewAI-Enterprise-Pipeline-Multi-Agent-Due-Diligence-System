@@ -27,6 +27,8 @@ from crewai_enterprise_pipeline_api.domain.models import (
     ApprovalDecisionCreate,
     ApprovalDecisionSummary,
     ArtifactSourceKind,
+    BorrowerScorecard,
+    BuySideAnalysis,
     CaseCreate,
     CaseDetail,
     CaseSummary,
@@ -68,6 +70,7 @@ from crewai_enterprise_pipeline_api.domain.models import (
     RunExportPackageSummary,
     SearchRequest,
     TaxComplianceSummary,
+    VendorRiskTier,
     WorkflowRunCreate,
     WorkflowRunDetail,
     WorkflowRunEnqueueResult,
@@ -77,9 +80,11 @@ from crewai_enterprise_pipeline_api.domain.models import (
     WorkstreamDomain,
 )
 from crewai_enterprise_pipeline_api.services.approval_service import ApprovalService
+from crewai_enterprise_pipeline_api.services.buy_side_service import BuySideService
 from crewai_enterprise_pipeline_api.services.case_service import CaseService
 from crewai_enterprise_pipeline_api.services.checklist_service import ChecklistService
 from crewai_enterprise_pipeline_api.services.commercial_service import CommercialService
+from crewai_enterprise_pipeline_api.services.credit_service import CreditService
 from crewai_enterprise_pipeline_api.services.cyber_service import CyberService
 from crewai_enterprise_pipeline_api.services.export_service import ExportService
 from crewai_enterprise_pipeline_api.services.financial_qoe_service import FinancialQoEService
@@ -92,6 +97,7 @@ from crewai_enterprise_pipeline_api.services.regulatory_service import Regulator
 from crewai_enterprise_pipeline_api.services.report_service import ReportService
 from crewai_enterprise_pipeline_api.services.search_service import SearchService
 from crewai_enterprise_pipeline_api.services.tax_service import TaxService
+from crewai_enterprise_pipeline_api.services.vendor_service import VendorService
 from crewai_enterprise_pipeline_api.services.workflow_service import WorkflowService
 from crewai_enterprise_pipeline_api.storage.service import DocumentStorageService
 
@@ -272,6 +278,78 @@ async def get_financial_summary(
     ),
 ) -> FinancialMetricSummary:
     summary = await FinancialQoEService(session).build_financial_summary(
+        case_id,
+        persist_checklist=persist_checklist,
+    )
+    if summary is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
+    return summary
+
+
+@router.get(
+    "/{case_id}/buy-side-analysis",
+    response_model=BuySideAnalysis,
+)
+async def get_buy_side_analysis(
+    case_id: str,
+    session: DbSession,
+    persist_checklist: bool = Query(
+        True,
+        description=(
+            "When true, checklist items satisfied by the buy-side motion-pack engine are "
+            "updated before the analysis is returned."
+        ),
+    ),
+) -> BuySideAnalysis:
+    summary = await BuySideService(session).build_buy_side_analysis(
+        case_id,
+        persist_checklist=persist_checklist,
+    )
+    if summary is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
+    return summary
+
+
+@router.get(
+    "/{case_id}/borrower-scorecard",
+    response_model=BorrowerScorecard,
+)
+async def get_borrower_scorecard(
+    case_id: str,
+    session: DbSession,
+    persist_checklist: bool = Query(
+        True,
+        description=(
+            "When true, checklist items satisfied by the credit motion-pack engine are "
+            "updated before the borrower scorecard is returned."
+        ),
+    ),
+) -> BorrowerScorecard:
+    summary = await CreditService(session).build_borrower_scorecard(
+        case_id,
+        persist_checklist=persist_checklist,
+    )
+    if summary is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
+    return summary
+
+
+@router.get(
+    "/{case_id}/vendor-risk-tier",
+    response_model=VendorRiskTier,
+)
+async def get_vendor_risk_tier(
+    case_id: str,
+    session: DbSession,
+    persist_checklist: bool = Query(
+        True,
+        description=(
+            "When true, checklist items satisfied by the vendor motion-pack engine are "
+            "updated before the vendor tier analysis is returned."
+        ),
+    ),
+) -> VendorRiskTier:
+    summary = await VendorService(session).build_vendor_risk_tier(
         case_id,
         persist_checklist=persist_checklist,
     )
@@ -494,9 +572,7 @@ async def get_evidence(
 ) -> EvidenceItemSummary:
     evidence = await CaseService(session).get_evidence(case_id, evidence_id)
     if evidence is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Evidence not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evidence not found")
     return evidence
 
 
@@ -513,9 +589,7 @@ async def update_evidence(
 ) -> EvidenceItemSummary:
     evidence = await CaseService(session).update_evidence(case_id, evidence_id, payload)
     if evidence is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Evidence not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evidence not found")
     return evidence
 
 
@@ -777,9 +851,7 @@ async def update_request_item(
 ) -> RequestItemSummary:
     item = await CaseService(session).update_request_item(case_id, item_id, payload)
     if item is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Request item not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Request item not found")
     return item
 
 
@@ -823,9 +895,7 @@ async def update_qa_item(
 ) -> QaItemSummary:
     item = await CaseService(session).update_qa_item(case_id, item_id, payload)
     if item is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Q&A item not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Q&A item not found")
     return item
 
 

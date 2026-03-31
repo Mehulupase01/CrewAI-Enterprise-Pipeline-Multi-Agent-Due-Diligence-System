@@ -376,8 +376,7 @@ class FinancialParser:
                     (
                         _parse_numeric(row[column_index])
                         for column_index, _ in reversed(metric_columns)
-                        if column_index < len(row)
-                        and _parse_numeric(row[column_index]) is not None
+                        if column_index < len(row) and _parse_numeric(row[column_index]) is not None
                     ),
                     None,
                 )
@@ -436,9 +435,7 @@ class FinancialParser:
 
         latest = periods[-1]
         if latest.customer_concentration_top_3 and latest.customer_concentration_top_3 > 0.60:
-            flags.append(
-                "Revenue concentration: top 3 customers exceed 60% of the latest period."
-            )
+            flags.append("Revenue concentration: top 3 customers exceed 60% of the latest period.")
         if (
             latest.operating_cash_flow is not None
             and latest.operating_cash_flow < 0

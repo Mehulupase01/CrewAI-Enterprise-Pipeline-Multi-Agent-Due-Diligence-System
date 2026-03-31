@@ -6,12 +6,15 @@ from fastapi.testclient import TestClient
 
 
 def _create_case(client: TestClient) -> str:
-    resp = client.post("/api/v1/cases", json={
-        "name": "Phase5 Test Case",
-        "target_name": "TestCo",
-        "motion_pack": "buy_side_diligence",
-        "sector_pack": "tech_saas_services",
-    })
+    resp = client.post(
+        "/api/v1/cases",
+        json={
+            "name": "Phase5 Test Case",
+            "target_name": "TestCo",
+            "motion_pack": "buy_side_diligence",
+            "sector_pack": "tech_saas_services",
+        },
+    )
     assert resp.status_code == 201
     return resp.json()["id"]
 
@@ -179,16 +182,11 @@ def test_migration_002_importable():
     from pathlib import Path
 
     migration_path = (
-        Path(__file__).resolve().parents[1]
-        / "alembic"
-        / "versions"
-        / "002_pgvector_embedding.py"
+        Path(__file__).resolve().parents[1] / "alembic" / "versions" / "002_pgvector_embedding.py"
     )
     assert migration_path.exists(), f"Migration file not found: {migration_path}"
 
-    spec = importlib.util.spec_from_file_location(
-        "migration_002", migration_path
-    )
+    spec = importlib.util.spec_from_file_location("migration_002", migration_path)
     mod = importlib.util.module_from_spec(spec)  # type: ignore[arg-type]
     spec.loader.exec_module(mod)  # type: ignore[union-attr]
     assert mod.revision == "002"
