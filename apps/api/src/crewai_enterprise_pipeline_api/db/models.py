@@ -418,6 +418,14 @@ def _apply_org_scope(execute_state) -> None:
         return
 
     statement = execute_state.statement
+    selected_entities = {
+        description.get("entity")
+        for description in getattr(statement, "column_descriptions", [])
+        if description.get("entity") is not None
+    }
+    for model in TENANT_SCOPED_MODELS:
+        if model in selected_entities:
+            statement = statement.where(model.org_id == org_id)
     for model in TENANT_SCOPED_MODELS:
         statement = statement.options(
             with_loader_criteria(
