@@ -254,6 +254,34 @@ def _evaluate_scenario(scenario: EvaluationScenario) -> dict[str, Any]:
                     client.get(f"/api/v1/cases/{case_id}/compliance-matrix"),
                     200,
                 )
+            commercial_summary: dict[str, Any] | None = None
+            if scenario.commercial_summary_expectation is not None:
+                commercial_summary = _ensure_success(
+                    "commercial summary",
+                    client.get(f"/api/v1/cases/{case_id}/commercial-summary"),
+                    200,
+                )
+            operations_summary: dict[str, Any] | None = None
+            if scenario.operations_summary_expectation is not None:
+                operations_summary = _ensure_success(
+                    "operations summary",
+                    client.get(f"/api/v1/cases/{case_id}/operations-summary"),
+                    200,
+                )
+            cyber_summary: dict[str, Any] | None = None
+            if scenario.cyber_summary_expectation is not None:
+                cyber_summary = _ensure_success(
+                    "cyber summary",
+                    client.get(f"/api/v1/cases/{case_id}/cyber-summary"),
+                    200,
+                )
+            forensic_flags: list[dict[str, Any]] | None = None
+            if scenario.forensic_summary_expectation is not None:
+                forensic_flags = _ensure_success(
+                    "forensic flags",
+                    client.get(f"/api/v1/cases/{case_id}/forensic-flags"),
+                    200,
+                )
 
             approval = _ensure_success(
                 "approval review",
@@ -333,6 +361,30 @@ def _evaluate_scenario(scenario: EvaluationScenario) -> dict[str, Any]:
         metrics["compliance_known_status_count"] = len(
             [item for item in compliance_matrix if item["status"] != "unknown"]
         )
+    if commercial_summary is not None:
+        metrics["commercial_concentration_count"] = len(
+            commercial_summary["concentration_signals"]
+        )
+        metrics["commercial_checklist_update_count"] = len(
+            commercial_summary.get("checklist_updates", [])
+        )
+    if operations_summary is not None:
+        metrics["operations_dependency_count"] = len(
+            operations_summary["dependency_signals"]
+        )
+        metrics["operations_checklist_update_count"] = len(
+            operations_summary.get("checklist_updates", [])
+        )
+    if cyber_summary is not None:
+        metrics["cyber_known_control_count"] = len(
+            [item for item in cyber_summary["controls"] if item["status"] != "unknown"]
+        )
+        metrics["cyber_checklist_update_count"] = len(
+            cyber_summary.get("checklist_updates", [])
+        )
+        metrics["cyber_breach_history_count"] = len(cyber_summary["breach_history"])
+    if forensic_flags is not None:
+        metrics["forensic_flag_count"] = len(forensic_flags)
 
     checks: list[dict[str, Any]] = []
     expectation = scenario.expectation
@@ -709,6 +761,229 @@ def _evaluate_scenario(scenario: EvaluationScenario) -> dict[str, Any]:
                 expected=list(compliance_expectation.flag_substrings),
                 detail="Expected compliance-note phrases should appear in the matrix.",
             )
+    if scenario.commercial_summary_expectation is not None and commercial_summary is not None:
+        commercial_expectation = scenario.commercial_summary_expectation
+        _append_check(
+            checks,
+            name="commercial_concentration_count",
+            passed=len(commercial_summary["concentration_signals"])
+            >= commercial_expectation.min_concentration_signals,
+            actual=len(commercial_summary["concentration_signals"]),
+            expected=f">= {commercial_expectation.min_concentration_signals}",
+            detail="Commercial summary should surface the expected concentration depth.",
+        )
+        if commercial_expectation.expected_top_share is not None:
+            actual_top_share = (
+                None
+                if not commercial_summary["concentration_signals"]
+                else commercial_summary["concentration_signals"][0]["share_of_revenue"]
+            )
+            passed = actual_top_share is not None and abs(
+                actual_top_share - commercial_expectation.expected_top_share
+            ) < 0.0001
+            _append_check(
+                checks,
+                name="commercial_top_share",
+                passed=passed,
+                actual=actual_top_share,
+                expected=commercial_expectation.expected_top_share,
+                detail="Top commercial concentration share should match the expected value.",
+            )
+        if commercial_expectation.expected_nrr is not None:
+            actual_nrr = commercial_summary["net_revenue_retention"]
+            passed = actual_nrr is not None and abs(
+                actual_nrr - commercial_expectation.expected_nrr
+            ) < 0.0001
+            _append_check(
+                checks,
+                name="commercial_nrr",
+                passed=passed,
+                actual=actual_nrr,
+                expected=commercial_expectation.expected_nrr,
+                detail="NRR should match the expected commercial extraction.",
+            )
+        if commercial_expectation.expected_churn is not None:
+            actual_churn = commercial_summary["churn_rate"]
+            passed = actual_churn is not None and abs(
+                actual_churn - commercial_expectation.expected_churn
+            ) < 0.0001
+            _append_check(
+                checks,
+                name="commercial_churn",
+                passed=passed,
+                actual=actual_churn,
+                expected=commercial_expectation.expected_churn,
+                detail="Churn should match the expected commercial extraction.",
+            )
+        if commercial_expectation.flag_substrings:
+            actual_flags = commercial_summary["flags"]
+            _append_check(
+                checks,
+                name="commercial_flags",
+                passed=all(
+                    any(fragment.lower() in flag.lower() for flag in actual_flags)
+                    for fragment in commercial_expectation.flag_substrings
+                ),
+                actual=actual_flags,
+                expected=list(commercial_expectation.flag_substrings),
+                detail="Expected commercial flag phrases should appear in the summary.",
+            )
+        _append_check(
+            checks,
+            name="commercial_checklist_updates",
+            passed=len(commercial_summary.get("checklist_updates", []))
+            >= commercial_expectation.min_checklist_updates,
+            actual=len(commercial_summary.get("checklist_updates", [])),
+            expected=f">= {commercial_expectation.min_checklist_updates}",
+            detail="Commercial engine should auto-satisfy the expected minimum checklist items.",
+        )
+    if scenario.operations_summary_expectation is not None and operations_summary is not None:
+        operations_expectation = scenario.operations_summary_expectation
+        _append_check(
+            checks,
+            name="operations_dependency_count",
+            passed=len(operations_summary["dependency_signals"])
+            >= operations_expectation.min_dependency_signals,
+            actual=len(operations_summary["dependency_signals"]),
+            expected=f">= {operations_expectation.min_dependency_signals}",
+            detail="Operations summary should surface the expected dependency depth.",
+        )
+        if operations_expectation.expected_supplier_concentration is not None:
+            actual_supplier_concentration = operations_summary["supplier_concentration_top_3"]
+            passed = actual_supplier_concentration is not None and abs(
+                actual_supplier_concentration
+                - operations_expectation.expected_supplier_concentration
+            ) < 0.0001
+            _append_check(
+                checks,
+                name="operations_supplier_concentration",
+                passed=passed,
+                actual=actual_supplier_concentration,
+                expected=operations_expectation.expected_supplier_concentration,
+                detail="Supplier concentration should match the expected extracted value.",
+            )
+        if operations_expectation.expect_single_site_dependency is not None:
+            _append_check(
+                checks,
+                name="operations_single_site_dependency",
+                passed=operations_summary["single_site_dependency"]
+                == operations_expectation.expect_single_site_dependency,
+                actual=operations_summary["single_site_dependency"],
+                expected=operations_expectation.expect_single_site_dependency,
+                detail="Single-site dependency should match the expected operations state.",
+            )
+        _append_check(
+            checks,
+            name="operations_key_person_dependencies",
+            passed=len(operations_summary["key_person_dependencies"])
+            >= operations_expectation.min_key_person_dependencies,
+            actual=len(operations_summary["key_person_dependencies"]),
+            expected=f">= {operations_expectation.min_key_person_dependencies}",
+            detail="Operations summary should surface the expected key-person dependency volume.",
+        )
+        if operations_expectation.flag_substrings:
+            actual_flags = operations_summary["flags"]
+            _append_check(
+                checks,
+                name="operations_flags",
+                passed=all(
+                    any(fragment.lower() in flag.lower() for flag in actual_flags)
+                    for fragment in operations_expectation.flag_substrings
+                ),
+                actual=actual_flags,
+                expected=list(operations_expectation.flag_substrings),
+                detail="Expected operations flag phrases should appear in the summary.",
+            )
+        _append_check(
+            checks,
+            name="operations_checklist_updates",
+            passed=len(operations_summary.get("checklist_updates", []))
+            >= operations_expectation.min_checklist_updates,
+            actual=len(operations_summary.get("checklist_updates", [])),
+            expected=f">= {operations_expectation.min_checklist_updates}",
+            detail="Operations engine should auto-satisfy the expected minimum checklist items.",
+        )
+    if scenario.cyber_summary_expectation is not None and cyber_summary is not None:
+        cyber_expectation = scenario.cyber_summary_expectation
+        control_status_map = {
+            item["control_key"]: item["status"] for item in cyber_summary["controls"]
+        }
+        if cyber_expectation.required_statuses:
+            _append_check(
+                checks,
+                name="cyber_statuses",
+                passed=all(
+                    control_status_map.get(control_key) == status
+                    for control_key, status in cyber_expectation.required_statuses.items()
+                ),
+                actual=control_status_map,
+                expected=cyber_expectation.required_statuses,
+                detail="Cyber control statuses should match the expected control matrix.",
+            )
+        if cyber_expectation.required_certifications:
+            _append_check(
+                checks,
+                name="cyber_certifications",
+                passed=set(cyber_expectation.required_certifications).issubset(
+                    cyber_summary["certifications"]
+                ),
+                actual=cyber_summary["certifications"],
+                expected=list(cyber_expectation.required_certifications),
+                detail="Expected cyber certifications should appear in the summary.",
+            )
+        _append_check(
+            checks,
+            name="cyber_breach_history",
+            passed=len(cyber_summary["breach_history"])
+            >= cyber_expectation.min_breach_history,
+            actual=len(cyber_summary["breach_history"]),
+            expected=f">= {cyber_expectation.min_breach_history}",
+            detail="Cyber summary should surface the expected breach-history volume.",
+        )
+        if cyber_expectation.flag_substrings:
+            actual_flags = cyber_summary["flags"]
+            _append_check(
+                checks,
+                name="cyber_flags",
+                passed=all(
+                    any(fragment.lower() in flag.lower() for flag in actual_flags)
+                    for fragment in cyber_expectation.flag_substrings
+                ),
+                actual=actual_flags,
+                expected=list(cyber_expectation.flag_substrings),
+                detail="Expected cyber flag phrases should appear in the summary.",
+            )
+        _append_check(
+            checks,
+            name="cyber_checklist_updates",
+            passed=len(cyber_summary.get("checklist_updates", []))
+            >= cyber_expectation.min_checklist_updates,
+            actual=len(cyber_summary.get("checklist_updates", [])),
+            expected=f">= {cyber_expectation.min_checklist_updates}",
+            detail="Cyber engine should auto-satisfy the expected minimum checklist items.",
+        )
+    if scenario.forensic_summary_expectation is not None and forensic_flags is not None:
+        forensic_expectation = scenario.forensic_summary_expectation
+        actual_flag_types = sorted(flag["flag_type"] for flag in forensic_flags)
+        _append_check(
+            checks,
+            name="forensic_flag_count",
+            passed=len(forensic_flags) >= forensic_expectation.min_flag_count,
+            actual=len(forensic_flags),
+            expected=f">= {forensic_expectation.min_flag_count}",
+            detail="Forensic endpoint should return the expected minimum flag count.",
+        )
+        if forensic_expectation.required_flag_types:
+            _append_check(
+                checks,
+                name="forensic_flag_types",
+                passed=set(forensic_expectation.required_flag_types).issubset(
+                    actual_flag_types
+                ),
+                actual=actual_flag_types,
+                expected=list(forensic_expectation.required_flag_types),
+                detail="Expected forensic flag types should appear in the endpoint response.",
+            )
 
     return {
         "code": scenario.code,
@@ -725,6 +1000,10 @@ def _evaluate_scenario(scenario: EvaluationScenario) -> dict[str, Any]:
         "legal_summary": legal_summary,
         "tax_summary": tax_summary,
         "compliance_matrix": compliance_matrix,
+        "commercial_summary": commercial_summary,
+        "operations_summary": operations_summary,
+        "cyber_summary": cyber_summary,
+        "forensic_flags": forensic_flags,
         "scenario": {
             "case_payload": scenario.case_payload,
             "satisfy_all_checklist_items": scenario.satisfy_all_checklist_items,

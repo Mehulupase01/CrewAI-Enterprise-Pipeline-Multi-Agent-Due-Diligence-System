@@ -12,10 +12,15 @@ from crewai_enterprise_pipeline_api.agents.compliance_tools import (
     build_compliance_tools,
 )
 from crewai_enterprise_pipeline_api.agents.financial_tools import build_financial_tools
+from crewai_enterprise_pipeline_api.agents.phase10_tools import build_phase10_tools
 from crewai_enterprise_pipeline_api.domain.models import (
+    CommercialSummary,
     ComplianceMatrixSummary,
+    CyberPrivacySummary,
     FinancialMetricSummary,
+    ForensicSummary,
     LegalStructureSummary,
+    OperationsSummary,
     TaxComplianceSummary,
 )
 
@@ -421,6 +426,10 @@ def build_workstream_tools(
     legal_summary: LegalStructureSummary | None = None,
     tax_summary: TaxComplianceSummary | None = None,
     compliance_summary: ComplianceMatrixSummary | None = None,
+    commercial_summary: CommercialSummary | None = None,
+    operations_summary: OperationsSummary | None = None,
+    cyber_summary: CyberPrivacySummary | None = None,
+    forensic_summary: ForensicSummary | None = None,
     sector_pack: str = "tech_saas_services",
 ) -> list[BaseTool]:
     scope_label = workstream_domain.replace("_", " ")
@@ -474,6 +483,25 @@ def build_workstream_tools(
                 compliance_summary=compliance_summary,
             )
         )
+    phase10_tools = build_phase10_tools(
+        commercial_summary=commercial_summary,
+        operations_summary=operations_summary,
+        cyber_summary=cyber_summary,
+        forensic_summary=forensic_summary,
+    )
+    phase10_tool_names_by_workstream = {
+        "commercial": {"review_commercial_signals"},
+        "operations": {"review_operations_risks"},
+        "cyber_privacy": {"review_cyber_controls"},
+        "forensic_compliance": {"review_forensic_flags"},
+    }
+    tools.extend(
+        [
+            tool
+            for tool in phase10_tools
+            if tool.name in phase10_tool_names_by_workstream.get(workstream_domain, set())
+        ]
+    )
     return tools
 
 
@@ -489,6 +517,10 @@ def build_case_tools(
     legal_summary: LegalStructureSummary | None = None,
     tax_summary: TaxComplianceSummary | None = None,
     compliance_summary: ComplianceMatrixSummary | None = None,
+    commercial_summary: CommercialSummary | None = None,
+    operations_summary: OperationsSummary | None = None,
+    cyber_summary: CyberPrivacySummary | None = None,
+    forensic_summary: ForensicSummary | None = None,
     sector_pack: str = "tech_saas_services",
 ) -> list[BaseTool]:
     tools: list[Any] = [
@@ -529,6 +561,14 @@ def build_case_tools(
             legal_summary=legal_summary,
             tax_summary=tax_summary,
             compliance_summary=compliance_summary,
+        )
+    )
+    tools.extend(
+        build_phase10_tools(
+            commercial_summary=commercial_summary,
+            operations_summary=operations_summary,
+            cyber_summary=cyber_summary,
+            forensic_summary=forensic_summary,
         )
     )
     return tools

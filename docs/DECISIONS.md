@@ -442,6 +442,46 @@ name-based).
 
 ---
 
+## AD-039: Evaluation checklist expectations are judged against post-run workflow state (2026-03-31)
+
+**Decision:** When the evaluation runner checks `open_mandatory_items`, the canonical expected value is the checklist state after the workflow run has refreshed all currently implemented domain engines, not merely the state after a single summary endpoint call.
+
+**Why:** Earlier phase suites were authored before Phase 10 existed and therefore assumed fewer downstream checklist auto-updates. Once the workflow legitimately refreshes more structured engines, the post-run coverage state becomes the truthful execution contract.
+
+**Impact:** Evaluation expectations may need to be revised when a new canonical phase intentionally satisfies additional checklist items during workflow execution. These updates are valid only when they reflect real integrated behavior, not when they paper over broken logic.
+
+---
+
+## AD-040: Cyber summaries must use analyst-readable labels and positive-only certifications (2026-03-31)
+
+**Decision:** Cyber/privacy summaries expose human-readable control labels in flags, and certification lists include only controls whose underlying certification state is compliant or partially compliant.
+
+**Why:** Raw internal keys like `soc2` or `significant_data_fiduciary_registration` make the output look like implementation leakage rather than analyst-facing diligence output. Similarly, reporting `SOC 2` as a certification when the evidence says `no SOC 2 yet` is misleading.
+
+**Impact:** `cyber_service.py` remains the canonical formatting and summarization layer for Phase 10 cyber outputs. Future UI/report surfaces should consume that normalized output rather than reformatting internal control keys ad hoc.
+
+---
+
+## AD-041: `regulatory.vendor_restrictions` automation requires licensing or registration evidence (2026-03-31)
+
+**Decision:** The `regulatory.vendor_restrictions` checklist item can only auto-satisfy from evidence mapped to licensing or registration restrictions, not from arbitrary regulatory signals elsewhere in the compliance matrix.
+
+**Why:** Vendor onboarding treats `vendor_restrictions` as a focused screening item for permissions, restrictions, sanctions, and registration posture. A generic compliance match would over-clear the checklist and weaken diligence trust.
+
+**Impact:** `regulatory_service.py` must keep the vendor-restriction condition narrow. Future regulatory rule-pack expansion can broaden the qualifying regulation set, but only when the added rules are truly relevant to vendor restriction screening.
+
+---
+
+## AD-042: Phase 10 structured state must integrate across APIs, workflows, reports, and CrewAI tools together (2026-03-31)
+
+**Decision:** Phase 10 is not complete unless the same structured commercial, operations, cyber/privacy, and forensic state is available through direct endpoints, workflow refresh, workstream syntheses, executive reporting, and CrewAI-accessible tools.
+
+**Why:** A flagship diligence engine fails if structured outputs only exist in isolated service methods or one-off endpoints. Analysts, reviewers, automated evaluations, and CrewAI workstreams all need the same canonical Phase 10 state.
+
+**Impact:** `cases.py`, `workflow_service.py`, `synthesis_service.py`, `report_service.py`, `agents/tools.py`, `agents/phase10_tools.py`, and `agents/crew.py` are jointly part of the Phase 10 contract. Future phases should follow the same integration rule.
+
+---
+
 <!--
 Template for future decisions:
 

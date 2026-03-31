@@ -732,6 +732,85 @@ class ComplianceMatrixSummary(BaseModel):
     checklist_updates: list[ChecklistAutoUpdate] = Field(default_factory=list)
 
 
+class CommercialConcentrationSignal(BaseModel):
+    subject: str
+    share_of_revenue: float = Field(ge=0.0, le=1.0)
+    category: str = "customer"
+    note: str
+    evidence_ids: list[str] = Field(default_factory=list)
+
+
+class CommercialRenewalSignal(BaseModel):
+    counterparty: str | None = None
+    status: str
+    note: str
+    evidence_ids: list[str] = Field(default_factory=list)
+
+
+class CommercialSummary(BaseModel):
+    case_id: str
+    concentration_signals: list[CommercialConcentrationSignal] = Field(default_factory=list)
+    net_revenue_retention: float | None = Field(default=None, ge=0.0)
+    churn_rate: float | None = Field(default=None, ge=0.0, le=1.0)
+    pricing_signals: list[str] = Field(default_factory=list)
+    renewal_signals: list[CommercialRenewalSignal] = Field(default_factory=list)
+    flags: list[str] = Field(default_factory=list)
+    checklist_updates: list[ChecklistAutoUpdate] = Field(default_factory=list)
+
+
+class OperationsDependencySignal(BaseModel):
+    dependency_type: str
+    label: str
+    detail: str
+    evidence_ids: list[str] = Field(default_factory=list)
+
+
+class OperationsSummary(BaseModel):
+    case_id: str
+    supplier_concentration_top_3: float | None = Field(default=None, ge=0.0, le=1.0)
+    dependency_signals: list[OperationsDependencySignal] = Field(default_factory=list)
+    single_site_dependency: bool = False
+    key_person_dependencies: list[str] = Field(default_factory=list)
+    flags: list[str] = Field(default_factory=list)
+    checklist_updates: list[ChecklistAutoUpdate] = Field(default_factory=list)
+
+
+class CyberControlCheck(BaseModel):
+    control_key: str
+    status: ComplianceStatus
+    notes: str
+    evidence_ids: list[str] = Field(default_factory=list)
+
+
+class CyberPrivacySummary(BaseModel):
+    case_id: str
+    controls: list[CyberControlCheck] = Field(default_factory=list)
+    certifications: list[str] = Field(default_factory=list)
+    breach_history: list[str] = Field(default_factory=list)
+    flags: list[str] = Field(default_factory=list)
+    checklist_updates: list[ChecklistAutoUpdate] = Field(default_factory=list)
+
+
+class ForensicFlagType(StrEnum):
+    RELATED_PARTY = "RELATED_PARTY"
+    ROUND_TRIPPING = "ROUND_TRIPPING"
+    REVENUE_ANOMALY = "REVENUE_ANOMALY"
+    LITIGATION = "LITIGATION"
+
+
+class ForensicFlag(BaseModel):
+    flag_type: ForensicFlagType
+    severity: FlagSeverity
+    description: str
+    evidence_ids: list[str] = Field(default_factory=list)
+
+
+class ForensicSummary(BaseModel):
+    case_id: str
+    flags: list[ForensicFlag] = Field(default_factory=list)
+    checklist_updates: list[ChecklistAutoUpdate] = Field(default_factory=list)
+
+
 # ---------------------------------------------------------------------------
 # Evidence Intelligence (Phase 5)
 # ---------------------------------------------------------------------------

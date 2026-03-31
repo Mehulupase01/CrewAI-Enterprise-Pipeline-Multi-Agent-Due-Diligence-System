@@ -84,6 +84,41 @@ class ComplianceMatrixExpectation:
 
 
 @dataclass(slots=True)
+class CommercialSummaryExpectation:
+    min_concentration_signals: int = 0
+    expected_top_share: float | None = None
+    expected_nrr: float | None = None
+    expected_churn: float | None = None
+    flag_substrings: tuple[str, ...] = ()
+    min_checklist_updates: int = 0
+
+
+@dataclass(slots=True)
+class OperationsSummaryExpectation:
+    min_dependency_signals: int = 0
+    expected_supplier_concentration: float | None = None
+    expect_single_site_dependency: bool | None = None
+    min_key_person_dependencies: int = 0
+    flag_substrings: tuple[str, ...] = ()
+    min_checklist_updates: int = 0
+
+
+@dataclass(slots=True)
+class CyberSummaryExpectation:
+    required_statuses: dict[str, str] = field(default_factory=dict)
+    required_certifications: tuple[str, ...] = ()
+    min_breach_history: int = 0
+    flag_substrings: tuple[str, ...] = ()
+    min_checklist_updates: int = 0
+
+
+@dataclass(slots=True)
+class ForensicSummaryExpectation:
+    required_flag_types: tuple[str, ...] = ()
+    min_flag_count: int = 0
+
+
+@dataclass(slots=True)
 class ScenarioExpectation:
     approval_decision: str
     ready_for_export: bool
@@ -136,6 +171,10 @@ class EvaluationScenario:
     legal_summary_expectation: LegalSummaryExpectation | None = None
     tax_summary_expectation: TaxSummaryExpectation | None = None
     compliance_matrix_expectation: ComplianceMatrixExpectation | None = None
+    commercial_summary_expectation: CommercialSummaryExpectation | None = None
+    operations_summary_expectation: OperationsSummaryExpectation | None = None
+    cyber_summary_expectation: CyberSummaryExpectation | None = None
+    forensic_summary_expectation: ForensicSummaryExpectation | None = None
     expectation: ScenarioExpectation = field(
         default_factory=lambda: ScenarioExpectation(
             approval_decision="changes_requested",
@@ -686,7 +725,7 @@ MANUFACTURING_INDUSTRIALS_EXPANSION_SCENARIOS: tuple[EvaluationScenario, ...] = 
             report_status="not_ready",
             report_title="Executive Memo",
             min_syntheses=7,
-            open_mandatory_items=11,
+            open_mandatory_items=9,
             min_blocking_issue_count=1,
             max_blocking_issue_count=1,
             min_issue_count=3,
@@ -837,7 +876,7 @@ BFSI_NBFC_EXPANSION_SCENARIOS: tuple[EvaluationScenario, ...] = (
             report_status="not_ready",
             report_title="Executive Memo",
             min_syntheses=7,
-            open_mandatory_items=12,
+            open_mandatory_items=10,
             min_blocking_issue_count=3,
             max_blocking_issue_count=3,
             min_issue_count=3,
@@ -963,7 +1002,7 @@ PHASE8_FINANCIAL_QOE_SCENARIOS: tuple[EvaluationScenario, ...] = (
             ready_for_export=False,
             report_status="not_ready",
             report_title="Credit Memo",
-            open_mandatory_items=8,
+            open_mandatory_items=6,
             min_blocking_issue_count=0,
             max_blocking_issue_count=0,
             min_issue_count=0,
@@ -1128,7 +1167,151 @@ PHASE9_LEGAL_TAX_REGULATORY_SCENARIOS: tuple[EvaluationScenario, ...] = (
 )
 
 
+PHASE10_COMMERCIAL_OPERATIONS_CYBER_FORENSIC_SCENARIOS: tuple[EvaluationScenario, ...] = (
+    EvaluationScenario(
+        code="phase10_vendor_risk_case",
+        name="Phase 10 vendor risk case",
+        description=(
+            "Validates that the Phase 10 commercial, operations, cyber, and forensic "
+            "engines extract structured outputs and auto-satisfy the expected checklist items."
+        ),
+        case_payload={
+            "name": "Project Cobalt Vendor Review",
+            "target_name": "Cobalt Signal Systems Private Limited",
+            "summary": (
+                "Phase 10 evaluation scenario for commercial, operations, cyber, "
+                "and forensic depth."
+            ),
+            "motion_pack": "vendor_onboarding",
+            "sector_pack": "tech_saas_services",
+            "country": "India",
+        },
+        upload_documents=(
+            UploadDocumentFixture(
+                title="Commercial revenue concentration note",
+                filename="commercial_note.txt",
+                content=(
+                    "Top customer contributes 70 percent of ARR and renewal due next quarter. "
+                    "Net revenue retention remained at 118 percent while customer churn stayed "
+                    "at 4 percent. Pricing pressure increased after a discount requested "
+                    "by the top customer."
+                ),
+                mime_type="text/plain",
+                document_kind="commercial_kpi_pack",
+                source_kind="uploaded_dataroom",
+                workstream_domain="commercial",
+                evidence_kind="risk",
+            ),
+            UploadDocumentFixture(
+                title="Operations resilience note",
+                filename="operations_note.txt",
+                content=(
+                    "Top 3 suppliers account for 65 percent of raw material spend. "
+                    "A single plant handles all capacity and maintenance backlog remains visible. "
+                    "The business is founder dependent and the single plant head "
+                    "approves procurement."
+                ),
+                mime_type="text/plain",
+                document_kind="operations_review_pack",
+                source_kind="uploaded_dataroom",
+                workstream_domain="operations",
+                evidence_kind="risk",
+            ),
+            UploadDocumentFixture(
+                title="Cyber privacy assessment",
+                filename="cyber_note.txt",
+                content=(
+                    "Consent mechanism implemented and purpose limitation documented. "
+                    "Retention policy approved and breach notification procedure tested. "
+                    "Significant data fiduciary registration pending. "
+                    "ISO 27001 certified but no SOC 2 yet. "
+                    "A security incident involving unauthorized access was reported last year."
+                ),
+                mime_type="text/plain",
+                document_kind="cyber_privacy_pack",
+                source_kind="uploaded_dataroom",
+                workstream_domain="cyber_privacy",
+                evidence_kind="risk",
+            ),
+            UploadDocumentFixture(
+                title="Forensic integrity review",
+                filename="forensic_note.txt",
+                content=(
+                    "Related party sales to a promoter-linked group company were identified. "
+                    "A common director appears across the buyer and vendor entities. "
+                    "Round tripping and fund diversion concerns were flagged in the bank trail. "
+                    "Revenue recognition used a bill and hold side letter. "
+                    "A litigation claim remains pending."
+                ),
+                mime_type="text/plain",
+                document_kind="forensic_review_pack",
+                source_kind="uploaded_dataroom",
+                workstream_domain="forensic_compliance",
+                evidence_kind="risk",
+            ),
+        ),
+        commercial_summary_expectation=CommercialSummaryExpectation(
+            min_concentration_signals=1,
+            expected_top_share=0.7,
+            expected_nrr=1.18,
+            expected_churn=0.04,
+            flag_substrings=("pricing pressure",),
+            min_checklist_updates=1,
+        ),
+        operations_summary_expectation=OperationsSummaryExpectation(
+            min_dependency_signals=2,
+            expected_supplier_concentration=0.65,
+            expect_single_site_dependency=True,
+            min_key_person_dependencies=1,
+            flag_substrings=("Single-site",),
+            min_checklist_updates=2,
+        ),
+        cyber_summary_expectation=CyberSummaryExpectation(
+            required_statuses={
+                "consent_mechanism": "compliant",
+                "retention_policy": "compliant",
+                "significant_data_fiduciary_registration": "partially_compliant",
+                "iso_27001": "compliant",
+                "soc2": "non_compliant",
+            },
+            required_certifications=("ISO 27001",),
+            min_breach_history=1,
+            flag_substrings=("SOC 2", "partially compliant"),
+            min_checklist_updates=2,
+        ),
+        forensic_summary_expectation=ForensicSummaryExpectation(
+            required_flag_types=(
+                "RELATED_PARTY",
+                "ROUND_TRIPPING",
+                "REVENUE_ANOMALY",
+                "LITIGATION",
+            ),
+            min_flag_count=4,
+        ),
+        expectation=ScenarioExpectation(
+            approval_decision="changes_requested",
+            ready_for_export=False,
+            report_status="not_ready",
+            report_title="Third-Party Risk Memo",
+            open_mandatory_items=3,
+            min_blocking_issue_count=0,
+            max_blocking_issue_count=0,
+            min_issue_count=0,
+            min_open_request_count=0,
+            min_evidence_count=4,
+            min_syntheses=7,
+        ),
+    ),
+)
+
+
 EVALUATION_SUITES: dict[str, EvaluationSuiteDefinition] = {
+    "phase10_commercial_operations_cyber_forensic": EvaluationSuiteDefinition(
+        key="phase10_commercial_operations_cyber_forensic",
+        title="Phase 10 Commercial Operations Cyber Forensic Evaluation",
+        artifact_prefix="phase10-commercial-operations-cyber-forensic",
+        scenarios=PHASE10_COMMERCIAL_OPERATIONS_CYBER_FORENSIC_SCENARIOS,
+    ),
     "phase9_legal_tax_regulatory": EvaluationSuiteDefinition(
         key="phase9_legal_tax_regulatory",
         title="Phase 9 Legal Tax Regulatory Evaluation",

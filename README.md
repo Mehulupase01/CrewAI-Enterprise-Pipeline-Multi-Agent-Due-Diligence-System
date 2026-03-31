@@ -46,15 +46,16 @@ docker-compose.yml
 
 ## Current Phase
 
-The repository has completed Phases 0-9 from the current master-plan execution
+The repository has completed Phases 0-10 from the current master-plan execution
 sequence. After Phase 7, the repo also received an additional CrewAI depth
-enhancement: tool-grounded evidence access for the LLM path. Phase 8 is now
-closed as the canonical Financial Quality of Earnings (QoE) engine, and Phase 9
-is now closed as the canonical Legal / Tax / Regulatory engine. The current
+enhancement: tool-grounded evidence access for the LLM path. Phase 8 is closed
+as the canonical Financial Quality of Earnings (QoE) engine, Phase 9 is closed
+as the canonical Legal / Tax / Regulatory engine, and Phase 10 is now closed as
+the canonical Commercial / Operations / Cyber / Forensic engine. The current
 build includes the first flagship buy-side slice, all planned motion and sector
 expansions, analyst-ready export archives, scoped CrewAI evidence tools, and
-workflow-integrated financial plus legal/compliance analysis layers on top of
-the existing hardened platform spine:
+workflow-integrated financial, legal/compliance, and Phase 10 domain-analysis
+layers on top of the existing hardened platform spine:
 
 - persisted case operations backed by SQLAlchemy
 - document upload, parsing, storage, and evidence extraction
@@ -78,6 +79,18 @@ the existing hardened platform spine:
 - automatic checklist satisfaction for relevant legal, tax, and regulatory
   workstream items
 - CrewAI compliance tools for legal, tax, regulatory, and coordinator agents
+- `GET /api/v1/cases/{case_id}/commercial-summary` for customer concentration,
+  NRR, churn, pricing-pressure, and renewal-risk analysis
+- `GET /api/v1/cases/{case_id}/operations-summary` for supplier concentration,
+  single-site dependency, and key-person risk analysis
+- `GET /api/v1/cases/{case_id}/cyber-summary` for DPDP/privacy control review,
+  certification posture, breach history, and analyst-readable cyber flags
+- `GET /api/v1/cases/{case_id}/forensic-flags` for structured related-party,
+  round-tripping, revenue-anomaly, and litigation flags
+- automatic checklist satisfaction for relevant commercial, operations, cyber,
+  and forensic workstream items
+- CrewAI Phase 10 tools for commercial signals, operations risks, cyber
+  controls, and forensic flags
 - tool-grounded CrewAI workstream analysis with scoped evidence, issue, and
   checklist review tools over pre-loaded case snapshots
 - analyst workbench dashboard, case workspace, and run viewer with live API support
@@ -190,6 +203,12 @@ To run only the Phase 9 legal / tax / regulatory suite:
 
 ```powershell
 ./scripts/evaluate.ps1 -Suite phase9_legal_tax_regulatory
+```
+
+To run only the Phase 10 commercial / operations / cyber / forensic suite:
+
+```powershell
+./scripts/evaluate.ps1 -Suite phase10_commercial_operations_cyber_forensic
 ```
 
 To run a live API smoke check after the stack is up:

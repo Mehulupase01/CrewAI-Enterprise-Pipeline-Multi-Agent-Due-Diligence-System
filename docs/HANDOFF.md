@@ -4,20 +4,20 @@
 
 ## Current State
 
-**Active phase:** None (Phase 9 complete, ready to start canonical Phase 10)
+**Active phase:** None (Phase 10 complete, ready to start canonical Phase 11)
 **Last session:** 2026-03-31
-**Completed phases:** 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
-**Test counts:** 97 pytest, 13 eval scenarios (7 suites)
+**Completed phases:** 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+**Test counts:** 100 pytest, 14 eval scenarios (8 suites)
 **Execution mode:** roadmap from `MASTERPLAN.docx` (preferred) / `MASTERPLAN.pdf` (companion), execution truth from repo code/tests/commands
 
 ## What to Do Next
 
-Start canonical Phase 10: Commercial / Operations / Cyber / Forensic Engine, and close it fully before moving beyond it.
-Treat Phase 9 as complete: the repo now has structured legal summaries, contract clause review, tax compliance summaries, a sector-aware compliance matrix, checklist auto-satisfaction across legal/tax/regulatory lanes, workflow/report integration, CrewAI compliance tools, and a dedicated Phase 9 evaluation suite.
+Start canonical Phase 11 from `MASTERPLAN.docx` only after reconciling its exact title and objectives with the roadmap source.
+Treat Phase 10 as complete: the repo now has structured commercial concentration and retention analysis, operations dependency analysis, cyber/privacy control review, forensic flag detection, checklist auto-satisfaction across those workstreams, workflow/report integration, CrewAI Phase 10 tools, and a dedicated Phase 10 evaluation suite.
 
 ## Blockers
 
-None.
+None. Latest full-gate artifact: `artifacts/evaluations/all-supported-suites-20260331T133728Z.json`.
 
 ## Phase Completion Checklist
 

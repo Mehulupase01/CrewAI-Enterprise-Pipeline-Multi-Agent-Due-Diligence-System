@@ -27,8 +27,12 @@ from crewai_enterprise_pipeline_api.domain.models import (
 )
 from crewai_enterprise_pipeline_api.services.case_service import CaseService
 from crewai_enterprise_pipeline_api.services.checklist_service import ChecklistService
+from crewai_enterprise_pipeline_api.services.commercial_service import CommercialService
+from crewai_enterprise_pipeline_api.services.cyber_service import CyberService
 from crewai_enterprise_pipeline_api.services.financial_qoe_service import FinancialQoEService
+from crewai_enterprise_pipeline_api.services.forensic_service import ForensicService
 from crewai_enterprise_pipeline_api.services.legal_service import LegalService
+from crewai_enterprise_pipeline_api.services.operations_service import OperationsService
 from crewai_enterprise_pipeline_api.services.regulatory_service import RegulatoryService
 from crewai_enterprise_pipeline_api.services.report_service import ReportService
 from crewai_enterprise_pipeline_api.services.synthesis_service import SynthesisService
@@ -42,8 +46,12 @@ class WorkflowService:
         self.session = session
         self.case_service = CaseService(session)
         self.checklist_service = ChecklistService(session)
+        self.commercial_service = CommercialService(session)
+        self.cyber_service = CyberService(session)
         self.financial_qoe_service = FinancialQoEService(session)
+        self.forensic_service = ForensicService(session)
         self.legal_service = LegalService(session)
+        self.operations_service = OperationsService(session)
         self.tax_service = TaxService(session)
         self.regulatory_service = RegulatoryService(session)
         self.report_service = ReportService(session)
@@ -176,6 +184,22 @@ class WorkflowService:
             case_id,
             persist_checklist=True,
         )
+        commercial_summary = await self.commercial_service.build_commercial_summary(
+            case_id,
+            persist_checklist=True,
+        )
+        operations_summary = await self.operations_service.build_operations_summary(
+            case_id,
+            persist_checklist=True,
+        )
+        cyber_summary = await self.cyber_service.build_cyber_summary(
+            case_id,
+            persist_checklist=True,
+        )
+        forensic_summary = await self.forensic_service.build_forensic_summary(
+            case_id,
+            persist_checklist=True,
+        )
         case = await self.case_service._get_case_record(case_id)
         if case is None:
             return None
@@ -198,6 +222,10 @@ class WorkflowService:
             legal_summary,
             tax_summary,
             compliance_summary,
+            commercial_summary,
+            operations_summary,
+            cyber_summary,
+            forensic_summary,
         )
         synthesis_markdown = self.synthesis_service.render_markdown(case, syntheses)
 
@@ -210,6 +238,10 @@ class WorkflowService:
             legal_summary,
             tax_summary,
             compliance_summary,
+            commercial_summary,
+            operations_summary,
+            cyber_summary,
+            forensic_summary,
         )
         report_bundles = self._build_report_bundles(
             case_id,
@@ -277,6 +309,22 @@ class WorkflowService:
             case_id,
             persist_checklist=True,
         )
+        commercial_summary = await self.commercial_service.build_commercial_summary(
+            case_id,
+            persist_checklist=True,
+        )
+        operations_summary = await self.operations_service.build_operations_summary(
+            case_id,
+            persist_checklist=True,
+        )
+        cyber_summary = await self.cyber_service.build_cyber_summary(
+            case_id,
+            persist_checklist=True,
+        )
+        forensic_summary = await self.forensic_service.build_forensic_summary(
+            case_id,
+            persist_checklist=True,
+        )
         case = await self.case_service._get_case_record(case_id)
         if case is None:
             return None
@@ -315,6 +363,23 @@ class WorkflowService:
             )
         )
         seq += 1
+        self.session.add(
+            RunTraceEventRecord(
+                run_id=run_id,
+                sequence_number=seq,
+                step_key="commercial_operations_cyber_forensic_refresh",
+                title="Commercial / Operations / Cyber / Forensic summaries refreshed",
+                message=self._phase10_refresh_note(
+                    commercial_summary,
+                    operations_summary,
+                    cyber_summary,
+                    forensic_summary,
+                    cyber_label="cyber controls",
+                ),
+                level=RunEventLevel.INFO.value,
+            )
+        )
+        seq += 1
         await self.session.commit()
 
         # 1. Build case context
@@ -326,6 +391,10 @@ class WorkflowService:
             legal_summary=legal_summary,
             tax_summary=tax_summary,
             compliance_summary=compliance_summary,
+            commercial_summary=commercial_summary,
+            operations_summary=operations_summary,
+            cyber_summary=cyber_summary,
+            forensic_summary=forensic_summary,
         )
         total_tools = sum(len(tools) for tools in tool_map.values())
         self.session.add(
@@ -571,6 +640,10 @@ class WorkflowService:
         legal_summary,
         tax_summary,
         compliance_summary,
+        commercial_summary,
+        operations_summary,
+        cyber_summary,
+        forensic_summary,
     ) -> list[RunTraceEventRecord]:
         latest_approval = case.approvals[-1] if case.approvals else None
         approval_note = (
@@ -600,6 +673,22 @@ class WorkflowService:
                 f"{self._count_known_statuses(tax_summary)}; "
                 "compliance matrix items: "
                 f"{0 if compliance_summary is None else len(compliance_summary.items)}."
+            )
+        )
+        phase10_note = (
+            "No structured commercial/operations/cyber/forensic summaries detected yet."
+            if (
+                commercial_summary is None
+                and operations_summary is None
+                and cyber_summary is None
+                and forensic_summary is None
+            )
+            else self._phase10_refresh_note(
+                commercial_summary,
+                operations_summary,
+                cyber_summary,
+                forensic_summary,
+                cyber_label="cyber controls with evidence",
             )
         )
         return [
@@ -633,6 +722,14 @@ class WorkflowService:
             RunTraceEventRecord(
                 run_id=run_id,
                 sequence_number=4,
+                step_key="commercial_operations_cyber_forensic_refresh",
+                title="Commercial / Operations / Cyber / Forensic summaries refreshed",
+                message=phase10_note,
+                level=RunEventLevel.INFO.value,
+            ),
+            RunTraceEventRecord(
+                run_id=run_id,
+                sequence_number=5,
                 step_key="issue_triage",
                 title="Issue register reviewed",
                 message=(
@@ -642,7 +739,7 @@ class WorkflowService:
             ),
             RunTraceEventRecord(
                 run_id=run_id,
-                sequence_number=5,
+                sequence_number=6,
                 step_key="coverage_check",
                 title="Checklist coverage computed",
                 message=(
@@ -656,7 +753,7 @@ class WorkflowService:
             ),
             RunTraceEventRecord(
                 run_id=run_id,
-                sequence_number=6,
+                sequence_number=7,
                 step_key="approval_snapshot",
                 title="Approval state captured",
                 message=approval_note,
@@ -664,7 +761,7 @@ class WorkflowService:
             ),
             RunTraceEventRecord(
                 run_id=run_id,
-                sequence_number=7,
+                sequence_number=8,
                 step_key="workstream_synthesis",
                 title="Workstream syntheses generated",
                 message=(
@@ -674,7 +771,7 @@ class WorkflowService:
             ),
             RunTraceEventRecord(
                 run_id=run_id,
-                sequence_number=8,
+                sequence_number=9,
                 step_key="report_bundle_generation",
                 title="Report bundles generated",
                 message=(
@@ -737,3 +834,33 @@ class WorkflowService:
         if summary is None:
             return 0
         return len([item for item in summary.items if item.status.value != "unknown"])
+
+    @staticmethod
+    def _count_known_cyber_controls(summary) -> int:
+        if summary is None:
+            return 0
+        return len([item for item in summary.controls if item.status.value != "unknown"])
+
+    def _phase10_refresh_note(
+        self,
+        commercial_summary,
+        operations_summary,
+        cyber_summary,
+        forensic_summary,
+        *,
+        cyber_label: str,
+    ) -> str:
+        commercial_count = (
+            0 if commercial_summary is None else len(commercial_summary.concentration_signals)
+        )
+        operations_count = (
+            0 if operations_summary is None else len(operations_summary.dependency_signals)
+        )
+        cyber_count = self._count_known_cyber_controls(cyber_summary)
+        forensic_count = 0 if forensic_summary is None else len(forensic_summary.flags)
+        return (
+            f"Commercial signals: {commercial_count}; "
+            f"operations dependencies: {operations_count}; "
+            f"{cyber_label}: {cyber_count}; "
+            f"forensic flags: {forensic_count}."
+        )

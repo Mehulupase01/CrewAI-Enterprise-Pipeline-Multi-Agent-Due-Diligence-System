@@ -35,6 +35,10 @@ class SynthesisService:
         legal_summary=None,
         tax_summary=None,
         compliance_summary=None,
+        commercial_summary=None,
+        operations_summary=None,
+        cyber_summary=None,
+        forensic_summary=None,
     ) -> list[WorkstreamSynthesisRecord]:
         syntheses: list[WorkstreamSynthesisRecord] = []
         for workstream in WorkstreamDomain:
@@ -94,6 +98,10 @@ class SynthesisService:
                 legal_summary,
                 tax_summary,
                 compliance_summary,
+                commercial_summary,
+                operations_summary,
+                cyber_summary,
+                forensic_summary,
             )
             recommended_next_action = self._build_next_action(
                 scoped_issues,
@@ -175,6 +183,10 @@ class SynthesisService:
         legal_summary,
         tax_summary,
         compliance_summary,
+        commercial_summary,
+        operations_summary,
+        cyber_summary,
+        forensic_summary,
     ) -> str:
         evidence_note = (
             f"The evidence ledger includes {len(scoped_evidence)} items"
@@ -258,6 +270,54 @@ class SynthesisService:
             )
             if compliance_summary.flags:
                 phase9_note += " Flags: " + "; ".join(compliance_summary.flags[:3]) + "."
+        elif workstream == WorkstreamDomain.COMMERCIAL and commercial_summary is not None:
+            phase9_note = (
+                " Structured commercial analysis identified "
+                f"{len(commercial_summary.concentration_signals)} concentration signals and "
+                f"{len(commercial_summary.renewal_signals)} renewal signals."
+            )
+            if commercial_summary.net_revenue_retention is not None:
+                phase9_note += (
+                    f" NRR: {commercial_summary.net_revenue_retention:.0%}."
+                )
+            if commercial_summary.churn_rate is not None:
+                phase9_note += f" Churn: {commercial_summary.churn_rate:.0%}."
+            if commercial_summary.flags:
+                phase9_note += " Flags: " + "; ".join(commercial_summary.flags[:3]) + "."
+        elif workstream == WorkstreamDomain.OPERATIONS and operations_summary is not None:
+            phase9_note = (
+                " Structured operations analysis identified "
+                f"{len(operations_summary.dependency_signals)} dependency signals."
+            )
+            if operations_summary.supplier_concentration_top_3 is not None:
+                phase9_note += (
+                    " Supplier concentration: "
+                    f"{operations_summary.supplier_concentration_top_3:.0%}."
+                )
+            if operations_summary.flags:
+                phase9_note += " Flags: " + "; ".join(operations_summary.flags[:3]) + "."
+        elif workstream == WorkstreamDomain.CYBER_PRIVACY and cyber_summary is not None:
+            known_controls = [
+                item for item in cyber_summary.controls if item.status.value != "unknown"
+            ]
+            phase9_note = (
+                " Structured cyber/privacy analysis identified "
+                f"{len(known_controls)} controls with evidence and "
+                f"{len(cyber_summary.certifications)} certification signals."
+            )
+            if cyber_summary.breach_history:
+                phase9_note += f" Breach signals: {len(cyber_summary.breach_history)}."
+            if cyber_summary.flags:
+                phase9_note += " Flags: " + "; ".join(cyber_summary.flags[:3]) + "."
+        elif workstream == WorkstreamDomain.FORENSIC_COMPLIANCE and forensic_summary is not None:
+            phase9_note = (
+                " Structured forensic analysis identified "
+                f"{len(forensic_summary.flags)} red flags."
+            )
+            if forensic_summary.flags:
+                phase9_note += " Flag types: " + ", ".join(
+                    flag.flag_type.value for flag in forensic_summary.flags[:4]
+                ) + "."
 
         return (
             f"{self._label_for_domain(workstream.value)} synthesis: {evidence_note} {issue_note}. "

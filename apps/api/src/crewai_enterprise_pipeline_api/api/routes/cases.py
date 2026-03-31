@@ -37,7 +37,9 @@ from crewai_enterprise_pipeline_api.domain.models import (
     ChecklistItemUpdate,
     ChecklistSeedResult,
     ChunkSummary,
+    CommercialSummary,
     ComplianceMatrixItem,
+    CyberPrivacySummary,
     DocumentArtifactCreate,
     DocumentArtifactSummary,
     DocumentIngestionResult,
@@ -49,11 +51,13 @@ from crewai_enterprise_pipeline_api.domain.models import (
     EvidenceSearchResponse,
     ExecutiveMemoReport,
     FinancialMetricSummary,
+    ForensicFlag,
     IssueRegisterItemCreate,
     IssueRegisterItemSummary,
     IssueScanResult,
     IssueUpdate,
     LegalStructureSummary,
+    OperationsSummary,
     QaItemCreate,
     QaItemSummary,
     QaItemUpdate,
@@ -75,11 +79,15 @@ from crewai_enterprise_pipeline_api.domain.models import (
 from crewai_enterprise_pipeline_api.services.approval_service import ApprovalService
 from crewai_enterprise_pipeline_api.services.case_service import CaseService
 from crewai_enterprise_pipeline_api.services.checklist_service import ChecklistService
+from crewai_enterprise_pipeline_api.services.commercial_service import CommercialService
+from crewai_enterprise_pipeline_api.services.cyber_service import CyberService
 from crewai_enterprise_pipeline_api.services.export_service import ExportService
 from crewai_enterprise_pipeline_api.services.financial_qoe_service import FinancialQoEService
+from crewai_enterprise_pipeline_api.services.forensic_service import ForensicService
 from crewai_enterprise_pipeline_api.services.ingestion_service import IngestionService
 from crewai_enterprise_pipeline_api.services.issue_service import IssueService
 from crewai_enterprise_pipeline_api.services.legal_service import LegalService
+from crewai_enterprise_pipeline_api.services.operations_service import OperationsService
 from crewai_enterprise_pipeline_api.services.regulatory_service import RegulatoryService
 from crewai_enterprise_pipeline_api.services.report_service import ReportService
 from crewai_enterprise_pipeline_api.services.search_service import SearchService
@@ -342,6 +350,102 @@ async def get_compliance_matrix(
     if summary is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
     return summary.items
+
+
+@router.get(
+    "/{case_id}/commercial-summary",
+    response_model=CommercialSummary,
+)
+async def get_commercial_summary(
+    case_id: str,
+    session: DbSession,
+    persist_checklist: bool = Query(
+        True,
+        description=(
+            "When true, checklist items satisfied by the commercial engine are "
+            "updated before the summary is returned."
+        ),
+    ),
+) -> CommercialSummary:
+    summary = await CommercialService(session).build_commercial_summary(
+        case_id,
+        persist_checklist=persist_checklist,
+    )
+    if summary is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
+    return summary
+
+
+@router.get(
+    "/{case_id}/operations-summary",
+    response_model=OperationsSummary,
+)
+async def get_operations_summary(
+    case_id: str,
+    session: DbSession,
+    persist_checklist: bool = Query(
+        True,
+        description=(
+            "When true, checklist items satisfied by the operations engine are "
+            "updated before the summary is returned."
+        ),
+    ),
+) -> OperationsSummary:
+    summary = await OperationsService(session).build_operations_summary(
+        case_id,
+        persist_checklist=persist_checklist,
+    )
+    if summary is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
+    return summary
+
+
+@router.get(
+    "/{case_id}/cyber-summary",
+    response_model=CyberPrivacySummary,
+)
+async def get_cyber_summary(
+    case_id: str,
+    session: DbSession,
+    persist_checklist: bool = Query(
+        True,
+        description=(
+            "When true, checklist items satisfied by the cyber/privacy engine are "
+            "updated before the summary is returned."
+        ),
+    ),
+) -> CyberPrivacySummary:
+    summary = await CyberService(session).build_cyber_summary(
+        case_id,
+        persist_checklist=persist_checklist,
+    )
+    if summary is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
+    return summary
+
+
+@router.get(
+    "/{case_id}/forensic-flags",
+    response_model=list[ForensicFlag],
+)
+async def get_forensic_flags(
+    case_id: str,
+    session: DbSession,
+    persist_checklist: bool = Query(
+        True,
+        description=(
+            "When true, checklist items satisfied by the forensic engine are "
+            "updated before the flags are returned."
+        ),
+    ),
+) -> list[ForensicFlag]:
+    summary = await ForensicService(session).build_forensic_summary(
+        case_id,
+        persist_checklist=persist_checklist,
+    )
+    if summary is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
+    return summary.flags
 
 
 # ---------------------------------------------------------------------------

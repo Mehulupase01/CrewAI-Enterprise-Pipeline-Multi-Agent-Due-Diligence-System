@@ -13,7 +13,7 @@ No phase is considered complete until all of the following exist together:
 
 ## Current Checks
 
-The current gate now covers both the foundation and the first operations layer:
+The current gate now covers the foundation plus the implemented canonical engine layers through Phase 10:
 
 - backend app boot and schema lifecycle
 - typed configuration loading
@@ -38,6 +38,12 @@ The current gate now covers both the foundation and the first operations layer:
 - negation-aware tax and regulatory phrase matching to avoid false negatives from language like `no notice` or `no sanctions`
 - automatic checklist satisfaction for legal, tax, and regulatory workstream items
 - dedicated Phase 9 legal/tax/regulatory evaluation coverage
+- structured commercial concentration, retention, pricing-pressure, and renewal-risk extraction
+- structured operations dependency, supplier-concentration, single-site, and key-person analysis
+- structured cyber/privacy control review with analyst-readable flags, certification posture, and breach-history extraction
+- structured forensic related-party, round-tripping, revenue-anomaly, and litigation flag detection
+- automatic checklist satisfaction for commercial, operations, cyber/privacy, and forensic workstream items
+- dedicated Phase 10 commercial/operations/cyber/forensic evaluation coverage
 - deterministic end-to-end evaluation scenarios with saved JSON scorecards
 - repeat-scan regression checks for issue fingerprint reuse
 - enforced-auth and role-guard tests
@@ -82,6 +88,18 @@ The current gate now covers both the foundation and the first operations layer:
   including MCA and BFSI-style RBI or SEBI compliance statuses.
 - Legal, tax, and regulatory summaries must refresh inside workflow runs and
   enrich trace events, syntheses, reports, and CrewAI tool surfaces consistently.
+- The API can build commercial summaries from uploaded documents, including
+  concentration signals, NRR, churn, pricing-pressure, and renewal-risk flags.
+- The API can build operations summaries from uploaded documents, including
+  supplier concentration, single-site dependency, key-person dependency, and
+  continuity-risk flags.
+- The API can build cyber/privacy summaries from uploaded documents, including
+  DPDP/security control states, certification posture, incident history, and
+  analyst-readable cyber flags.
+- The API can build forensic summaries from uploaded documents, including
+  related-party, round-tripping, revenue-anomaly, and litigation flags.
+- Phase 10 summaries must refresh inside workflow runs and enrich trace events,
+  syntheses, reports, and CrewAI tool surfaces consistently.
 - The first-slice evaluation suite passes blocked, clean-approved, and
   approved-nonblocking-risk scenarios.
 - Every quality-gate run writes a machine-readable artifact under
@@ -89,9 +107,10 @@ The current gate now covers both the foundation and the first operations layer:
 - Secured routes reject missing or under-privileged callers when auth is enforced.
 - The API returns a request ID header on responses.
 - The repo includes deployment, runbook, smoke-check, and release-checklist assets.
-- The evaluation runner passes all supported suites, including credit lending
-  vendor onboarding, manufacturing / industrials, BFSI / NBFC, and the
-  dedicated Phase 9 legal/tax/regulatory suite.
+- The evaluation runner passes all supported suites, including credit lending,
+  vendor onboarding, manufacturing / industrials, BFSI / NBFC, the dedicated
+  Phase 9 legal/tax/regulatory suite, and the dedicated Phase 10
+  commercial/operations/cyber/forensic suite.
 - The web app exposes a dashboard, case workspace, and run viewer over the shared case model.
 - The workbench reflects the actual platform surface instead of generator boilerplate.
 - The repo contains reproducible scripts for bootstrap, dev, and checks.

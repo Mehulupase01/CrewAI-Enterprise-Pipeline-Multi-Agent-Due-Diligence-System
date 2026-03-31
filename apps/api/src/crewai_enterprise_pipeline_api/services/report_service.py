@@ -12,8 +12,12 @@ from crewai_enterprise_pipeline_api.domain.models import (
 )
 from crewai_enterprise_pipeline_api.services.case_service import CaseService
 from crewai_enterprise_pipeline_api.services.checklist_service import ChecklistService
+from crewai_enterprise_pipeline_api.services.commercial_service import CommercialService
+from crewai_enterprise_pipeline_api.services.cyber_service import CyberService
 from crewai_enterprise_pipeline_api.services.financial_qoe_service import FinancialQoEService
+from crewai_enterprise_pipeline_api.services.forensic_service import ForensicService
 from crewai_enterprise_pipeline_api.services.legal_service import LegalService
+from crewai_enterprise_pipeline_api.services.operations_service import OperationsService
 from crewai_enterprise_pipeline_api.services.regulatory_service import RegulatoryService
 from crewai_enterprise_pipeline_api.services.tax_service import TaxService
 
@@ -31,8 +35,12 @@ class ReportService:
         self.session = session
         self.case_service = CaseService(session)
         self.checklist_service = ChecklistService(session)
+        self.commercial_service = CommercialService(session)
+        self.cyber_service = CyberService(session)
         self.financial_qoe_service = FinancialQoEService(session)
+        self.forensic_service = ForensicService(session)
         self.legal_service = LegalService(session)
+        self.operations_service = OperationsService(session)
         self.tax_service = TaxService(session)
         self.regulatory_service = RegulatoryService(session)
 
@@ -76,6 +84,22 @@ class ReportService:
             case_id,
             persist_checklist=False,
         )
+        commercial_summary = await self.commercial_service.build_commercial_summary(
+            case_id,
+            persist_checklist=False,
+        )
+        operations_summary = await self.operations_service.build_operations_summary(
+            case_id,
+            persist_checklist=False,
+        )
+        cyber_summary = await self.cyber_service.build_cyber_summary(
+            case_id,
+            persist_checklist=False,
+        )
+        forensic_summary = await self.forensic_service.build_forensic_summary(
+            case_id,
+            persist_checklist=False,
+        )
 
         executive_summary = self._build_summary(
             motion_pack,
@@ -88,6 +112,10 @@ class ReportService:
             legal_summary,
             tax_summary,
             compliance_summary,
+            commercial_summary,
+            operations_summary,
+            cyber_summary,
+            forensic_summary,
         )
         next_actions = self._build_next_actions(
             motion_pack,
@@ -257,6 +285,10 @@ class ReportService:
         legal_summary,
         tax_summary,
         compliance_summary,
+        commercial_summary,
+        operations_summary,
+        cyber_summary,
+        forensic_summary,
     ) -> str:
         financial_note = ""
         if financial_summary is not None and financial_summary.periods:
@@ -306,26 +338,59 @@ class ReportService:
             if not compliance_fragments
             else " Phase 9 engines identified " + ", ".join(compliance_fragments) + "."
         )
+        phase10_fragments: list[str] = []
+        if commercial_summary is not None:
+            if commercial_summary.concentration_signals:
+                phase10_fragments.append(
+                    f"{len(commercial_summary.concentration_signals)} commercial "
+                    "concentration signals"
+                )
+            if commercial_summary.renewal_signals:
+                phase10_fragments.append(
+                    f"{len(commercial_summary.renewal_signals)} renewal signals"
+                )
+        if operations_summary is not None:
+            if operations_summary.dependency_signals:
+                phase10_fragments.append(
+                    f"{len(operations_summary.dependency_signals)} operations dependency signals"
+                )
+        if cyber_summary is not None:
+            known_controls = [
+                item for item in cyber_summary.controls if item.status.value != "unknown"
+            ]
+            if known_controls:
+                phase10_fragments.append(
+                    f"{len(known_controls)} cyber/privacy controls with evidence"
+                )
+        if forensic_summary is not None and forensic_summary.flags:
+            phase10_fragments.append(
+                f"{len(forensic_summary.flags)} forensic red flags"
+            )
+        phase10_note = (
+            ""
+            if not phase10_fragments
+            else " Phase 10 engines identified " + ", ".join(phase10_fragments) + "."
+        )
 
         if motion_pack == MotionPack.CREDIT_LENDING:
             return (
                 f"{case_name} for {target_name} currently has {issue_count} tracked credit-risk "
                 f"items, {open_mandatory_items} open mandatory underwriting checklist items, "
                 f"and {open_request_count} open borrower information requests."
-                f"{financial_note}{compliance_note}"
+                f"{financial_note}{compliance_note}{phase10_note}"
             )
         if motion_pack == MotionPack.VENDOR_ONBOARDING:
             return (
                 f"{case_name} for {target_name} currently has {issue_count} tracked "
                 f"third-party risk items, {open_mandatory_items} open mandatory onboarding "
                 f"checklist items, and {open_request_count} open vendor follow-up requests."
-                f"{financial_note}{compliance_note}"
+                f"{financial_note}{compliance_note}{phase10_note}"
             )
         return (
             f"{case_name} for {target_name} currently has {issue_count} tracked issues, "
             f"{open_mandatory_items} open mandatory checklist items, and "
             f"{open_request_count} open diligence requests."
-            f"{financial_note}{compliance_note}"
+            f"{financial_note}{compliance_note}{phase10_note}"
         )
 
     def _report_title_for_motion(self, motion_pack: MotionPack) -> str:

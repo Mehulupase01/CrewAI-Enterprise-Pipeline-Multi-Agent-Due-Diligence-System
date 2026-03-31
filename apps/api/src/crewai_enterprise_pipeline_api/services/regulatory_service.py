@@ -258,7 +258,12 @@ class RegulatoryService:
                 }
             ),
             "regulatory.vendor_restrictions": any(
-                item.status != ComplianceStatus.UNKNOWN for item in summary.items
+                item.status != ComplianceStatus.UNKNOWN
+                for item in summary.items
+                if item.regulation
+                in {
+                    "Licensing / Registration Restrictions",
+                }
             ),
             "regulatory.ehs_factory_compliance": any(
                 item.status != ComplianceStatus.UNKNOWN

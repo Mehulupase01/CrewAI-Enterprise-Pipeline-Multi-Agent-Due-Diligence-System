@@ -20,6 +20,7 @@ from crewai_enterprise_pipeline_api.agents.models import (
     ExecutiveSummaryOutput,
     WorkstreamAnalysisOutput,
 )
+from crewai_enterprise_pipeline_api.agents.phase10_tools import format_phase10_snapshot
 from crewai_enterprise_pipeline_api.agents.tools import (
     build_case_tools,
     build_workstream_tools,
@@ -205,6 +206,24 @@ def _phase9_snapshot_block(
     )
 
 
+def _phase10_snapshot_block(
+    commercial_summary,
+    operations_summary,
+    cyber_summary,
+    forensic_summary,
+) -> str:
+    phase10_snapshot = format_phase10_snapshot(
+        commercial_summary=commercial_summary,
+        operations_summary=operations_summary,
+        cyber_summary=cyber_summary,
+        forensic_summary=forensic_summary,
+    )
+    return (
+        "## Commercial / Operations / Cyber / Forensic Snapshot\n"
+        f"{phase10_snapshot}\n\n"
+    )
+
+
 def _build_llm(settings) -> LLM:
     """Create a CrewAI LLM instance from application settings."""
     model_prefix = {
@@ -226,6 +245,10 @@ def build_due_diligence_crew(
     legal_summary=None,
     tax_summary=None,
     compliance_summary=None,
+    commercial_summary=None,
+    operations_summary=None,
+    cyber_summary=None,
+    forensic_summary=None,
 ) -> tuple[Crew, dict[str, str], dict[str, list[Any]]]:
     """Build a CrewAI crew for the given case context."""
     llm = _build_llm(settings)
@@ -264,6 +287,10 @@ def build_due_diligence_crew(
             legal_summary=legal_summary,
             tax_summary=tax_summary,
             compliance_summary=compliance_summary,
+            commercial_summary=commercial_summary,
+            operations_summary=operations_summary,
+            cyber_summary=cyber_summary,
+            forensic_summary=forensic_summary,
             sector_pack=case_ctx.sector_pack,
         )
         agent = Agent(
@@ -301,6 +328,22 @@ def build_due_diligence_crew(
             }
             else ""
         )
+        phase10_block = (
+            _phase10_snapshot_block(
+                commercial_summary,
+                operations_summary,
+                cyber_summary,
+                forensic_summary,
+            )
+            if ws_domain
+            in {
+                WorkstreamDomain.COMMERCIAL.value,
+                WorkstreamDomain.OPERATIONS.value,
+                WorkstreamDomain.CYBER_PRIVACY.value,
+                WorkstreamDomain.FORENSIC_COMPLIANCE.value,
+            }
+            else ""
+        )
         available_tools_block = (
             "## Available Tools\n"
             f"{', '.join(tool.name for tool in tools)}\n\n"
@@ -317,6 +360,7 @@ def build_due_diligence_crew(
                 f"{_format_workstream_snapshot(ws_ctx)}\n\n"
                 + financial_block
                 + phase9_block
+                + phase10_block
                 + available_tools_block
                 +
                 "Requirements:\n"
@@ -354,6 +398,10 @@ def build_due_diligence_crew(
         legal_summary=legal_summary,
         tax_summary=tax_summary,
         compliance_summary=compliance_summary,
+        commercial_summary=commercial_summary,
+        operations_summary=operations_summary,
+        cyber_summary=cyber_summary,
+        forensic_summary=forensic_summary,
         sector_pack=case_ctx.sector_pack,
     )
     coordinator = Agent(
@@ -389,6 +437,12 @@ def build_due_diligence_crew(
                 legal_summary,
                 tax_summary,
                 compliance_summary,
+            )
+            + _phase10_snapshot_block(
+                commercial_summary,
+                operations_summary,
+                cyber_summary,
+                forensic_summary,
             )
             + coordinator_tools_block
             +

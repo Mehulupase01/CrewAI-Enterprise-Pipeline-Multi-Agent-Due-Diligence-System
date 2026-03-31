@@ -4,11 +4,11 @@
 > Any AI agent resuming work should read this file + CLAUDE.md first.
 > Strategic roadmap comes from `docs/MASTERPLAN.docx` (preferred) and `docs/MASTERPLAN.pdf` (companion export); execution truth comes from the actual repo state.
 
-## Status: Phase 9 Complete
+## Status: Phase 10 Complete
 
 **Last updated:** 2026-03-31
-**Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7, Phase 8, Phase 9
-**Next phase:** Phase 10 (Commercial / Operations / Cyber / Forensic Engine)
+**Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7, Phase 8, Phase 9, Phase 10
+**Next phase:** Phase 11 (confirm exact title from `MASTERPLAN.docx` before implementation)
 **Blocking issues:** None
 
 ---
@@ -567,6 +567,67 @@
 **Notes for next phase:**
 - Phase 10 should build the canonical Commercial / Operations / Cyber / Forensic engine from `MASTERPLAN.docx`
 - Phase 9 currently exposes a complete backend, workflow, evaluation, and CrewAI-tooling surface; dedicated analyst UI panels for legal/tax/regulatory depth remain optional future UX depth, not a blocker for canonical Phase 9 closure
+
+---
+
+### Phase 10: Commercial / Operations / Cyber / Forensic Engine (2026-03-31)
+
+**What was done:**
+- Added a commercial engine that extracts customer concentration, renewal timing, net revenue retention, churn, and pricing-pressure signals from uploaded evidence
+- Added an operations engine that extracts supplier concentration, single-site dependency, key-person dependency, and operational continuity flags
+- Added a cyber/privacy engine that evaluates DPDP/security controls, breach history, certification posture, and analyst-readable cyber flags
+- Added a forensic engine that detects related-party, round-tripping, revenue-anomaly, and litigation flags from uploaded evidence
+- Added `GET /cases/{case_id}/commercial-summary`, `GET /cases/{case_id}/operations-summary`, `GET /cases/{case_id}/cyber-summary`, and `GET /cases/{case_id}/forensic-flags`
+- Wired Phase 10 refresh into workflow execution before coverage, syntheses, reports, and CrewAI prompt/tool assembly
+- Added Phase 10 CrewAI tools so commercial, operations, cyber/privacy, forensic, and coordinator agents can inspect structured Phase 10 state directly
+- Added a dedicated Phase 10 evaluation suite plus focused pytest coverage for endpoints, checklist updates, tool attachment, and workflow integration
+- Reconciled older evaluation suites to the integrated post-Phase-10 workflow state so the full gate now reflects actual run-time checklist coverage
+
+**Files created:**
+- apps/api/src/.../services/commercial_service.py -- commercial concentration, retention, and pricing-signal engine
+- apps/api/src/.../services/operations_service.py -- supplier concentration and dependency engine
+- apps/api/src/.../services/cyber_service.py -- DPDP/privacy and security-control engine
+- apps/api/src/.../services/forensic_service.py -- forensic flag detection engine
+- apps/api/src/.../agents/phase10_tools.py -- structured CrewAI tools for commercial, operations, cyber, and forensic review
+- apps/api/tests/test_phase10_commercial_operations_cyber_forensic.py -- 3 focused Phase 10 test cases
+
+**Files modified:**
+- apps/api/src/.../domain/models.py -- new CommercialSummary, OperationsSummary, CyberPrivacySummary, ForensicSummary, and supporting Phase 10 item models
+- apps/api/src/.../api/routes/cases.py -- new Phase 10 summary and forensic-flag endpoints
+- apps/api/src/.../agents/tools.py -- Phase 10 tool wiring for coordinator and domain workstreams
+- apps/api/src/.../agents/crew.py -- compact Phase 10 snapshot injection into CrewAI task descriptions
+- apps/api/src/.../agents/config.py -- richer commercial, operations, cyber/privacy, and forensic agent remits
+- apps/api/src/.../services/report_service.py -- Phase 10 report note integration
+- apps/api/src/.../services/synthesis_service.py -- commercial, operations, cyber/privacy, and forensic narrative enrichment
+- apps/api/src/.../services/workflow_service.py -- Phase 10 refresh and trace integration in deterministic and CrewAI paths
+- apps/api/src/.../services/regulatory_service.py -- tighter vendor-restriction checklist automation focused on licensing/registration evidence
+- apps/api/src/.../evaluation/scenarios.py -- Phase 10 scenario and updated integrated checklist expectations for older suites
+- apps/api/src/.../evaluation/runner.py -- Phase 10 evaluation assertions and metrics
+- apps/api/src/.../core/settings.py -- current_phase updated to Phase 10 complete
+
+**Decisions made:**
+- AD-039: Evaluation checklist expectations are measured against the integrated post-run workflow state, not only the standalone endpoint state
+- AD-040: Cyber/privacy summaries must present analyst-readable control labels and treat certifications as positive signals only when the underlying control is compliant or partially compliant
+- AD-041: `regulatory.vendor_restrictions` checklist automation requires licensing/registration evidence, not arbitrary regulatory signals
+- AD-042: Phase 10 structured state must surface through APIs, workflows, reports, and CrewAI tools together
+
+**Blockers encountered:**
+- Initial Phase 10 eval closure failed because cyber flags exposed raw control keys and the full workflow auto-satisfied more checklist items than the pre-Phase-10 suite expectations assumed
+- Those mismatches were resolved before closure by tightening cyber presentation logic, narrowing regulatory checklist automation, and updating stale eval baselines to the integrated post-run truth
+
+**Test results:**
+- pytest: 100/100 pass (97 existing + 3 new)
+- eval suites: 14/14 pass (all 8 suites at 100%)
+- ruff: clean
+- npm lint: clean
+- npm typecheck: clean
+- check gate: `./scripts/check.ps1` passed
+- dedicated Phase 10 eval artifact: `artifacts/evaluations/phase10-commercial-operations-cyber-forensic-20260331T133211Z.json`
+- latest full-gate eval artifact: `artifacts/evaluations/all-supported-suites-20260331T133728Z.json`
+
+**Notes for next phase:**
+- Start canonical Phase 11 only after confirming its exact title and scope from `MASTERPLAN.docx`
+- Phase 10 currently exposes a complete backend, workflow, evaluation, and CrewAI-tooling surface; dedicated analyst UI panels for commercial/operations/cyber/forensic depth remain optional future UX depth, not a blocker for canonical Phase 10 closure
 
 ---
 
