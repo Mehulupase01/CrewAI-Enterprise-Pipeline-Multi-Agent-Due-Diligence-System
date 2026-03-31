@@ -4,11 +4,11 @@
 > Any AI agent resuming work should read this file + CLAUDE.md first.
 > Strategic roadmap comes from `docs/MASTERPLAN.docx` (preferred) and `docs/MASTERPLAN.pdf` (companion export); execution truth comes from the actual repo state.
 
-## Status: Phase 13 Complete
+## Status: Phase 14 Complete
 
 **Last updated:** 2026-03-31
-**Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7, Phase 8, Phase 9, Phase 10, Phase 11, Phase 12, Phase 13
-**Next phase:** Phase 14 from `docs/MASTERPLAN.docx`
+**Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7, Phase 8, Phase 9, Phase 10, Phase 11, Phase 12, Phase 13, Phase 14
+**Next phase:** Phase 15 from `docs/MASTERPLAN.docx`
 **Blocking issues:** None
 
 ---
@@ -821,6 +821,62 @@
 **Notes for next phase:**
 - Start canonical Phase 14 from `MASTERPLAN.docx`
 - Phase 13 now exposes a complete backend, workflow, export, evaluation, and workbench surface for rich reporting; future report phases should extend the shared markdown-first renderer rather than creating format-specific parallel logic
+
+---
+
+### Phase 14: India Data Connectors (2026-03-31)
+
+**What was done:**
+- Added a dedicated source-adapter framework for India connector integrations
+- Implemented registered adapters for MCA21, GSTIN, SEBI SCORES, RoC filings, CIBIL stub, and sanctions/watchlist screening
+- Added connector catalog metadata with status, credential requirements, fetch support, source kind, and default workstream metadata
+- Added `POST /cases/{case_id}/source-adapters/{adapter_id}/fetch` so connector lookups ingest directly into a case as first-class artifacts
+- Refactored the ingestion service so uploaded documents and connector-fetched payloads share the same dedup, storage, chunking, evidence extraction, and entity extraction pipeline
+- Added a dedicated Phase 14 evaluation suite and focused endpoint tests for connector fetch behavior and downstream legal/tax consumption
+
+**Files created:**
+- apps/api/src/.../source_adapters/base.py -- shared adapter contract and stub/live dispatch
+- apps/api/src/.../source_adapters/mca21.py -- MCA21 connector
+- apps/api/src/.../source_adapters/gstin.py -- GSTIN connector
+- apps/api/src/.../source_adapters/sebi_scores.py -- SEBI SCORES connector
+- apps/api/src/.../source_adapters/roc.py -- RoC filings connector
+- apps/api/src/.../source_adapters/cibil.py -- CIBIL stub connector
+- apps/api/src/.../source_adapters/sanctions.py -- sanctions/watchlist connector
+- apps/api/src/.../services/source_adapter_service.py -- adapter registry and fetch orchestration
+- apps/api/tests/test_phase14_india_connectors.py -- 5 focused Phase 14 test cases
+
+**Files modified:**
+- apps/api/src/.../domain/models.py -- source-adapter status enum, fetch request schema, richer adapter summary metadata
+- apps/api/src/.../core/settings.py -- connector base-URL/API-key configuration, updated current_phase
+- apps/api/src/.../ingestion/adapters/contracts.py -- registry wrapper compatibility layer
+- apps/api/src/.../services/ingestion_service.py -- shared connector/upload ingestion path
+- apps/api/src/.../api/routes/cases.py -- fetch-and-ingest connector endpoint
+- apps/api/src/.../api/routes/source_adapters.py -- live adapter catalog response
+- apps/api/src/.../evaluation/scenarios.py -- Phase 14 suite and expectations
+- apps/api/src/.../evaluation/runner.py -- connector fetch execution and evaluation assertions
+- apps/api/tests/test_source_adapters.py -- updated adapter catalog expectations
+- apps/api/tests/test_evaluation.py -- Phase 14 suite registration checks
+
+**Decisions made:**
+- AD-048: India connectors ingest through the same artifact/evidence pipeline as uploaded documents
+- AD-049: connector completeness requires catalog metadata, fetch endpoints, stub/live status, and evaluation coverage together
+
+**Blockers encountered:**
+- The first Phase 14 evaluation run failed because the harness expected `document.id` instead of the actual `artifact.id` returned by `DocumentIngestionResult`; the runner was corrected before closure
+
+**Test results:**
+- pytest: 120/120 pass (115 existing + 5 new)
+- eval suites: 22/22 pass (all 12 suites at 100%)
+- ruff: clean
+- npm lint: clean
+- npm typecheck: clean
+- check gate: `./scripts/check.ps1` passed
+- dedicated Phase 14 eval artifact: `artifacts/evaluations/phase14-india-connectors-20260331T185525Z.json`
+- latest full-gate eval artifact: `artifacts/evaluations/all-supported-suites-20260331T191237Z.json`
+
+**Notes for next phase:**
+- Start canonical Phase 15: Enterprise Security (JWT + Multi-tenancy + Audit) from `MASTERPLAN.docx`
+- Future connector work should extend the shared adapter registry and ingestion contract rather than adding one-off API clients
 
 ---
 

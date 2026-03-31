@@ -46,7 +46,7 @@ docker-compose.yml
 
 ## Current Phase
 
-The repository has completed Phases 0-13 from the current master-plan execution
+The repository has completed Phases 0-14 from the current master-plan execution
 sequence. After Phase 7, the repo also received an additional CrewAI depth
 enhancement: tool-grounded evidence access for the LLM path. Phase 8 is closed
 as the canonical Financial Quality of Earnings (QoE) engine, Phase 9 is closed
@@ -54,7 +54,8 @@ as the canonical Legal / Tax / Regulatory engine, Phase 10 is closed as the
 canonical Commercial / Operations / Cyber / Forensic engine, Phase 11 is
 closed as the canonical Motion Pack Deepening layer, and Phase 12 is closed as
 the canonical Sector Pack Deepening layer. Phase 13 is closed as the
-canonical Rich Reporting + DOCX/PDF Export layer. The current build includes
+canonical Rich Reporting + DOCX/PDF Export layer. Phase 14 is closed as the
+canonical India Data Connectors layer. The current build includes
 the first flagship buy-side slice, all planned motion and sector expansions,
 analyst-ready export archives, scoped CrewAI evidence tools, and workflow-integrated
 financial, legal/compliance, Phase 10 domain-analysis, Phase 11 motion-pack
@@ -125,6 +126,9 @@ hardened platform spine:
 - analyst workbench dashboard, case workspace, and run viewer with live API support
 - document, evidence, request-list, and Q&A tracker endpoints
 - source-adapter catalog for uploaded, public, and vendor-backed evidence
+- `POST /api/v1/cases/{case_id}/source-adapters/{adapter_id}/fetch` for
+  connector-backed evidence ingestion from MCA21, GSTIN, SEBI SCORES, RoC,
+  CIBIL stub, and sanctions/watchlist screening
 - deterministic evaluation scenarios with saved JSON scorecards
 - a repeatable quality gate that exercises blocked, approved-clean, and
   approved-nonblocking-risk diligence runs
@@ -267,6 +271,12 @@ To run only the Phase 13 rich-reporting suite:
 
 ```powershell
 ./scripts/evaluate.ps1 -Suite phase13_rich_reporting
+```
+
+To run only the Phase 14 India connectors suite:
+
+```powershell
+./scripts/evaluate.ps1 -Suite phase14_india_connectors
 ```
 
 To run a live API smoke check after the stack is up:

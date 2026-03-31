@@ -72,6 +72,7 @@ from crewai_enterprise_pipeline_api.domain.models import (
     RunExportPackageCreate,
     RunExportPackageSummary,
     SearchRequest,
+    SourceAdapterFetchRequest,
     TaxComplianceSummary,
     TechSaasMetricsSummary,
     VendorRiskTier,
@@ -102,10 +103,12 @@ from crewai_enterprise_pipeline_api.services.operations_service import Operation
 from crewai_enterprise_pipeline_api.services.regulatory_service import RegulatoryService
 from crewai_enterprise_pipeline_api.services.report_service import ReportService
 from crewai_enterprise_pipeline_api.services.search_service import SearchService
+from crewai_enterprise_pipeline_api.services.source_adapter_service import SourceAdapterService
 from crewai_enterprise_pipeline_api.services.tax_service import TaxService
 from crewai_enterprise_pipeline_api.services.tech_saas_service import TechSaaSService
 from crewai_enterprise_pipeline_api.services.vendor_service import VendorService
 from crewai_enterprise_pipeline_api.services.workflow_service import WorkflowService
+from crewai_enterprise_pipeline_api.source_adapters.base import SourceAdapterUnavailableError
 from crewai_enterprise_pipeline_api.storage.service import DocumentStorageService
 
 router = APIRouter(dependencies=[Depends(require_read_access)])
@@ -266,6 +269,37 @@ async def upload_document(
     )
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
+    return result
+
+
+@router.post(
+    "/{case_id}/source-adapters/{adapter_id}/fetch",
+    response_model=DocumentIngestionResult,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_write_access)],
+)
+async def fetch_from_source_adapter(
+    case_id: str,
+    adapter_id: str,
+    payload: SourceAdapterFetchRequest,
+    session: DbSession,
+) -> DocumentIngestionResult:
+    try:
+        result = await SourceAdapterService(session).fetch_into_case(
+            case_id=case_id,
+            adapter_key=adapter_id,
+            payload=payload,
+        )
+    except SourceAdapterUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Case or source adapter not found",
+        )
     return result
 
 

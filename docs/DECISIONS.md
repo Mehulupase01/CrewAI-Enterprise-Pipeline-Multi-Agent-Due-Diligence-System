@@ -532,6 +532,26 @@ name-based).
 
 ---
 
+## AD-048: India connectors must ingest through the same artifact and evidence pipeline as uploaded documents (2026-03-31)
+
+**Decision:** Phase 14 connector fetches are treated as first-class document-ingestion events. Connector payloads from MCA21, GSTIN, SEBI SCORES, RoC filings, CIBIL stub, and sanctions screening must flow through the same storage, deduplication, chunking, evidence extraction, and entity-extraction path that uploaded files use.
+
+**Why:** Connectors are evidence acquisition surfaces, not side-channel metadata stores. If connector results bypass the normal ingestion path, they become invisible to chunk search, legal/tax/domain engines, workflow syntheses, approvals, exports, and future retrieval layers.
+
+**Impact:** `source_adapters/base.py`, `source_adapter_service.py`, and `ingestion_service.py` now form one shared ingestion contract. Future connectors should return raw payloads plus parsed analyst text, then ingest through `IngestionService.ingest_connector_document()` instead of writing bespoke records.
+
+---
+
+## AD-049: Phase 14 connector completeness requires catalog metadata, stub/live status, fetch endpoints, and evaluation coverage together (2026-03-31)
+
+**Decision:** A source adapter is not considered part of the production-structured connector layer unless it is exposed in the catalog with availability metadata, declares its credential requirements and fetch behavior, supports fetch-and-ingest through the case API when applicable, and is exercised by automated tests or evaluation scenarios.
+
+**Why:** Connector code alone is not enough for a flagship diligence platform. Analysts and operators need to know which adapters exist, whether they are live or stubbed, whether they require credentials, and whether they can be trusted by the rest of the system.
+
+**Impact:** `domain/models.py`, `api/routes/source_adapters.py`, `api/routes/cases.py`, `evaluation/runner.py`, and `evaluation/scenarios.py` are all part of the Phase 14 contract. Future connector additions should land as registry entries plus tests/evals, not as isolated helper classes.
+
+---
+
 <!--
 Template for future decisions:
 

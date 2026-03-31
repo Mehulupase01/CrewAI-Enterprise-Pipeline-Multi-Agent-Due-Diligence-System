@@ -4,20 +4,20 @@
 
 ## Current State
 
-**Active phase:** None (Phase 13 complete, ready to start canonical Phase 14)
+**Active phase:** None (Phase 14 complete, ready to start canonical Phase 15)
 **Last session:** 2026-03-31
-**Completed phases:** 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13
-**Test counts:** 115 pytest, 21 eval scenarios (11 suites)
+**Completed phases:** 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14
+**Test counts:** 120 pytest, 22 eval scenarios (12 suites)
 **Execution mode:** roadmap from `MASTERPLAN.docx` (preferred) / `MASTERPLAN.pdf` (companion), execution truth from repo code/tests/commands
 
 ## What to Do Next
 
-Start canonical **Phase 14** from `MASTERPLAN.docx`.
-Treat Phase 13 as complete: the repo now has Jinja2-based report templates, markdown-first full-report and financial-annex rendering, DOCX/PDF generation, persisted `report_template` state on workflow runs, binary report-bundle download endpoints, export-package inclusion of rich artifacts, workbench template selection, and dedicated Phase 13 pytest plus evaluation coverage.
+Start canonical **Phase 15: Enterprise Security (JWT + Multi-tenancy + Audit)** from `MASTERPLAN.docx`.
+Treat Phase 14 as complete: the repo now has a registered India connector framework, source-adapter catalog metadata with availability and credential status, fetch-and-ingest endpoints for connector-backed evidence, shared connector/document ingestion, and dedicated Phase 14 pytest plus evaluation coverage.
 
 ## Blockers
 
-None. Latest full-gate artifact: `artifacts/evaluations/all-supported-suites-20260331T175355Z.json`.
+None. Latest full-gate artifact: `artifacts/evaluations/all-supported-suites-20260331T191237Z.json`.
 
 ## Phase Completion Checklist
 

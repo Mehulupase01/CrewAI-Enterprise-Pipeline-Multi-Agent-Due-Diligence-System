@@ -13,7 +13,7 @@ No phase is considered complete until all of the following exist together:
 
 ## Current Checks
 
-The current gate now covers the foundation plus the implemented canonical engine layers through Phase 13:
+The current gate now covers the foundation plus the implemented canonical engine layers through Phase 14:
 
 - backend app boot and schema lifecycle
 - typed configuration loading
@@ -65,6 +65,10 @@ The current gate now covers the foundation plus the implemented canonical engine
 - report-bundle download endpoints for markdown and binary artifacts
 - ZIP export-package inclusion of rich report markdown, DOCX, and PDF files
 - dedicated Phase 13 rich-reporting evaluation coverage
+- registered source-adapter catalog metadata with available/stub/unavailable status
+- shared fetch-and-ingest support for MCA21, GSTIN, SEBI SCORES, RoC filings, CIBIL stub, and sanctions/watchlist adapters
+- connector payload ingestion through the shared artifact storage, chunking, evidence extraction, and entity-extraction pipeline
+- dedicated Phase 14 India connector evaluation coverage
 - deterministic end-to-end evaluation scenarios with saved JSON scorecards
 - repeat-scan regression checks for issue fingerprint reuse
 - enforced-auth and role-guard tests
@@ -147,6 +151,12 @@ The current gate now covers the foundation plus the implemented canonical engine
   markdown, DOCX, and PDF report bundles as durable run artifacts.
 - Report bundles can be downloaded individually through the API and included
   in export-package ZIP archives without regeneration drift.
+- The API exposes a registered source-adapter catalog with connector status,
+  credential requirements, fetch capability, and default evidence metadata.
+- The API can fetch and ingest connector-backed evidence into a case through
+  `POST /api/v1/cases/{case_id}/source-adapters/{adapter_id}/fetch`.
+- Connector-fetched evidence lands in the same artifact, chunk, and evidence
+  pipeline used for uploaded files so downstream domain engines can consume it.
 - The first-slice evaluation suite passes blocked, clean-approved, and
   approved-nonblocking-risk scenarios.
 - Every quality-gate run writes a machine-readable artifact under
@@ -159,7 +169,8 @@ The current gate now covers the foundation plus the implemented canonical engine
   Phase 9 legal/tax/regulatory suite, and the dedicated Phase 10
   commercial/operations/cyber/forensic suite, the dedicated Phase 11
   motion-pack deepening suite, the dedicated Phase 12 sector-pack
-  deepening suite, and the dedicated Phase 13 rich-reporting suite.
+  deepening suite, the dedicated Phase 13 rich-reporting suite, and the
+  dedicated Phase 14 India connector suite.
 - The web app exposes a dashboard, case workspace, and run viewer over the shared case model.
 - The workbench reflects the actual platform surface instead of generator boilerplate.
 - The repo contains reproducible scripts for bootstrap, dev, and checks.

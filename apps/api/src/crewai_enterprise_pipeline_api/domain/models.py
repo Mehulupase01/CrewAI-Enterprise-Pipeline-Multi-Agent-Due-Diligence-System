@@ -1,5 +1,6 @@
 from datetime import date, datetime
 from enum import StrEnum
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -148,6 +149,12 @@ class SourceAdapterCategory(StrEnum):
     UPLOADED = "uploaded"
     PUBLIC = "public"
     VENDOR = "vendor"
+
+
+class SourceAdapterStatus(StrEnum):
+    AVAILABLE = "available"
+    STUB = "stub"
+    UNAVAILABLE = "unavailable"
 
 
 class StorageBackendKind(StrEnum):
@@ -337,6 +344,11 @@ class WorkflowRunCreate(BaseModel):
     requested_by: str = Field(default="Operator", min_length=2, max_length=255)
     note: str | None = Field(default=None, max_length=4000)
     report_template: ReportTemplateKind = ReportTemplateKind.STANDARD
+
+
+class SourceAdapterFetchRequest(BaseModel):
+    identifier: str = Field(min_length=2, max_length=255)
+    params: dict[str, Any] = Field(default_factory=dict)
 
 
 class RunExportPackageCreate(BaseModel):
@@ -573,6 +585,13 @@ class SourceAdapterSummary(BaseModel):
     purpose: str
     supports_india: bool
     supports_live_credentials: bool
+    requires_api_key: bool = False
+    status: SourceAdapterStatus = SourceAdapterStatus.AVAILABLE
+    supports_fetch: bool = True
+    identifier_label: str | None = None
+    source_kind: ArtifactSourceKind | None = None
+    default_document_kind: str | None = None
+    default_workstream_domain: WorkstreamDomain | None = None
     fallback_mode: str
 
 

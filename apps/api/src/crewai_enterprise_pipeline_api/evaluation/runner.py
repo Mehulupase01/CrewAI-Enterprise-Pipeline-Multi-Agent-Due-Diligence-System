@@ -180,6 +180,30 @@ def _evaluate_scenario(scenario: EvaluationScenario) -> dict[str, Any]:
                 )
                 _ensure_success(f"upload document {upload.filename}", response, 201)
 
+            source_adapter_catalog: list[dict[str, Any]] | None = None
+            source_adapter_fetch_results: list[dict[str, Any]] = []
+            if scenario.source_adapter_fetches or scenario.source_adapter_expectation is not None:
+                source_adapter_catalog = _ensure_success(
+                    "list source adapters",
+                    client.get("/api/v1/source-adapters"),
+                    200,
+                )
+            for adapter_fetch in scenario.source_adapter_fetches:
+                response = client.post(
+                    f"/api/v1/cases/{case_id}/source-adapters/{adapter_fetch.adapter_key}/fetch",
+                    json={
+                        "identifier": adapter_fetch.identifier,
+                        "params": adapter_fetch.params,
+                    },
+                )
+                source_adapter_fetch_results.append(
+                    _ensure_success(
+                        f"fetch source adapter {adapter_fetch.adapter_key}",
+                        response,
+                        201,
+                    )
+                )
+
             for evidence in scenario.evidence_items:
                 response = client.post(
                     f"/api/v1/cases/{case_id}/evidence",
@@ -394,6 +418,18 @@ def _evaluate_scenario(scenario: EvaluationScenario) -> dict[str, Any]:
         "workstream_synthesis_count": len(run_detail["workstream_syntheses"]),
         "bundle_kinds": bundle_kinds,
     }
+    if source_adapter_catalog is not None:
+        metrics["source_adapter_keys"] = sorted(
+            adapter["adapter_key"] for adapter in source_adapter_catalog
+        )
+        metrics["source_adapter_stub_count"] = len(
+            [adapter for adapter in source_adapter_catalog if adapter["status"] == "stub"]
+        )
+    if source_adapter_fetch_results:
+        metrics["source_adapter_fetch_count"] = len(source_adapter_fetch_results)
+        metrics["source_adapter_fetch_artifact_ids"] = [
+            result["artifact"]["id"] for result in source_adapter_fetch_results
+        ]
     if export_package is not None:
         metrics["export_included_files"] = export_package["included_files"]
         metrics["export_byte_size"] = export_package["byte_size"]
@@ -582,6 +618,42 @@ def _evaluate_scenario(scenario: EvaluationScenario) -> dict[str, Any]:
             detail=(
                 "Export packages should include the rich reporting markdown, DOCX, "
                 "and PDF artifacts."
+            ),
+        )
+    if scenario.source_adapter_expectation is not None:
+        connector_expectation = scenario.source_adapter_expectation
+        _append_check(
+            checks,
+            name="source_adapter_keys",
+            passed=set(connector_expectation.required_adapter_keys).issubset(
+                set(metrics.get("source_adapter_keys", []))
+            ),
+            actual=metrics.get("source_adapter_keys", []),
+            expected=list(connector_expectation.required_adapter_keys),
+            detail="The Phase 14 adapter catalog should expose the required India connector keys.",
+        )
+        _append_check(
+            checks,
+            name="source_adapter_stub_count",
+            passed=metrics.get("source_adapter_stub_count", 0)
+            >= connector_expectation.min_stub_adapters,
+            actual=metrics.get("source_adapter_stub_count", 0),
+            expected=f">= {connector_expectation.min_stub_adapters}",
+            detail=(
+                "Development/test mode should expose the expected minimum number "
+                "of stub adapters."
+            ),
+        )
+        _append_check(
+            checks,
+            name="source_adapter_fetch_count",
+            passed=metrics.get("source_adapter_fetch_count", 0)
+            >= connector_expectation.min_fetched_documents,
+            actual=metrics.get("source_adapter_fetch_count", 0),
+            expected=f">= {connector_expectation.min_fetched_documents}",
+            detail=(
+                "Scenario connector fetches should ingest the expected minimum "
+                "number of documents."
             ),
         )
 

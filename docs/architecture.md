@@ -1,6 +1,6 @@
 # Architecture Overview
 
-> **Last updated:** 2026-03-31 (Phase 13 complete)
+> **Last updated:** 2026-03-31 (Phase 14 complete)
 > **Update rule:** This file is updated after every masterplan phase to reflect actual system state.
 
 ## System Summary
@@ -23,18 +23,19 @@ See `docs/MASTERPLAN.docx` (preferred) or `docs/MASTERPLAN.pdf` for the roadmap 
 
 ### What is REAL and WORKING
 - 14 SQLAlchemy ORM models with proper relationships, cascades, timestamps
-- 114 domain models and enums with consistent naming conventions across API, workflow, and evaluation surfaces
-- 28 service and engine classes + CrewAI multi-agent orchestration (activates with LLM config)
-- 64 REST endpoints (full CRUD + SSE streaming + chunks + search + conflicts + financial/legal/tax/compliance plus Phase 10 summaries, Phase 11 motion-pack endpoints, Phase 12 sector-pack endpoints, rich-report previews, and report-bundle downloads)
+- 116 domain models and enums with consistent naming conventions across API, workflow, and evaluation surfaces
+- 29 service and engine classes + 6 concrete source adapters + CrewAI multi-agent orchestration (activates with LLM config)
+- 65 REST endpoints (full CRUD + SSE streaming + chunks + search + conflicts + financial/legal/tax/compliance plus Phase 10 summaries, Phase 11 motion-pack endpoints, Phase 12 sector-pack endpoints, rich-report previews, report-bundle downloads, and Phase 14 connector fetches)
 - Document parsing for 6 formats (PDF with tables, DOCX with headings+tables, XLSX multi-sheet, CSV, JSON, TXT)
 - Structured financial workbook parsing for annual periods, QoE adjustments, normalized EBITDA, ratios, and financial flags
 - Structured legal, tax, and regulatory parsing for directors, DINs, shareholding, contract clauses, GST posture, and compliance-matrix generation
+- Registered India source adapters for MCA21, GSTIN, SEBI SCORES, RoC filings, CIBIL stub, and sanctions screening
 - Semantic chunking engine (heading > paragraph > sentence splitting, 1200 char max)
 - Rule-based entity extraction (financial, legal, regulatory, India identifiers)
 - SHA256 document dedup (same content returns existing artifact)
 - Header-based RBAC with 4 roles (VIEWER, ANALYST, REVIEWER, ADMIN)
-- Evaluation harness with 11 suites, 21 scenarios
-- 115 pytest unit tests
+- Evaluation harness with 12 suites, 22 scenarios
+- 120 pytest unit tests
 - Export ZIP packages (markdown, DOCX, PDF, plus JSON metadata / snapshots)
 - Docker Compose stack (PostgreSQL 17, Redis 7.4, MinIO)
 
@@ -105,6 +106,14 @@ See `docs/MASTERPLAN.docx` (preferred) or `docs/MASTERPLAN.pdf` for the roadmap 
 - workbench template selection and artifact download links on the run detail page
 - Dedicated Phase 13 evaluation coverage and five focused pytest cases for rendering, artifact generation, workflow integration, and export integrity
 
+### What was ADDED in Phase 14
+- `source_adapters/base.py` plus six concrete India adapters for MCA21, GSTIN, SEBI SCORES, RoC filings, CIBIL stub, and sanctions/watchlist screening
+- `services/source_adapter_service.py` as the registry-backed catalog and fetch orchestration layer
+- `POST /cases/{id}/source-adapters/{adapter_id}/fetch` for connector-backed evidence ingestion
+- richer `SourceAdapterSummary` metadata with status, credential requirements, fetch support, source kind, and default workstream details
+- shared connector ingestion through the same dedup, storage, chunking, evidence extraction, and entity extraction path used by uploaded documents
+- Dedicated Phase 14 evaluation coverage and five focused pytest cases for catalog exposure, fetch behavior, and downstream domain-engine consumption
+
 ### What was ADDED in Phase 7
 - CrewAI multi-agent orchestration (`agents/` package) — 9 workstream agents + 1 coordinator
 - Agent configs: India-focused domain experts with motion_pack/sector_pack context awareness
@@ -149,9 +158,6 @@ See `docs/MASTERPLAN.docx` (preferred) or `docs/MASTERPLAN.pdf` for the roadmap 
 - ~~Redis 7.4 — in Docker Compose, never connected~~ -- Redis pool wired in lifespan when background_mode=true; arq worker dispatches workflow jobs
 - ~~Alembic 1.18.4 — no migrations directory~~ -- alembic.ini, async env.py, initial migration (14 tables)
 
-### What is DECLARED BUT NOT WIRED
-- **httpx 0.28.1** — in pyproject.toml, never imported in src/
-
 ### What was FIXED in Phase 1
 - ~~pdfplumber and openpyxl imported but missing from pyproject.toml~~ -- added to dependencies
 - ~~workflow_service.execute_run() has no error handling~~ -- try/except sets FAILED status + trace event
@@ -180,6 +186,7 @@ See `docs/MASTERPLAN.docx` (preferred) or `docs/MASTERPLAN.pdf` for the roadmap 
 - No dedicated motion-pack analyst panels yet for valuation bridges, borrower scorecards, or vendor tiering; Phase 11 is currently exposed through APIs, workflow outputs, reports, and evaluation surfaces rather than bespoke UI views
 - No dedicated sector-pack analyst panels yet for Tech/SaaS, Manufacturing, or BFSI/NBFC detail; Phase 12 is currently exposed through APIs, workflow outputs, reports, and evaluation surfaces rather than bespoke UI views
 - No WYSIWYG report editor or brand-theming system yet; Phase 13 currently provides deterministic template-based reporting and download flows rather than analyst-authored document composition
+- No live premium connector credentials are wired by default; Phase 14 ships stub-capable production-structured adapters, but real provider access still depends on environment-specific base URLs, API keys, and feed permissions
 
 ## Layers
 
@@ -248,6 +255,7 @@ apps/api/src/crewai_enterprise_pipeline_api/
     embedding_service.py   # Vector embedding generation (none/openai/local providers)
     export_service.py      # ZIP export package creation
     search_service.py      # Hybrid BM25+cosine search, evidence conflict detection
+    source_adapter_service.py # Adapter catalog and fetch orchestration
   ingestion/
     parsers.py         # PDF (tables), DOCX (headings+tables), XLSX (multi-sheet), CSV, JSON, TXT
     financial_parser.py # Structured financial workbook parser for QoE metrics and adjustments
@@ -255,10 +263,18 @@ apps/api/src/crewai_enterprise_pipeline_api/
     entity_extractor.py  # Rule-based: financial, legal, regulatory, India IDs (CIN, GSTIN)
   storage/
     service.py         # S3/MinIO with local fallback
+  source_adapters/
+    base.py            # Shared adapter contract, stub/live dispatch, HTTP helpers
+    mca21.py           # MCA21 company master-data connector
+    gstin.py           # GSTIN registration and filing connector
+    sebi_scores.py     # SEBI SCORES complaints/disclosure connector
+    roc.py             # Registrar of Companies filings connector
+    cibil.py           # CIBIL stub connector
+    sanctions.py       # Sanctions / debarment screening connector
   evaluation/
     runner.py          # CLI: python -m ...evaluation.runner --suite <name>
     harness.py         # Test infrastructure (isolated SQLite per run)
-    scenarios.py       # 20 scenarios across 10 suites
+    scenarios.py       # 22 scenarios across 12 suites
 ```
 
 ### Layer 2: Web Workbench (`apps/web/`)
@@ -312,6 +328,7 @@ Motion Packs x Sector Packs x India Rule Packs. Any combination is valid.
 1. `POST /cases` — Create case with motion_pack + sector_pack
 2. `POST /cases/{id}/checklist/seed` — Seed checklist from pack templates
 3. `POST /cases/{id}/documents/upload` — Parse, chunk, extract evidence
+3a. `POST /cases/{id}/source-adapters/{adapter_id}/fetch` — Fetch connector data and ingest it as a first-class artifact
 4. `POST /cases/{id}/issues/scan` — Heuristic issue flagging
 5. `POST /cases/{id}/approvals/review` — Reviewer gate
 6. `POST /cases/{id}/runs` — Execute workflow run (traces + syntheses + reports)
@@ -334,8 +351,8 @@ See `docs/MASTERPLAN.docx` for the 18-phase plan to reach full production state:
 - pgvector hybrid search for evidence intelligence
 - Interactive frontend with full CRUD + live SSE streaming
 - Deep domain engines (Financial QoE, Legal/Tax/Regulatory, Commercial/Forensic)
-- Additional Phase 14+ roadmap depth from `MASTERPLAN.docx` beyond the now-complete Phase 13 reporting tranche
-- India data connectors (MCA21, GSTIN, SEBI, CIBIL, sanctions)
+- Additional Phase 15+ roadmap depth from `MASTERPLAN.docx` beyond the now-complete Phase 14 connector tranche
+- Enterprise Security (JWT + Multi-tenancy + Audit)
 - JWT auth, multi-tenancy, audit logging
 - OpenTelemetry + Prometheus observability
 - Production Docker images with deployment runbook

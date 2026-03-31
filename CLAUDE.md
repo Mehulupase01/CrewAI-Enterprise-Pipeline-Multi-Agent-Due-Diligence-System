@@ -2,8 +2,8 @@
 
 ## Current State
 
-**Completed phases:** 0-13 | **Next:** Phase 14
-**Tests:** 115 pytest, 21 eval scenarios (11 suites) | **Blockers:** None
+**Completed phases:** 0-14 | **Next:** Phase 15
+**Tests:** 120 pytest, 22 eval scenarios (12 suites) | **Blockers:** None
 
 ## Project Overview
 
@@ -15,6 +15,7 @@ Canonical Phase 10 is now complete with Commercial / Operations / Cyber / Forens
 Canonical Phase 11 is now complete with Motion Pack Deepening: centralized motion-pack checklist composition, structured buy-side analysis, borrower scorecards, vendor risk tiering, motion-pack checklist auto-satisfaction, workflow/report/synthesis integration, CrewAI motion-pack specialist tools and prompts, and a dedicated Phase 11 evaluation suite (AD-043).
 Canonical Phase 12 is now complete with Sector Pack Deepening: deterministic Tech/SaaS ARR-waterfall and unit-economics metrics, Manufacturing capacity and asset-register analysis, BFSI/NBFC asset-quality and ALM analysis, sector-pack checklist auto-satisfaction, workflow/report/synthesis integration, CrewAI Phase 12 tools and snapshots, and a dedicated Phase 12 evaluation suite (AD-044 to AD-045).
 Canonical Phase 13 is now complete with Rich Reporting + DOCX/PDF Export: Jinja2-driven report templates for standard, lender, board memo, and one-pager outputs; markdown-first full-report and financial-annex rendering; binary DOCX and PDF generation; workflow-level report-template persistence; bundle download endpoints; export-package inclusion of DOCX/PDF artifacts; updated workbench template selection; and a dedicated Phase 13 evaluation suite (AD-046 to AD-047).
+Canonical Phase 14 is now complete with India Data Connectors: a registered connector framework for MCA21, GSTIN, SEBI SCORES, RoC filings, CIBIL stub, and sanctions/watchlist screening; shared connector-to-artifact ingestion through the same storage, chunking, and evidence pipeline used by uploads; source-adapter fetch endpoints with availability/stub metadata; and a dedicated Phase 14 evaluation suite (AD-048 to AD-049).
 
 ## Execution Contract For This Repo
 

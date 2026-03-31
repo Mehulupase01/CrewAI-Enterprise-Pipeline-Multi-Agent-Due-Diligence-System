@@ -42,6 +42,13 @@ class QaFixture:
 
 
 @dataclass(slots=True)
+class SourceAdapterFetchFixture:
+    adapter_key: str
+    identifier: str
+    params: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(slots=True)
 class ChecklistUpdateFixture:
     template_key: str
     payload: dict[str, Any]
@@ -192,6 +199,13 @@ class RichReportingExpectation:
 
 
 @dataclass(slots=True)
+class SourceAdapterExpectation:
+    required_adapter_keys: tuple[str, ...] = ()
+    min_stub_adapters: int = 0
+    min_fetched_documents: int = 0
+
+
+@dataclass(slots=True)
 class ScenarioExpectation:
     approval_decision: str
     ready_for_export: bool
@@ -221,6 +235,7 @@ class EvaluationScenario:
     description: str
     case_payload: dict[str, Any]
     upload_documents: tuple[UploadDocumentFixture, ...] = ()
+    source_adapter_fetches: tuple[SourceAdapterFetchFixture, ...] = ()
     evidence_items: tuple[EvidenceFixture, ...] = ()
     issues: tuple[IssueFixture, ...] = ()
     requests: tuple[RequestFixture, ...] = ()
@@ -255,6 +270,7 @@ class EvaluationScenario:
     manufacturing_metrics_expectation: ManufacturingMetricsExpectation | None = None
     bfsi_nbfc_metrics_expectation: BfsiNbfcMetricsExpectation | None = None
     rich_reporting_expectation: RichReportingExpectation | None = None
+    source_adapter_expectation: SourceAdapterExpectation | None = None
     expectation: ScenarioExpectation = field(
         default_factory=lambda: ScenarioExpectation(
             approval_decision="changes_requested",
@@ -2143,7 +2159,84 @@ PHASE13_RICH_REPORTING_SCENARIOS: tuple[EvaluationScenario, ...] = (
 )
 
 
+PHASE14_INDIA_CONNECTOR_SCENARIOS: tuple[EvaluationScenario, ...] = (
+    EvaluationScenario(
+        code="phase14-india-connectors",
+        name="India connectors ingest mocked registry data into the diligence graph",
+        description=(
+            "Fetch mocked MCA21, GSTIN, and sanctions data through the Phase 14 connector "
+            "framework and ensure the outputs are ingested as documents and usable "
+            "by domain engines."
+        ),
+        case_payload={
+            "name": "Project Connector Horizon",
+            "target_name": "Vector Finvest Limited",
+            "summary": "Phase 14 connector validation case.",
+            "motion_pack": "buy_side_diligence",
+            "sector_pack": "tech_saas_services",
+            "country": "India",
+        },
+        source_adapter_fetches=(
+            SourceAdapterFetchFixture(
+                adapter_key="mca21",
+                identifier="U72200KA2019PTC123456",
+            ),
+            SourceAdapterFetchFixture(
+                adapter_key="gstin",
+                identifier="29ABCDE1234F1Z5",
+            ),
+            SourceAdapterFetchFixture(
+                adapter_key="sanctions",
+                identifier="Vector Finvest Limited",
+            ),
+        ),
+        satisfy_all_checklist_items=True,
+        legal_summary_expectation=LegalSummaryExpectation(
+            min_directors=2,
+            min_checklist_updates=0,
+        ),
+        tax_summary_expectation=TaxSummaryExpectation(
+            min_gstins=1,
+            min_checklist_updates=0,
+        ),
+        source_adapter_expectation=SourceAdapterExpectation(
+            required_adapter_keys=("mca21", "gstin", "sanctions", "cibil"),
+            min_stub_adapters=3,
+            min_fetched_documents=3,
+        ),
+        expectation=ScenarioExpectation(
+            approval_decision="approved",
+            ready_for_export=True,
+            report_status="ready_for_export",
+            report_title="Executive Memo",
+            open_mandatory_items=0,
+            min_blocking_issue_count=0,
+            max_blocking_issue_count=0,
+            min_issue_count=0,
+            min_open_request_count=0,
+            min_evidence_count=3,
+            min_report_bundles=7,
+            expected_bundle_kinds=(
+                "executive_memo_markdown",
+                "issue_register_markdown",
+                "workstream_synthesis_markdown",
+                "full_report_markdown",
+                "financial_annex_markdown",
+                "full_report_docx",
+                "full_report_pdf",
+            ),
+        ),
+    ),
+)
+
+
 EVALUATION_SUITES: dict[str, EvaluationSuiteDefinition] = {
+    "phase14_india_connectors": EvaluationSuiteDefinition(
+        key="phase14_india_connectors",
+        title="Phase 14 India Data Connectors Evaluation",
+        artifact_prefix="phase14-india-connectors",
+        scenarios=PHASE14_INDIA_CONNECTOR_SCENARIOS,
+    ),
     "phase13_rich_reporting": EvaluationSuiteDefinition(
         key="phase13_rich_reporting",
         title="Phase 13 Rich Reporting Evaluation",

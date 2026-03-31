@@ -10,6 +10,7 @@ from crewai_enterprise_pipeline_api.evaluation.scenarios import (
     PHASE11_MOTION_PACK_DEEPENING_SCENARIOS,
     PHASE12_SECTOR_PACK_DEEPENING_SCENARIOS,
     PHASE13_RICH_REPORTING_SCENARIOS,
+    PHASE14_INDIA_CONNECTOR_SCENARIOS,
     VENDOR_ONBOARDING_EXPANSION_SCENARIOS,
 )
 
@@ -18,6 +19,7 @@ def test_evaluation_scenarios_are_unique_and_well_formed() -> None:
     scenario_codes: set[str] = set()
 
     for suite_key, scenarios in (
+        ("phase14_india_connectors", PHASE14_INDIA_CONNECTOR_SCENARIOS),
         ("phase13_rich_reporting", PHASE13_RICH_REPORTING_SCENARIOS),
         ("phase5_first_slice", PHASE5_FIRST_SLICE_SCENARIOS),
         ("phase8_financial_qoe", PHASE8_FINANCIAL_QOE_SCENARIOS),
@@ -77,6 +79,10 @@ def test_evaluation_scenarios_are_unique_and_well_formed() -> None:
             if suite_key == "phase13_rich_reporting":
                 assert scenario.rich_reporting_expectation is not None
                 assert scenario.run_payload["report_template"] == "board_memo"
+            if suite_key == "phase14_india_connectors":
+                assert scenario.source_adapter_expectation is not None
+                assert len(scenario.source_adapter_fetches) >= 1
+                assert "cibil" in scenario.source_adapter_expectation.required_adapter_keys
             if suite_key == "credit_lending_expansion":
                 assert scenario.case_payload["motion_pack"] == "credit_lending"
             if suite_key == "vendor_onboarding_expansion":

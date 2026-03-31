@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 
 from fastapi import UploadFile
@@ -50,11 +51,72 @@ class IngestionService:
 
         content = await file.read()
         safe_name = Path(file.filename or "artifact.bin").name
+        parsed = self.parser.parse(safe_name, file.content_type, content)
+        return await self._ingest_parsed_document(
+            case_id=case_id,
+            title=title or Path(safe_name).stem,
+            filename=safe_name,
+            raw_content=content,
+            mime_type=file.content_type,
+            document_kind=document_kind,
+            source_kind=source_kind,
+            workstream_domain=workstream_domain,
+            evidence_kind=evidence_kind,
+            parsed_text=parsed.text,
+            parser_name=parsed.parser_name,
+            extracted_character_count=parsed.extracted_character_count,
+        )
 
-        # SHA256 dedup check — return existing artifact if same file already uploaded
-        import hashlib
+    async def ingest_connector_document(
+        self,
+        *,
+        case_id: str,
+        title: str,
+        filename: str,
+        raw_content: bytes,
+        mime_type: str | None,
+        document_kind: str,
+        source_kind: ArtifactSourceKind,
+        workstream_domain: WorkstreamDomain,
+        evidence_kind: EvidenceKind,
+        parsed_text: str,
+        parser_name: str,
+    ) -> DocumentIngestionResult | None:
+        case = await self.case_service._get_case_record(case_id)
+        if case is None:
+            return None
+        return await self._ingest_parsed_document(
+            case_id=case_id,
+            title=title,
+            filename=Path(filename).name,
+            raw_content=raw_content,
+            mime_type=mime_type,
+            document_kind=document_kind,
+            source_kind=source_kind,
+            workstream_domain=workstream_domain,
+            evidence_kind=evidence_kind,
+            parsed_text=parsed_text,
+            parser_name=parser_name,
+            extracted_character_count=len(parsed_text),
+        )
 
-        digest = hashlib.sha256(content).hexdigest()
+    async def _ingest_parsed_document(
+        self,
+        *,
+        case_id: str,
+        title: str,
+        filename: str,
+        raw_content: bytes,
+        mime_type: str | None,
+        document_kind: str,
+        source_kind: ArtifactSourceKind,
+        workstream_domain: WorkstreamDomain,
+        evidence_kind: EvidenceKind,
+        parsed_text: str,
+        parser_name: str,
+        extracted_character_count: int,
+    ) -> DocumentIngestionResult:
+        digest = hashlib.sha256(raw_content).hexdigest()
         existing = await self._find_by_digest(case_id, digest)
         if existing is not None:
             return DocumentIngestionResult(
@@ -69,21 +131,19 @@ class IngestionService:
 
         artifact = DocumentArtifactRecord(
             case_id=case_id,
-            title=title or Path(safe_name).stem,
-            original_filename=safe_name,
+            title=title,
+            original_filename=filename,
             source_kind=source_kind.value,
             document_kind=document_kind,
-            mime_type=file.content_type,
+            mime_type=mime_type,
             processing_status=ArtifactProcessingStatus.RECEIVED.value,
         )
         self.session.add(artifact)
         await self.session.flush()
 
-        stored = self.storage.store_bytes(case_id, artifact.id, safe_name, content)
-        parsed = self.parser.parse(safe_name, file.content_type, content)
+        stored = self.storage.store_bytes(case_id, artifact.id, filename, raw_content)
 
-        # Semantic chunking — produces ChunkRecord instances
-        sem_chunks = semantic_chunk(parsed.text)
+        sem_chunks = semantic_chunk(parsed_text)
         chunk_records: list[ChunkRecord] = []
         for sc in sem_chunks:
             chunk_records.append(
@@ -99,7 +159,6 @@ class IngestionService:
                 )
             )
 
-        # Evidence from chunks (legacy behaviour — one evidence per chunk)
         evidence_records: list[EvidenceNodeRecord] = []
         for index, sc in enumerate(sem_chunks, start=1):
             evidence_records.append(
@@ -109,37 +168,36 @@ class IngestionService:
                     title=f"{artifact.title} / chunk {index}",
                     evidence_kind=evidence_kind.value,
                     workstream_domain=workstream_domain.value,
-                    citation=f"{safe_name} :: chunk {index}",
+                    citation=f"{filename} :: chunk {index}",
                     excerpt=sc.text,
                     confidence=0.75,
                 )
             )
 
-        # Entity extraction — produces additional structured evidence
         entity_items = extract_entities(
-            parsed.text,
+            parsed_text,
             document_kind=document_kind,
             artifact_id=artifact.id,
-            citation_prefix=safe_name,
+            citation_prefix=filename,
         )
-        for ei in entity_items:
+        for entity in entity_items:
             evidence_records.append(
                 EvidenceNodeRecord(
                     case_id=case_id,
                     artifact_id=artifact.id,
-                    title=ei.title,
-                    evidence_kind=ei.evidence_kind.value,
-                    workstream_domain=ei.workstream_domain.value,
-                    citation=ei.citation,
-                    excerpt=ei.excerpt,
-                    confidence=ei.confidence,
+                    title=entity.title,
+                    evidence_kind=entity.evidence_kind.value,
+                    workstream_domain=entity.workstream_domain.value,
+                    citation=entity.citation,
+                    excerpt=entity.excerpt,
+                    confidence=entity.confidence,
                 )
             )
 
         artifact.storage_path = stored.storage_path
         artifact.sha256_digest = stored.sha256_digest
         artifact.byte_size = stored.byte_size
-        artifact.parser_name = parsed.parser_name
+        artifact.parser_name = parser_name
         artifact.processing_status = (
             ArtifactProcessingStatus.PARSED.value
             if sem_chunks
@@ -156,8 +214,8 @@ class IngestionService:
             evidence_items_created=len(evidence_records),
             chunks_created=len(chunk_records),
             entities_extracted=len(entity_items),
-            extracted_character_count=parsed.extracted_character_count,
-            parser_name=parsed.parser_name,
+            extracted_character_count=extracted_character_count,
+            parser_name=parser_name,
             storage_backend=stored.storage_backend,
         )
 
