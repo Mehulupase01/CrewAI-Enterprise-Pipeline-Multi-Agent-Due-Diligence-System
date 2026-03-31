@@ -272,6 +272,26 @@ name-based).
 
 ---
 
+## AD-022: Direct fetch() through Next.js proxy, not Server Actions (2026-03-31)
+
+**Decision:** Client components use direct `fetch()` calls to the FastAPI backend through a Next.js `rewrites` proxy (`/api/v1/*` → `http://127.0.0.1:8000/api/v1/*`), rather than Next.js Server Actions.
+
+**Why:** All mutations target an external FastAPI backend, not Next.js internal routes. Server Actions would add an unnecessary indirection layer (client → Next.js server → FastAPI) with no benefit. The proxy approach avoids CORS while keeping the mutation path simple: client → proxy → FastAPI.
+
+**Impact:** All interactive components use `fetch()` directly. The proxy is configured in `next.config.ts`. No Server Actions exist in the codebase.
+
+---
+
+## AD-023: router.refresh() for server component revalidation (2026-03-31)
+
+**Decision:** After every mutation (create, update, delete), client components call `router.refresh()` from `next/navigation` to revalidate the parent server component's data.
+
+**Why:** The case workspace page is a server component that fetches data on the server. Client components perform mutations but cannot directly update the server component's state. `router.refresh()` triggers a soft re-render of the page without a full navigation, re-fetching server data.
+
+**Impact:** Simple and reliable pattern. No client-side caching or state management needed. Small overhead per mutation (one extra server fetch) but acceptable for this use case.
+
+---
+
 <!--
 Template for future decisions:
 

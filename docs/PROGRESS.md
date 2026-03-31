@@ -3,11 +3,11 @@
 > This file is the single source of truth for what has been implemented.
 > Any AI agent resuming work should read this file + CLAUDE.md first.
 
-## Status: Phase 5 Complete
+## Status: Phase 6 Complete
 
-**Last updated:** 2026-03-30
-**Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3, Phase 4, Phase 5
-**Next phase:** Phase 6 -- Interactive Analyst Workbench (Frontend Mutations)
+**Last updated:** 2026-03-31
+**Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6
+**Next phase:** Phase 7 -- CrewAI Multi-Agent Orchestration
 **Blocking issues:** None
 
 ---
@@ -292,6 +292,64 @@
 - Phase 6 transforms the read-only Next.js frontend into an interactive analyst workbench
 - Search and conflict endpoints are ready for frontend integration
 - Embedding generation activates when EMBEDDING_PROVIDER is set to "openai" or "local"
+
+---
+
+### Phase 6: Interactive Analyst Workbench — Frontend Mutations (2026-03-31)
+
+**What was done:**
+- Created typed API client (`lib/api-client.ts`) for all POST/PATCH/DELETE mutations with auth headers
+- Added Next.js API proxy via `rewrites` in `next.config.ts` to avoid CORS
+- Created comprehensive CSS module (`interactive.module.css`) for all interactive components
+- Created CreateCaseModal + CreateCaseButton for case creation from dashboard
+- Created DocumentUpload with drag-and-drop, document_kind/source_kind/workstream_domain selectors
+- Created IssueManager with inline status/severity editing and auto-scan
+- Created ChecklistPanel with SVG coverage ring and inline status toggles
+- Created RequestQaPanel for request and Q&A inline status editing
+- Created ApprovalPanel for reviewer decisions with optional decision override
+- Created RunWorkflowButton for starting workflow runs with optional operator note
+- Created LiveRunViewer with SSE EventSource for real-time trace event streaming
+- Integrated all interactive components into case workspace and run viewer pages
+- Updated dashboard with CreateCaseButton and interactive workbench branding
+
+**Files created:**
+- apps/web/src/lib/api-client.ts -- typed mutation client (15 functions, 11 payload types)
+- apps/web/src/components/interactive.module.css -- styles for all interactive components
+- apps/web/src/components/CreateCaseModal.tsx -- case creation modal form
+- apps/web/src/components/CreateCaseButton.tsx -- state wrapper for modal toggle
+- apps/web/src/components/DocumentUpload.tsx -- drag-and-drop file upload
+- apps/web/src/components/IssueManager.tsx -- inline issue editor + scan button
+- apps/web/src/components/ChecklistPanel.tsx -- SVG coverage ring + status toggles
+- apps/web/src/components/RequestQaPanel.tsx -- request + Q&A inline editing
+- apps/web/src/components/ApprovalPanel.tsx -- reviewer decision form
+- apps/web/src/components/RunWorkflowButton.tsx -- run trigger + export
+- apps/web/src/components/LiveRunViewer.tsx -- SSE real-time event stream
+
+**Files modified:**
+- apps/web/next.config.ts -- API proxy rewrites for /api/v1/*
+- apps/web/src/app/page.tsx -- CreateCaseButton integration, updated branding
+- apps/web/src/app/cases/[caseId]/page.tsx -- all 6 interactive components integrated
+- apps/web/src/app/cases/[caseId]/runs/[runId]/page.tsx -- LiveRunViewer integration
+- apps/api/tests/test_phase5_evidence_intelligence.py -- fixed unused imports (ruff lint)
+
+**Decisions made:**
+- AD-022: Direct fetch() from client components through Next.js proxy, not Server Actions
+- AD-023: router.refresh() for server component revalidation after mutations
+
+**Blockers encountered:**
+- None
+
+**Test results:**
+- pytest: 71/71 pass (no new backend tests — frontend-only phase)
+- eval suites: 11/11 pass (all 5 suites at 100%)
+- ruff: clean
+- npm lint: clean
+- npm typecheck: clean
+
+**Notes for next phase:**
+- Phase 7 wires CrewAI agents into the workflow engine
+- All API endpoints are now exercisable from the frontend
+- SSE live streaming ready for real AI agent trace events
 
 ---
 

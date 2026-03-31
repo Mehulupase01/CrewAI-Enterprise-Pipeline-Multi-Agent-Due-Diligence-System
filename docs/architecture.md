@@ -1,6 +1,6 @@
 # Architecture Overview
 
-> **Last updated:** 2026-03-30 (Phase 5 -- Evidence Intelligence)
+> **Last updated:** 2026-03-31 (Phase 6 -- Interactive Analyst Workbench)
 > **Update rule:** This file is updated after every masterplan phase to reflect actual system state.
 
 ## System Summary
@@ -35,6 +35,18 @@ See `docs/MASTERPLAN.pdf` pages 3-8 for full diagrams including:
 - 71 pytest unit tests
 - Export ZIP packages (markdown only)
 - Docker Compose stack (PostgreSQL 17, Redis 7.4, MinIO)
+
+### What was ADDED in Phase 6
+- Typed API client (`lib/api-client.ts`) — 15 mutation functions with auth headers
+- Next.js API proxy via `rewrites` in `next.config.ts` (avoids CORS)
+- 8 interactive client components: CreateCaseModal, CreateCaseButton, DocumentUpload, IssueManager, ChecklistPanel, RequestQaPanel, ApprovalPanel, RunWorkflowButton, LiveRunViewer
+- Case creation modal with motion_pack/sector_pack selectors
+- Drag-and-drop document upload with document_kind/source_kind/workstream_domain
+- Inline issue status/severity editing + auto-scan button
+- SVG coverage ring chart for checklist progress + inline status toggles
+- Reviewer decision form with optional decision override
+- SSE-connected LiveRunViewer for real-time trace event streaming
+- All interactive components integrated into case workspace and run viewer pages
 
 ### What was ADDED in Phase 5
 - pgvector embedding support: configurable provider (none/openai/local), raw float32 byte storage
@@ -78,10 +90,10 @@ See `docs/MASTERPLAN.pdf` pages 3-8 for full diagrams including:
 - ~~No download endpoint~~ -- GET .../export-packages/{id}/download streams ZIP
 
 ### What is MISSING
-- Frontend is 100% read-only (zero POST/PATCH/DELETE from web)
 - No structured logging, tracing, or metrics
 - No JWT authentication
 - No multi-tenancy
+- CrewAI agents not yet wired into workflow engine
 
 ## Layers
 
@@ -134,18 +146,31 @@ apps/api/src/crewai_enterprise_pipeline_api/
 ```
 apps/web/src/
   app/
-    page.tsx                          # Dashboard (read-only)
+    page.tsx                          # Dashboard with CreateCaseButton
     layout.tsx                        # Root layout
-    cases/[caseId]/page.tsx           # Case workspace (read-only)
-    cases/[caseId]/runs/[runId]/page.tsx  # Run viewer (read-only)
+    cases/[caseId]/page.tsx           # Case workspace (fully interactive)
+    cases/[caseId]/runs/[runId]/page.tsx  # Run viewer with live SSE stream
   lib/
-    workbench-data.ts                 # API client (GET only) + 480 lines demo fallback
+    workbench-data.ts                 # API client (GET) + 480 lines demo fallback
+    api-client.ts                     # Typed mutation client (15 functions, POST/PATCH/DELETE)
+  components/
+    CreateCaseModal.tsx               # Case creation modal form
+    CreateCaseButton.tsx              # State wrapper for modal toggle
+    DocumentUpload.tsx                # Drag-and-drop file upload
+    IssueManager.tsx                  # Inline issue editor + auto-scan
+    ChecklistPanel.tsx                # SVG coverage ring + status toggles
+    RequestQaPanel.tsx                # Request + Q&A inline editing
+    ApprovalPanel.tsx                 # Reviewer decision form
+    RunWorkflowButton.tsx             # Workflow trigger + export
+    LiveRunViewer.tsx                 # SSE real-time event stream
+    interactive.module.css            # Styles for all interactive components
 ```
 
-- Next.js 16 App Router, server components only
+- Next.js 16 App Router, server components (pages) + client components (interactions)
 - Pure CSS modules (no Tailwind)
-- Zero mutations — completely read-only
-- Falls back to hardcoded demo data when API unreachable (silently hides failures)
+- Full CRUD mutations via typed API client through Next.js proxy
+- SSE live streaming for real-time run trace events
+- Falls back to hardcoded demo data when API unreachable (GET only)
 
 ### Layer 3: Infrastructure
 
