@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     minio_root_password: str = "minioadmin"
     minio_bucket_name: str = "crewai-pipeline"
     product_name: str = "CrewAI Enterprise Pipeline"
-    current_phase: str = "Phase 5: Evidence Intelligence"
+    current_phase: str = "Phase 7: CrewAI Multi-Agent Orchestration"
     country: str = "India"
     enabled_motion_packs: str = "buy_side_diligence,credit_lending,vendor_onboarding"
     enabled_sector_packs: str = "tech_saas_services,manufacturing_industrials,bfsi_nbfc"
@@ -42,6 +42,11 @@ class Settings(BaseSettings):
     embedding_model: str = "text-embedding-3-small"
     embedding_api_key: str | None = None
     embedding_dimensions: int = 1536
+    llm_provider: str = "none"  # "none", "openai", "anthropic"
+    llm_api_key: str | None = None
+    llm_model: str = "gpt-4o-mini"
+    crew_verbose: bool = False
+    crew_max_rpm: int = 10
     storage_backend: str = "auto"
     local_storage_root: str = Field(
         default_factory=lambda: str((Path(__file__).resolve().parents[5] / "storage").resolve())

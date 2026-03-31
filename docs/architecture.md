@@ -1,6 +1,6 @@
 # Architecture Overview
 
-> **Last updated:** 2026-03-31 (Phase 6 -- Interactive Analyst Workbench)
+> **Last updated:** 2026-03-31 (Phase 7 -- CrewAI Multi-Agent Orchestration)
 > **Update rule:** This file is updated after every masterplan phase to reflect actual system state.
 
 ## System Summary
@@ -24,7 +24,7 @@ See `docs/MASTERPLAN.pdf` pages 3-8 for full diagrams including:
 ### What is REAL and WORKING
 - 15 SQLAlchemy ORM models with proper relationships, cascades, timestamps
 - 103 Pydantic schemas with consistent naming conventions
-- 11 service classes (functional but 100% deterministic — no AI)
+- 11 service classes + CrewAI multi-agent orchestration (activates with LLM config)
 - 41 REST endpoints (full CRUD + SSE streaming + chunks + search + conflicts)
 - Document parsing for 6 formats (PDF with tables, DOCX with headings+tables, XLSX multi-sheet, CSV, JSON, TXT)
 - Semantic chunking engine (heading > paragraph > sentence splitting, 1200 char max)
@@ -32,9 +32,20 @@ See `docs/MASTERPLAN.pdf` pages 3-8 for full diagrams including:
 - SHA256 document dedup (same content returns existing artifact)
 - Header-based RBAC with 4 roles (VIEWER, ANALYST, REVIEWER, ADMIN)
 - Evaluation harness with 5 suites, 11 scenarios
-- 71 pytest unit tests
+- 83 pytest unit tests
 - Export ZIP packages (markdown only)
 - Docker Compose stack (PostgreSQL 17, Redis 7.4, MinIO)
+
+### What was ADDED in Phase 7
+- CrewAI multi-agent orchestration (`agents/` package) — 9 workstream agents + 1 coordinator
+- Agent configs: India-focused domain experts with motion_pack/sector_pack context awareness
+- Structured output: WorkstreamAnalysisOutput, ExecutiveSummaryOutput Pydantic models
+- CaseContext builder: pre-loads all case data for crew kickoff
+- Crew factory: builds Agent+Task per active workstream + coordinator summary task
+- WorkflowService branching: CrewAI path when LLM configured, deterministic fallback otherwise
+- 5 new settings: llm_provider, llm_api_key, llm_model, crew_verbose, crew_max_rpm
+- Trace events: crew_initialized, agent_{workstream}, coordinator_synthesis
+- Robust output parsing: structured pydantic extraction with raw text fallback
 
 ### What was ADDED in Phase 6
 - Typed API client (`lib/api-client.ts`) — 15 mutation functions with auth headers
@@ -70,7 +81,6 @@ See `docs/MASTERPLAN.pdf` pages 3-8 for full diagrams including:
 - ~~Alembic 1.18.4 — no migrations directory~~ -- alembic.ini, async env.py, initial migration (14 tables)
 
 ### What is DECLARED BUT NOT WIRED
-- **CrewAI 1.12.2** — in pyproject.toml, zero `import crewai` in any src/ file
 - **httpx 0.28.1** — in pyproject.toml, never imported in src/
 
 ### What was FIXED in Phase 1
@@ -93,7 +103,7 @@ See `docs/MASTERPLAN.pdf` pages 3-8 for full diagrams including:
 - No structured logging, tracing, or metrics
 - No JWT authentication
 - No multi-tenancy
-- CrewAI agents not yet wired into workflow engine
+- CrewAI agents wired but require LLM_PROVIDER + LLM_API_KEY to activate
 
 ## Layers
 
@@ -104,6 +114,11 @@ apps/api/src/crewai_enterprise_pipeline_api/
   main.py              # App factory, lifespan (Redis pool), middleware
   worker.py            # arq WorkerSettings + run_workflow_job background task
   config.py            # pydantic-settings based configuration
+  agents/
+    __init__.py
+    config.py          # 9 workstream agent configs + coordinator + pack context helpers
+    models.py          # WorkstreamAnalysisOutput, ExecutiveSummaryOutput
+    crew.py            # CaseContext, crew factory, run_crew async wrapper
   api/
     router.py          # Mounts /system, /source-adapters, /cases under /api/v1/
     security.py        # Header-based RBAC (X-CEP-User-{Id,Name,Email,Role})
@@ -123,7 +138,7 @@ apps/api/src/crewai_enterprise_pipeline_api/
     checklist_service.py   # Template seeding, coverage summaries
     issue_service.py       # Heuristic-based issue scanning
     approval_service.py    # Review decision logic
-    workflow_service.py    # Orchestrates runs (deterministic, no CrewAI)
+    workflow_service.py    # Orchestrates runs (CrewAI when LLM configured, deterministic fallback)
     synthesis_service.py   # Workstream synthesis (deterministic template fill)
     report_service.py      # Executive memo generation
     embedding_service.py   # Vector embedding generation (none/openai/local providers)

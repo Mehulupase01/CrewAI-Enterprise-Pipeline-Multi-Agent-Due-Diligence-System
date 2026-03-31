@@ -292,6 +292,46 @@ name-based).
 
 ---
 
+## AD-024: Sequential crew process for workstream analysis (2026-03-31)
+
+**Decision:** CrewAI uses `Process.sequential` — each workstream agent runs independently in sequence, then the coordinator synthesizes all outputs. No hierarchical delegation between agents.
+
+**Why:** Workstream analyses are independent — the financial analyst doesn't need the legal analyst's output. Sequential execution is simpler, more predictable, and easier to debug. Hierarchical process would add a manager agent that delegates, adding latency and token cost without improving quality for this use case.
+
+**Impact:** Each agent task runs one after another. The coordinator task has `context=tasks` to receive all prior outputs. If parallelism is needed later, CrewAI supports `async_execution=True` on individual tasks.
+
+---
+
+## AD-025: Pre-loaded context, no custom agent tools (2026-03-31)
+
+**Decision:** All case data (evidence, issues, checklist items) is queried once before crew kickoff and passed in the task description. Agents do not have custom tools to query the database.
+
+**Why:** CrewAI tools run synchronously, but all our services are async. Bridging async→sync in a threaded context is fragile. Pre-loading avoids this entirely, makes tests work without LLM calls, and ensures agents analyze the exact same snapshot of data. Custom tools can be added in a later phase when agents need to search or drill down.
+
+**Impact:** Agent prompts include formatted evidence, issues, and checklist items directly. Task descriptions can be long but are within LLM context limits. Database queries happen before the crew starts.
+
+---
+
+## AD-026: Crew runs in asyncio.to_thread, trace events written post-completion (2026-03-31)
+
+**Decision:** `crew.kickoff()` runs in a thread via `asyncio.to_thread()` to avoid blocking the async event loop. Trace events are written to the database after the crew completes, not during execution.
+
+**Why:** CrewAI's `kickoff()` is synchronous and can run for minutes. Blocking the FastAPI event loop would stall all other requests. Writing trace events mid-execution would require thread-safe async database access, adding significant complexity. Post-completion writing is simple and the SSE endpoint still picks up events on its 1-second poll.
+
+**Impact:** The SSE live viewer will show crew_initialized → (pause while crew runs) → all agent events at once → report_bundle_generation. Real-time per-step streaming can be added later via CrewAI's `step_callback` + a thread-safe queue.
+
+---
+
+## AD-027: LLM settings default to none — consistent with AD-001 pattern (2026-03-31)
+
+**Decision:** `llm_provider` defaults to `"none"` and `llm_api_key` defaults to `None`. CrewAI agents only activate when both are explicitly set.
+
+**Why:** Consistent with AD-001 (deterministic fallback) and AD-020 (embedding provider defaults). All existing tests and evaluation scenarios work without API keys. Production deployments set `LLM_PROVIDER=openai` and `LLM_API_KEY=sk-...` in the environment.
+
+**Impact:** Zero behavior change for existing users. CrewAI is opt-in via environment variables. The `_crew_available()` guard in WorkflowService checks both settings.
+
+---
+
 <!--
 Template for future decisions:
 

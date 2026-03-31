@@ -2,14 +2,14 @@
 
 ## Current State
 
-**Completed phases:** 0–6 | **Next:** Phase 7 (CrewAI Multi-Agent Orchestration)
-**Tests:** 71 pytest, 11 eval scenarios (5 suites) | **Blockers:** None
+**Completed phases:** 0–7 | **Next:** Phase 8
+**Tests:** 83 pytest, 11 eval scenarios (5 suites) | **Blockers:** None
 
 ## Project Overview
 
 India-focused due diligence system: FastAPI API (`apps/api/`) + Next.js workbench (`apps/web/`).
 Pack model: motion_packs × sector_packs × India rule_packs.
-CrewAI installed but NOT wired — Phase 7 connects it.
+CrewAI wired in Phase 7 — activates when LLM_PROVIDER + LLM_API_KEY are set; deterministic fallback otherwise (AD-001).
 
 ## Commands
 
@@ -52,7 +52,7 @@ cd apps/api && python -m crewai_enterprise_pipeline_api.evaluation.runner --suit
 
 - `docs/HANDOFF.md` — session recovery checkpoint
 - `docs/PROGRESS.md` — completion history per phase
-- `docs/DECISIONS.md` — architecture rationale (AD-001 through AD-023)
+- `docs/DECISIONS.md` — architecture rationale (AD-001 through AD-027)
 - `docs/architecture.md` — file layout, component inventory, what's real vs missing
 - `docs/MASTERPLAN.pdf` — 18-phase blueprint (read specific pages when starting a new phase)
 

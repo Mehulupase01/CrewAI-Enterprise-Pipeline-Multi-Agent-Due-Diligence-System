@@ -3,11 +3,11 @@
 > This file is the single source of truth for what has been implemented.
 > Any AI agent resuming work should read this file + CLAUDE.md first.
 
-## Status: Phase 6 Complete
+## Status: Phase 7 Complete
 
 **Last updated:** 2026-03-31
-**Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6
-**Next phase:** Phase 7 -- CrewAI Multi-Agent Orchestration
+**Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7
+**Next phase:** Phase 8
 **Blocking issues:** None
 
 ---
@@ -350,6 +350,63 @@
 - Phase 7 wires CrewAI agents into the workflow engine
 - All API endpoints are now exercisable from the frontend
 - SSE live streaming ready for real AI agent trace events
+
+---
+
+### Phase 7: CrewAI Multi-Agent Orchestration (2026-03-31)
+
+**What was done:**
+- Created `agents/` package with config, models, and crew factory
+- Defined 9 workstream-specific agent configs (role, goal, backstory) — India-focused, domain-expert personas
+- Defined coordinator agent for executive synthesis across all workstreams
+- Added motion_pack and sector_pack context helpers for agent prompt enrichment
+- Created structured Pydantic output models: WorkstreamAnalysisOutput, ExecutiveSummaryOutput
+- Built CaseContext data loader that pre-queries all case data before crew kickoff
+- Built crew factory: creates one Agent+Task per active workstream + coordinator summary task
+- Integrated CrewAI into WorkflowService.execute_run() with deterministic fallback (AD-001)
+- When LLM_PROVIDER + LLM_API_KEY are set → CrewAI agents analyze each workstream
+- When no LLM → existing deterministic template logic runs (zero regression)
+- Crew runs via asyncio.to_thread(crew.kickoff) to avoid blocking async event loop
+- Crew output is parsed into WorkstreamSynthesisRecords + ReportBundleRecords + RunTraceEventRecords
+- Added robust status normalization for LLM-produced workstream status strings
+- Added fallback handling when agent output isn't structured (raw text capture)
+- Added 5 new LLM settings: llm_provider, llm_api_key, llm_model, crew_verbose, crew_max_rpm
+- Updated current_phase to "Phase 7: CrewAI Multi-Agent Orchestration"
+- Added 12 new pytest tests
+
+**Files created:**
+- apps/api/src/.../agents/__init__.py -- package init
+- apps/api/src/.../agents/config.py -- 9 workstream agent configs + coordinator + pack context helpers
+- apps/api/src/.../agents/models.py -- WorkstreamAnalysisOutput, ExecutiveSummaryOutput
+- apps/api/src/.../agents/crew.py -- CaseContext, build_case_context, build_due_diligence_crew, run_crew
+- apps/api/tests/test_phase7_crewai_orchestration.py -- 12 test cases
+
+**Files modified:**
+- apps/api/src/.../core/settings.py -- 5 new LLM settings, updated current_phase
+- apps/api/src/.../services/workflow_service.py -- CrewAI branch with _execute_crew_run + deterministic fallback refactored into _execute_deterministic_run
+
+**Decisions made:**
+- AD-024: CrewAI agents use sequential process — each workstream runs independently, then coordinator synthesizes all outputs. Hierarchical process adds complexity without benefit at this scale.
+- AD-025: Agent context is pre-loaded (queried once before kickoff) rather than using custom tools. This avoids async/sync bridging and makes the system testable without LLM calls.
+- AD-026: Crew runs in a thread via asyncio.to_thread(crew.kickoff) to avoid blocking the async event loop. Trace events are written after completion, not streamed mid-execution.
+- AD-027: LLM settings default to none/null — identical to AD-001 and AD-020 pattern. CrewAI only activates with explicit configuration.
+
+**Blockers encountered:**
+- None
+
+**Test results:**
+- pytest: 83/83 pass (71 existing + 12 new)
+- eval suites: 11/11 pass (all 5 suites at 100%)
+- ruff: clean
+- npm lint: clean
+- npm typecheck: clean
+
+**Notes for next phase:**
+- CrewAI is wired but requires LLM_PROVIDER + LLM_API_KEY env vars to activate
+- All 71 existing tests continue to pass unchanged (deterministic fallback)
+- Trace events include crew_initialized, agent_{workstream}, coordinator_synthesis when CrewAI is active
+- Agent prompts are India-focused and motion_pack/sector_pack-aware
+- No custom CrewAI tools yet — agents receive all context in task descriptions
 
 ---
 
