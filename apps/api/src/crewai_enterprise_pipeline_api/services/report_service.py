@@ -6,10 +6,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from crewai_enterprise_pipeline_api.domain.models import (
     ApprovalDecisionKind,
+    ComplianceStatus,
     ExecutiveMemoReport,
     FlagSeverity,
     MotionPack,
+    SectorPack,
 )
+from crewai_enterprise_pipeline_api.services.bfsi_nbfc_service import BfsiNbfcService
 from crewai_enterprise_pipeline_api.services.buy_side_service import BuySideService
 from crewai_enterprise_pipeline_api.services.case_service import CaseService
 from crewai_enterprise_pipeline_api.services.checklist_service import ChecklistService
@@ -19,9 +22,11 @@ from crewai_enterprise_pipeline_api.services.cyber_service import CyberService
 from crewai_enterprise_pipeline_api.services.financial_qoe_service import FinancialQoEService
 from crewai_enterprise_pipeline_api.services.forensic_service import ForensicService
 from crewai_enterprise_pipeline_api.services.legal_service import LegalService
+from crewai_enterprise_pipeline_api.services.manufacturing_service import ManufacturingService
 from crewai_enterprise_pipeline_api.services.operations_service import OperationsService
 from crewai_enterprise_pipeline_api.services.regulatory_service import RegulatoryService
 from crewai_enterprise_pipeline_api.services.tax_service import TaxService
+from crewai_enterprise_pipeline_api.services.tech_saas_service import TechSaaSService
 from crewai_enterprise_pipeline_api.services.vendor_service import VendorService
 
 SEVERITY_ORDER = {
@@ -36,6 +41,7 @@ SEVERITY_ORDER = {
 class ReportService:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+        self.bfsi_nbfc_service = BfsiNbfcService(session)
         self.buy_side_service = BuySideService(session)
         self.case_service = CaseService(session)
         self.checklist_service = ChecklistService(session)
@@ -45,8 +51,10 @@ class ReportService:
         self.financial_qoe_service = FinancialQoEService(session)
         self.forensic_service = ForensicService(session)
         self.legal_service = LegalService(session)
+        self.manufacturing_service = ManufacturingService(session)
         self.operations_service = OperationsService(session)
         self.tax_service = TaxService(session)
+        self.tech_saas_service = TechSaaSService(session)
         self.regulatory_service = RegulatoryService(session)
         self.vendor_service = VendorService(session)
 
@@ -71,6 +79,7 @@ class ReportService:
         )
         open_requests = [request for request in case.request_items if request.status != "closed"]
         motion_pack = MotionPack(case.motion_pack)
+        sector_pack = SectorPack(case.sector_pack)
         report_title = self._report_title_for_motion(motion_pack)
         financial_summary = await self.financial_qoe_service.build_financial_summary(
             case_id,
@@ -107,6 +116,9 @@ class ReportService:
         buy_side_analysis = None
         borrower_scorecard = None
         vendor_risk_tier = None
+        tech_saas_metrics = None
+        manufacturing_metrics = None
+        bfsi_nbfc_metrics = None
         if motion_pack == MotionPack.BUY_SIDE_DILIGENCE:
             buy_side_analysis = await self.buy_side_service.build_buy_side_analysis(
                 case_id,
@@ -122,9 +134,25 @@ class ReportService:
                 case_id,
                 persist_checklist=False,
             )
+        if sector_pack == SectorPack.TECH_SAAS_SERVICES:
+            tech_saas_metrics = await self.tech_saas_service.build_tech_saas_metrics(
+                case_id,
+                persist_checklist=False,
+            )
+        elif sector_pack == SectorPack.MANUFACTURING_INDUSTRIALS:
+            manufacturing_metrics = await self.manufacturing_service.build_manufacturing_metrics(
+                case_id,
+                persist_checklist=False,
+            )
+        elif sector_pack == SectorPack.BFSI_NBFC:
+            bfsi_nbfc_metrics = await self.bfsi_nbfc_service.build_bfsi_nbfc_metrics(
+                case_id,
+                persist_checklist=False,
+            )
 
         executive_summary = self._build_summary(
             motion_pack,
+            sector_pack,
             case.name,
             case.target_name,
             len(sorted_issues),
@@ -141,12 +169,21 @@ class ReportService:
             buy_side_analysis,
             borrower_scorecard,
             vendor_risk_tier,
+            tech_saas_metrics,
+            manufacturing_metrics,
+            bfsi_nbfc_metrics,
         )
         motion_pack_highlights = self._build_motion_pack_highlights(
             motion_pack,
             buy_side_analysis,
             borrower_scorecard,
             vendor_risk_tier,
+        )
+        sector_pack_highlights = self._build_sector_pack_highlights(
+            sector_pack,
+            tech_saas_metrics,
+            manufacturing_metrics,
+            bfsi_nbfc_metrics,
         )
         next_actions = self._build_next_actions(
             motion_pack,
@@ -161,6 +198,7 @@ class ReportService:
             case_name=case.name,
             target_name=case.target_name,
             motion_pack=motion_pack,
+            sector_pack=sector_pack,
             report_title=report_title,
             generated_at=datetime.now(UTC),
             report_status=report_status,
@@ -170,6 +208,7 @@ class ReportService:
             open_requests=open_requests[:5],
             checklist_coverage=coverage,
             motion_pack_highlights=motion_pack_highlights,
+            sector_pack_highlights=sector_pack_highlights,
             next_actions=next_actions,
         )
 
@@ -198,6 +237,7 @@ class ReportService:
                 "",
                 f"Target: {memo.target_name}",
                 f"Motion Pack: {memo.motion_pack.value}",
+                f"Sector Pack: {memo.sector_pack.value}",
                 f"Generated: {memo.generated_at.isoformat()}",
                 f"Status: {memo.report_status}",
                 "",
@@ -213,6 +253,11 @@ class ReportService:
                 "",
                 "## Motion Pack Highlights",
                 *motion_pack_lines,
+                "",
+                "## Sector Pack Highlights",
+                *([f"- {item}" for item in memo.sector_pack_highlights] or [
+                    "- No sector-pack highlights generated yet."
+                ]),
                 "",
                 "## Open Requests",
                 *request_lines,
@@ -310,6 +355,7 @@ class ReportService:
     def _build_summary(
         self,
         motion_pack: MotionPack,
+        sector_pack: SectorPack,
         case_name: str,
         target_name: str,
         issue_count: int,
@@ -326,6 +372,9 @@ class ReportService:
         buy_side_analysis,
         borrower_scorecard,
         vendor_risk_tier,
+        tech_saas_metrics,
+        manufacturing_metrics,
+        bfsi_nbfc_metrics,
     ) -> str:
         financial_note = ""
         if financial_summary is not None and financial_summary.periods:
@@ -417,25 +466,78 @@ class ReportService:
                 f"{len(vendor_risk_tier.certifications_required)} outstanding certification asks."
             )
 
+        phase12_note = ""
+        if sector_pack == SectorPack.TECH_SAAS_SERVICES and tech_saas_metrics is not None:
+            fragments: list[str] = []
+            if tech_saas_metrics.arr is not None:
+                fragments.append(f"ARR {tech_saas_metrics.arr:.2f}")
+            if tech_saas_metrics.nrr is not None:
+                fragments.append(f"NRR {tech_saas_metrics.nrr:.0%}")
+            if tech_saas_metrics.payback_months is not None:
+                fragments.append(f"CAC payback {tech_saas_metrics.payback_months:.1f} months")
+            if fragments:
+                phase12_note = (
+                    " Phase 12 Tech/SaaS deepening extracted "
+                    + ", ".join(fragments)
+                    + "."
+                )
+            if tech_saas_metrics.flags:
+                phase12_note += " Flags: " + "; ".join(tech_saas_metrics.flags[:2]) + "."
+        elif (
+            sector_pack == SectorPack.MANUFACTURING_INDUSTRIALS
+            and manufacturing_metrics is not None
+        ):
+            fragments = []
+            if manufacturing_metrics.capacity_utilization is not None:
+                fragments.append(
+                    f"capacity utilization {manufacturing_metrics.capacity_utilization:.0%}"
+                )
+            if manufacturing_metrics.dio is not None:
+                fragments.append(f"DIO {manufacturing_metrics.dio:.0f} days")
+            if manufacturing_metrics.asset_turnover is not None:
+                fragments.append(f"asset turnover {manufacturing_metrics.asset_turnover:.2f}x")
+            if fragments:
+                phase12_note = (
+                    " Phase 12 Manufacturing deepening extracted " + ", ".join(fragments) + "."
+                )
+            if manufacturing_metrics.flags:
+                phase12_note += " Flags: " + "; ".join(manufacturing_metrics.flags[:2]) + "."
+        elif sector_pack == SectorPack.BFSI_NBFC and bfsi_nbfc_metrics is not None:
+            fragments = []
+            if bfsi_nbfc_metrics.gnpa is not None:
+                fragments.append(f"GNPA {bfsi_nbfc_metrics.gnpa:.2%}")
+            if bfsi_nbfc_metrics.crar is not None:
+                fragments.append(f"CRAR {bfsi_nbfc_metrics.crar:.2%}")
+            if bfsi_nbfc_metrics.alm_mismatch is not None:
+                fragments.append(f"ALM mismatch {bfsi_nbfc_metrics.alm_mismatch:.2%}")
+            if fragments:
+                phase12_note = (
+                    " Phase 12 BFSI/NBFC deepening extracted "
+                    + ", ".join(fragments)
+                    + "."
+                )
+            if bfsi_nbfc_metrics.flags:
+                phase12_note += " Flags: " + "; ".join(bfsi_nbfc_metrics.flags[:2]) + "."
+
         if motion_pack == MotionPack.CREDIT_LENDING:
             return (
                 f"{case_name} for {target_name} currently has {issue_count} tracked credit-risk "
                 f"items, {open_mandatory_items} open mandatory underwriting checklist items, "
                 f"and {open_request_count} open borrower information requests."
-                f"{financial_note}{compliance_note}{phase10_note}{phase11_note}"
+                f"{financial_note}{compliance_note}{phase10_note}{phase11_note}{phase12_note}"
             )
         if motion_pack == MotionPack.VENDOR_ONBOARDING:
             return (
                 f"{case_name} for {target_name} currently has {issue_count} tracked "
                 f"third-party risk items, {open_mandatory_items} open mandatory onboarding "
                 f"checklist items, and {open_request_count} open vendor follow-up requests."
-                f"{financial_note}{compliance_note}{phase10_note}{phase11_note}"
+                f"{financial_note}{compliance_note}{phase10_note}{phase11_note}{phase12_note}"
             )
         return (
             f"{case_name} for {target_name} currently has {issue_count} tracked issues, "
             f"{open_mandatory_items} open mandatory checklist items, and "
             f"{open_request_count} open diligence requests."
-            f"{financial_note}{compliance_note}{phase10_note}{phase11_note}"
+            f"{financial_note}{compliance_note}{phase10_note}{phase11_note}{phase12_note}"
         )
 
     def _build_motion_pack_highlights(
@@ -483,6 +585,59 @@ class ReportService:
                     + "."
                 ),
             ]
+        return []
+
+    def _build_sector_pack_highlights(
+        self,
+        sector_pack: SectorPack,
+        tech_saas_metrics,
+        manufacturing_metrics,
+        bfsi_nbfc_metrics,
+    ) -> list[str]:
+        if sector_pack == SectorPack.TECH_SAAS_SERVICES and tech_saas_metrics is not None:
+            highlights: list[str] = []
+            if tech_saas_metrics.arr is not None:
+                highlights.append(f"ARR tracked at {tech_saas_metrics.arr:.2f}.")
+            if tech_saas_metrics.nrr is not None:
+                highlights.append(f"NRR tracked at {tech_saas_metrics.nrr:.0%}.")
+            if tech_saas_metrics.churn_rate is not None:
+                highlights.append(f"Churn tracked at {tech_saas_metrics.churn_rate:.0%}.")
+            if tech_saas_metrics.payback_months is not None:
+                highlights.append(
+                    f"CAC payback tracked at {tech_saas_metrics.payback_months:.1f} months."
+                )
+            return (highlights or tech_saas_metrics.flags[:4])[:4]
+        if (
+            sector_pack == SectorPack.MANUFACTURING_INDUSTRIALS
+            and manufacturing_metrics is not None
+        ):
+            highlights = []
+            if manufacturing_metrics.capacity_utilization is not None:
+                highlights.append(
+                    "Capacity utilization: "
+                    f"{manufacturing_metrics.capacity_utilization:.0%}."
+                )
+            if manufacturing_metrics.dio is not None:
+                highlights.append(f"Inventory days: {manufacturing_metrics.dio:.0f}.")
+            if manufacturing_metrics.asset_register:
+                highlights.append(
+                    f"Asset register findings: {len(manufacturing_metrics.asset_register)}."
+                )
+            return (highlights or manufacturing_metrics.flags[:4])[:4]
+        if sector_pack == SectorPack.BFSI_NBFC and bfsi_nbfc_metrics is not None:
+            highlights = []
+            if bfsi_nbfc_metrics.gnpa is not None:
+                highlights.append(f"GNPA: {bfsi_nbfc_metrics.gnpa:.2%}.")
+            if bfsi_nbfc_metrics.nnpa is not None:
+                highlights.append(f"NNPA: {bfsi_nbfc_metrics.nnpa:.2%}.")
+            if bfsi_nbfc_metrics.crar is not None:
+                highlights.append(f"CRAR: {bfsi_nbfc_metrics.crar:.2%}.")
+            if bfsi_nbfc_metrics.psl_compliance != ComplianceStatus.UNKNOWN:
+                highlights.append(
+                    "PSL compliance: "
+                    f"{bfsi_nbfc_metrics.psl_compliance.value.replace('_', ' ')}."
+                )
+            return (highlights or bfsi_nbfc_metrics.flags[:4])[:4]
         return []
 
     def _report_title_for_motion(self, motion_pack: MotionPack) -> str:

@@ -46,18 +46,19 @@ docker-compose.yml
 
 ## Current Phase
 
-The repository has completed Phases 0-11 from the current master-plan execution
+The repository has completed Phases 0-12 from the current master-plan execution
 sequence. After Phase 7, the repo also received an additional CrewAI depth
 enhancement: tool-grounded evidence access for the LLM path. Phase 8 is closed
 as the canonical Financial Quality of Earnings (QoE) engine, Phase 9 is closed
 as the canonical Legal / Tax / Regulatory engine, Phase 10 is closed as the
-canonical Commercial / Operations / Cyber / Forensic engine, and Phase 11 is
-closed as the canonical Motion Pack Deepening layer. The current build includes
-the first flagship buy-side slice, all planned motion and sector expansions,
-analyst-ready export archives, scoped CrewAI evidence tools, and
-workflow-integrated financial, legal/compliance, Phase 10 domain-analysis, and
-Phase 11 motion-pack-analysis layers on top of the existing hardened platform
-spine:
+canonical Commercial / Operations / Cyber / Forensic engine, Phase 11 is
+closed as the canonical Motion Pack Deepening layer, and Phase 12 is closed as
+the canonical Sector Pack Deepening layer. The current build includes the first
+flagship buy-side slice, all planned motion and sector expansions, analyst-ready
+export archives, scoped CrewAI evidence tools, and workflow-integrated
+financial, legal/compliance, Phase 10 domain-analysis, Phase 11 motion-pack
+analysis, and Phase 12 sector-pack analysis layers on top of the existing
+hardened platform spine:
 
 - persisted case operations backed by SQLAlchemy
 - document upload, parsing, storage, and evidence extraction
@@ -105,6 +106,19 @@ spine:
   refresh across traces and syntheses
 - CrewAI Phase 11 motion-pack specialist tools and prompts for buy-side,
   credit, and vendor review
+- `GET /api/v1/cases/{case_id}/tech-saas-metrics` for ARR waterfall, NRR,
+  churn, CAC, LTV, and payback analysis
+- `GET /api/v1/cases/{case_id}/manufacturing-metrics` for capacity utilization,
+  working-capital metrics, asset-register extraction, and plant/commercial risk
+  flagging
+- `GET /api/v1/cases/{case_id}/bfsi-nbfc-metrics` for GNPA, NNPA, CRAR, ALM,
+  PSL posture, and bucket-gap analysis
+- automatic checklist satisfaction for sector-pack-specific Tech/SaaS,
+  Manufacturing, and BFSI/NBFC items
+- executive memo sector-pack highlights plus workflow-integrated sector-pack
+  refresh across traces and syntheses
+- CrewAI Phase 12 sector-pack specialist tools and prompt snapshots for
+  Tech/SaaS, Manufacturing, and BFSI/NBFC review
 - tool-grounded CrewAI workstream analysis with scoped evidence, issue, and
   checklist review tools over pre-loaded case snapshots
 - analyst workbench dashboard, case workspace, and run viewer with live API support
@@ -229,6 +243,12 @@ To run only the Phase 11 motion-pack deepening suite:
 
 ```powershell
 ./scripts/evaluate.ps1 -Suite phase11_motion_pack_deepening
+```
+
+To run only the Phase 12 sector-pack deepening suite:
+
+```powershell
+./scripts/evaluate.ps1 -Suite phase12_sector_pack_deepening
 ```
 
 To run a live API smoke check after the stack is up:

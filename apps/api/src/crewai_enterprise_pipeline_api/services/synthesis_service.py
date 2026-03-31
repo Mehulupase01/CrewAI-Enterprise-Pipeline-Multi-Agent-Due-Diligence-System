@@ -42,6 +42,9 @@ class SynthesisService:
         buy_side_analysis=None,
         borrower_scorecard=None,
         vendor_risk_tier=None,
+        tech_saas_metrics=None,
+        manufacturing_metrics=None,
+        bfsi_nbfc_metrics=None,
     ) -> list[WorkstreamSynthesisRecord]:
         syntheses: list[WorkstreamSynthesisRecord] = []
         for workstream in WorkstreamDomain:
@@ -100,6 +103,9 @@ class SynthesisService:
                 buy_side_analysis,
                 borrower_scorecard,
                 vendor_risk_tier,
+                tech_saas_metrics,
+                manufacturing_metrics,
+                bfsi_nbfc_metrics,
             )
             recommended_next_action = self._build_next_action(
                 scoped_issues,
@@ -188,6 +194,9 @@ class SynthesisService:
         buy_side_analysis,
         borrower_scorecard,
         vendor_risk_tier,
+        tech_saas_metrics,
+        manufacturing_metrics,
+        bfsi_nbfc_metrics,
     ) -> str:
         evidence_note = (
             f"The evidence ledger includes {len(scoped_evidence)} items"
@@ -357,9 +366,99 @@ class SynthesisService:
                 f"{len(buy_side_analysis.pmi_risks)} PMI readiness items."
             )
 
+        phase12_note = ""
+        if workstream == WorkstreamDomain.COMMERCIAL and tech_saas_metrics is not None:
+            fragments = []
+            if tech_saas_metrics.arr is not None:
+                fragments.append(f"ARR {tech_saas_metrics.arr:.2f}")
+            if tech_saas_metrics.nrr is not None:
+                fragments.append(f"NRR {tech_saas_metrics.nrr:.0%}")
+            if tech_saas_metrics.churn_rate is not None:
+                fragments.append(f"churn {tech_saas_metrics.churn_rate:.0%}")
+            if fragments:
+                phase12_note = (
+                    " Phase 12 Tech/SaaS deepening extracted " + ", ".join(fragments) + "."
+                )
+        elif workstream == WorkstreamDomain.OPERATIONS and tech_saas_metrics is not None:
+            if tech_saas_metrics.payback_months is not None:
+                phase12_note = (
+                    " Phase 12 Tech/SaaS deepening captured CAC payback at "
+                    f"{tech_saas_metrics.payback_months:.1f} months alongside delivery risk."
+                )
+        elif workstream == WorkstreamDomain.CYBER_PRIVACY and tech_saas_metrics is not None:
+            if any("SOC 2" in flag for flag in tech_saas_metrics.flags):
+                phase12_note = " Phase 12 Tech/SaaS deepening flagged SaaS-grade assurance gaps."
+        elif workstream == WorkstreamDomain.OPERATIONS and manufacturing_metrics is not None:
+            fragments = []
+            if manufacturing_metrics.capacity_utilization is not None:
+                fragments.append(
+                    f"capacity utilization {manufacturing_metrics.capacity_utilization:.0%}"
+                )
+            if manufacturing_metrics.dio is not None:
+                fragments.append(f"DIO {manufacturing_metrics.dio:.0f} days")
+            if fragments:
+                phase12_note = (
+                    " Phase 12 Manufacturing deepening extracted " + ", ".join(fragments) + "."
+                )
+        elif workstream == WorkstreamDomain.FINANCIAL_QOE and manufacturing_metrics is not None:
+            if manufacturing_metrics.asset_turnover is not None:
+                phase12_note = (
+                    " Phase 12 Manufacturing deepening captured asset turnover at "
+                    f"{manufacturing_metrics.asset_turnover:.2f}x."
+                )
+        elif workstream == WorkstreamDomain.REGULATORY and manufacturing_metrics is not None:
+            if any("EHS" in flag or "factory" in flag for flag in manufacturing_metrics.flags):
+                phase12_note = (
+                    " Phase 12 Manufacturing deepening surfaced EHS/factory compliance gaps."
+                )
+        elif (
+            workstream == WorkstreamDomain.FORENSIC_COMPLIANCE
+            and manufacturing_metrics is not None
+        ):
+            if any(
+                "integrity" in flag.lower() or "procurement" in flag.lower()
+                for flag in manufacturing_metrics.flags
+            ):
+                phase12_note = (
+                    " Phase 12 Manufacturing deepening highlighted "
+                    "procurement integrity review needs."
+                )
+        elif workstream == WorkstreamDomain.FINANCIAL_QOE and bfsi_nbfc_metrics is not None:
+            fragments = []
+            if bfsi_nbfc_metrics.gnpa is not None:
+                fragments.append(f"GNPA {bfsi_nbfc_metrics.gnpa:.2%}")
+            if bfsi_nbfc_metrics.crar is not None:
+                fragments.append(f"CRAR {bfsi_nbfc_metrics.crar:.2%}")
+            if bfsi_nbfc_metrics.alm_mismatch is not None:
+                fragments.append(f"ALM mismatch {bfsi_nbfc_metrics.alm_mismatch:.2%}")
+            if fragments:
+                phase12_note = (
+                    " Phase 12 BFSI/NBFC deepening extracted " + ", ".join(fragments) + "."
+                )
+        elif workstream == WorkstreamDomain.REGULATORY and bfsi_nbfc_metrics is not None:
+            if bfsi_nbfc_metrics.psl_compliance.value != "unknown":
+                phase12_note = (
+                    " Phase 12 BFSI/NBFC deepening recorded PSL posture as "
+                    f"{bfsi_nbfc_metrics.psl_compliance.value.replace('_', ' ')}."
+                )
+        elif workstream == WorkstreamDomain.CYBER_PRIVACY and bfsi_nbfc_metrics is not None:
+            if any("KYC" in flag or "borrower-data" in flag for flag in bfsi_nbfc_metrics.flags):
+                phase12_note = (
+                    " Phase 12 BFSI/NBFC deepening highlighted KYC/AML data-control gaps."
+                )
+        elif workstream == WorkstreamDomain.FORENSIC_COMPLIANCE and bfsi_nbfc_metrics is not None:
+            if any(
+                "connected lending" in flag.lower() or "evergreening" in flag.lower()
+                for flag in bfsi_nbfc_metrics.flags
+            ):
+                phase12_note = (
+                    " Phase 12 BFSI/NBFC deepening surfaced connected-lending "
+                    "and evergreening concerns."
+                )
+
         return (
             f"{self._label_for_domain(workstream.value)} synthesis: {evidence_note} {issue_note}. "
-            f"{checklist_note}{top_issue_note}{financial_note}{phase9_note}{phase11_note}"
+            f"{checklist_note}{top_issue_note}{financial_note}{phase9_note}{phase11_note}{phase12_note}"
         )
 
     def _build_next_action(

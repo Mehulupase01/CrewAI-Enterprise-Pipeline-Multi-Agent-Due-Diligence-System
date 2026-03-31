@@ -4,11 +4,11 @@
 > Any AI agent resuming work should read this file + CLAUDE.md first.
 > Strategic roadmap comes from `docs/MASTERPLAN.docx` (preferred) and `docs/MASTERPLAN.pdf` (companion export); execution truth comes from the actual repo state.
 
-## Status: Phase 11 Complete
+## Status: Phase 12 Complete
 
 **Last updated:** 2026-03-31
-**Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7, Phase 8, Phase 9, Phase 10, Phase 11
-**Next phase:** Phase 12: Sector Pack Deepening
+**Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7, Phase 8, Phase 9, Phase 10, Phase 11, Phase 12
+**Next phase:** Phase 13: Rich Reporting + DOCX/PDF Export
 **Blocking issues:** None
 
 ---
@@ -693,6 +693,65 @@
 **Notes for next phase:**
 - Start canonical Phase 12: Sector Pack Deepening from `MASTERPLAN.docx`
 - Phase 11 now exposes a complete backend, workflow, report, evaluation, and CrewAI-tooling surface for motion-pack depth; dedicated analyst UI panels for motion-pack-specific valuation bridges, borrower scorecards, and vendor tiering remain future UX depth rather than blockers for canonical Phase 11 closure
+
+---
+
+### Phase 12: Sector Pack Deepening (2026-03-31)
+
+**What was done:**
+- Added deterministic sector-pack engines for Tech/SaaS, Manufacturing/Industrials, and BFSI/NBFC on top of the Phase 11 platform spine
+- Added structured Tech/SaaS ARR waterfall, NRR, churn, LTV, CAC, and payback extraction with sector-specific flags and checklist automation
+- Added structured Manufacturing capacity utilization, DIO/DSO/DPO, asset-turnover, asset-register extraction, sector-specific flags, and checklist automation
+- Added structured BFSI/NBFC GNPA, NNPA, CRAR, ALM mismatch, PSL posture, ALM bucket analysis, sector-specific flags, and checklist automation
+- Added `GET /cases/{case_id}/tech-saas-metrics`, `GET /cases/{case_id}/manufacturing-metrics`, and `GET /cases/{case_id}/bfsi-nbfc-metrics`
+- Wired Phase 12 refresh into workflow execution, trace events, workstream syntheses, executive memo sector highlights, and CrewAI prompt/tool assembly
+- Added `agents/phase12_tools.py` so coordinator and relevant workstreams can inspect structured sector metrics directly
+- Added a dedicated Phase 12 evaluation suite and focused pytest coverage for endpoints, checklist updates, workflow integration, and CrewAI tool attachment
+- Reconciled older evaluation-suite open-mandatory baselines to the truthful post-Phase-12 integrated workflow state
+
+**Files created:**
+- apps/api/src/.../services/sector_signal_utils.py -- shared sector-specific extraction helpers for amounts, percentages, days, months, and status flags
+- apps/api/src/.../services/tech_saas_service.py -- Tech/SaaS ARR, retention, unit-economics, and checklist automation engine
+- apps/api/src/.../services/manufacturing_service.py -- Manufacturing plant, working-capital, asset-register, and checklist automation engine
+- apps/api/src/.../services/bfsi_nbfc_service.py -- BFSI/NBFC asset-quality, capital, liquidity, PSL, and checklist automation engine
+- apps/api/src/.../agents/phase12_tools.py -- structured CrewAI tools for Tech/SaaS, Manufacturing, and BFSI/NBFC review
+- apps/api/tests/test_phase12_sector_pack_deepening.py -- 5 focused Phase 12 test cases
+
+**Files modified:**
+- apps/api/src/.../domain/models.py -- new Phase 12 sector summary and supporting metric models
+- apps/api/src/.../api/routes/cases.py -- new sector-pack metric endpoints
+- apps/api/src/.../agents/tools.py -- Phase 12 tool wiring
+- apps/api/src/.../agents/crew.py -- Phase 12 snapshot injection into CrewAI task descriptions
+- apps/api/src/.../services/report_service.py -- sector-pack executive memo highlights and narrative enrichment
+- apps/api/src/.../services/synthesis_service.py -- sector-pack narrative enrichment by workstream
+- apps/api/src/.../services/workflow_service.py -- Phase 12 refresh and trace integration in deterministic and CrewAI paths
+- apps/api/src/.../evaluation/scenarios.py -- Phase 12 scenario contracts and updated integrated checklist expectations
+- apps/api/src/.../evaluation/runner.py -- Phase 12 endpoint assertions and metrics
+- apps/api/tests/test_evaluation.py -- Phase 12 suite registration
+- apps/api/src/.../core/settings.py -- current_phase updated to Phase 12 complete
+
+**Decisions made:**
+- AD-044: Sector-pack deepening must land as deterministic structured state exposed through APIs, workflows, reports, syntheses, and CrewAI tools together
+- AD-045: Sector-pack extractors must deduplicate repeated asset-register and ALM-bucket findings across chunk and evidence surfaces
+
+**Blockers encountered:**
+- Initial Tech/SaaS extraction picked `Beginning ARR` instead of `Ending ARR`; extraction order was tightened before closure
+- Manufacturing and BFSI sector extractors initially duplicated asset-register rows and ALM bucket rows because the same signals appeared through chunk and evidence text surfaces
+- The Phase 12 evaluation suite exposed stale open-mandatory expectations in older suites after Phase 12 legitimately auto-satisfied additional sector-specific checklist items during workflow execution
+
+**Test results:**
+- pytest: 110/110 pass (105 existing + 5 new)
+- eval suites: 20/20 pass (all 10 suites at 100%)
+- ruff: clean
+- npm lint: clean
+- npm typecheck: clean
+- check gate: `./scripts/check.ps1` passed
+- dedicated Phase 12 eval artifact: `artifacts/evaluations/phase12-sector-pack-deepening-20260331T163824Z.json`
+- latest full-gate eval artifact: `artifacts/evaluations/all-supported-suites-20260331T164647Z.json`
+
+**Notes for next phase:**
+- Start canonical Phase 13: Rich Reporting + DOCX/PDF Export from `MASTERPLAN.docx`
+- Phase 12 now exposes a complete backend, workflow, report, evaluation, and CrewAI-tooling surface for sector-pack depth; dedicated analyst UI panels for sector-pack detail remain future UX depth rather than blockers for canonical Phase 12 closure
 
 ---
 

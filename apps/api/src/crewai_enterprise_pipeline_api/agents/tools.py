@@ -14,7 +14,9 @@ from crewai_enterprise_pipeline_api.agents.compliance_tools import (
 from crewai_enterprise_pipeline_api.agents.financial_tools import build_financial_tools
 from crewai_enterprise_pipeline_api.agents.phase10_tools import build_phase10_tools
 from crewai_enterprise_pipeline_api.agents.phase11_tools import build_phase11_tools
+from crewai_enterprise_pipeline_api.agents.phase12_tools import build_phase12_tools
 from crewai_enterprise_pipeline_api.domain.models import (
+    BfsiNbfcMetricsSummary,
     BorrowerScorecard,
     BuySideAnalysis,
     CommercialSummary,
@@ -23,8 +25,10 @@ from crewai_enterprise_pipeline_api.domain.models import (
     FinancialMetricSummary,
     ForensicSummary,
     LegalStructureSummary,
+    ManufacturingMetricsSummary,
     OperationsSummary,
     TaxComplianceSummary,
+    TechSaasMetricsSummary,
     VendorRiskTier,
 )
 
@@ -445,6 +449,9 @@ def build_workstream_tools(
     buy_side_analysis: BuySideAnalysis | None = None,
     borrower_scorecard: BorrowerScorecard | None = None,
     vendor_risk_tier: VendorRiskTier | None = None,
+    tech_saas_metrics: TechSaasMetricsSummary | None = None,
+    manufacturing_metrics: ManufacturingMetricsSummary | None = None,
+    bfsi_nbfc_metrics: BfsiNbfcMetricsSummary | None = None,
 ) -> list[BaseTool]:
     scope_label = workstream_domain.replace("_", " ")
     scope_slug = workstream_domain.lower()
@@ -524,6 +531,14 @@ def build_workstream_tools(
             vendor_risk_tier=vendor_risk_tier,
         )
     )
+    tools.extend(
+        build_phase12_tools(
+            sector_pack=sector_pack,
+            tech_saas_metrics=tech_saas_metrics,
+            manufacturing_metrics=manufacturing_metrics,
+            bfsi_nbfc_metrics=bfsi_nbfc_metrics,
+        )
+    )
     return tools
 
 
@@ -548,6 +563,9 @@ def build_case_tools(
     buy_side_analysis: BuySideAnalysis | None = None,
     borrower_scorecard: BorrowerScorecard | None = None,
     vendor_risk_tier: VendorRiskTier | None = None,
+    tech_saas_metrics: TechSaasMetricsSummary | None = None,
+    manufacturing_metrics: ManufacturingMetricsSummary | None = None,
+    bfsi_nbfc_metrics: BfsiNbfcMetricsSummary | None = None,
 ) -> list[BaseTool]:
     tools: list[Any] = [
         EvidenceSearchTool(
@@ -603,6 +621,14 @@ def build_case_tools(
             buy_side_analysis=buy_side_analysis,
             borrower_scorecard=borrower_scorecard,
             vendor_risk_tier=vendor_risk_tier,
+        )
+    )
+    tools.extend(
+        build_phase12_tools(
+            sector_pack=sector_pack,
+            tech_saas_metrics=tech_saas_metrics,
+            manufacturing_metrics=manufacturing_metrics,
+            bfsi_nbfc_metrics=bfsi_nbfc_metrics,
         )
     )
     return tools

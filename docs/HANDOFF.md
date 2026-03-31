@@ -4,20 +4,20 @@
 
 ## Current State
 
-**Active phase:** None (Phase 11 complete, ready to start canonical Phase 12)
+**Active phase:** None (Phase 12 complete, ready to start canonical Phase 13)
 **Last session:** 2026-03-31
-**Completed phases:** 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
-**Test counts:** 105 pytest, 17 eval scenarios (9 suites)
+**Completed phases:** 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12
+**Test counts:** 110 pytest, 20 eval scenarios (10 suites)
 **Execution mode:** roadmap from `MASTERPLAN.docx` (preferred) / `MASTERPLAN.pdf` (companion), execution truth from repo code/tests/commands
 
 ## What to Do Next
 
-Start canonical Phase 12 from `MASTERPLAN.docx` after reconciling the exact sector-pack deepening scope with the current repo truth.
-Treat Phase 11 as complete: the repo now has motion-pack specific checklist composition, structured buy-side analysis, borrower scorecards, vendor risk tiering, checklist auto-satisfaction for motion-pack outputs, workflow/report/synthesis integration, CrewAI motion-pack specialist prompts and tools, and a dedicated Phase 11 evaluation suite.
+Start canonical **Phase 13: Rich Reporting + DOCX/PDF Export** from `MASTERPLAN.docx`.
+Treat Phase 12 as complete: the repo now has deterministic Tech/SaaS, Manufacturing, and BFSI/NBFC sector engines; sector-specific API endpoints; workflow/report/synthesis refresh integration; CrewAI Phase 12 tools and prompt snapshots; and dedicated Phase 12 pytest plus evaluation coverage.
 
 ## Blockers
 
-None. Latest full-gate artifact: `artifacts/evaluations/all-supported-suites-20260331T154838Z.json`.
+None. Latest full-gate artifact: `artifacts/evaluations/all-supported-suites-20260331T164647Z.json`.
 
 ## Phase Completion Checklist
 

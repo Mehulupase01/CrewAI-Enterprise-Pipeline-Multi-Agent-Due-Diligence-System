@@ -8,6 +8,7 @@ from crewai_enterprise_pipeline_api.evaluation.scenarios import (
     PHASE9_LEGAL_TAX_REGULATORY_SCENARIOS,
     PHASE10_COMMERCIAL_OPERATIONS_CYBER_FORENSIC_SCENARIOS,
     PHASE11_MOTION_PACK_DEEPENING_SCENARIOS,
+    PHASE12_SECTOR_PACK_DEEPENING_SCENARIOS,
     VENDOR_ONBOARDING_EXPANSION_SCENARIOS,
 )
 
@@ -24,6 +25,7 @@ def test_evaluation_scenarios_are_unique_and_well_formed() -> None:
             PHASE10_COMMERCIAL_OPERATIONS_CYBER_FORENSIC_SCENARIOS,
         ),
         ("phase11_motion_pack_deepening", PHASE11_MOTION_PACK_DEEPENING_SCENARIOS),
+        ("phase12_sector_pack_deepening", PHASE12_SECTOR_PACK_DEEPENING_SCENARIOS),
         ("credit_lending_expansion", CREDIT_LENDING_EXPANSION_SCENARIOS),
         ("vendor_onboarding_expansion", VENDOR_ONBOARDING_EXPANSION_SCENARIOS),
         (
@@ -63,6 +65,12 @@ def test_evaluation_scenarios_are_unique_and_well_formed() -> None:
                     scenario.buy_side_analysis_expectation is not None
                     or scenario.borrower_scorecard_expectation is not None
                     or scenario.vendor_risk_tier_expectation is not None
+                )
+            if suite_key == "phase12_sector_pack_deepening":
+                assert (
+                    scenario.tech_saas_metrics_expectation is not None
+                    or scenario.manufacturing_metrics_expectation is not None
+                    or scenario.bfsi_nbfc_metrics_expectation is not None
                 )
             if suite_key == "credit_lending_expansion":
                 assert scenario.case_payload["motion_pack"] == "credit_lending"

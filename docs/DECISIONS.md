@@ -492,6 +492,26 @@ name-based).
 
 ---
 
+## AD-044: Sector-pack deepening must expose deterministic structured metrics across every execution surface (2026-03-31)
+
+**Decision:** Phase 12 sector-pack depth for Tech/SaaS, Manufacturing/Industrials, and BFSI/NBFC must be implemented as deterministic structured state first. The same sector summaries must be available through direct endpoints, workflow refresh, trace events, workstream syntheses, executive reporting, and CrewAI-accessible tools.
+
+**Why:** Sector specialization is a core platform capability, not just a prompt enhancement. Analysts, evaluations, approvals, and CrewAI workstreams all need the same canonical sector metrics. If the deeper sector state only exists in one service or one prompt, the system becomes inconsistent and hard to trust.
+
+**Impact:** `tech_saas_service.py`, `manufacturing_service.py`, `bfsi_nbfc_service.py`, `cases.py`, `workflow_service.py`, `report_service.py`, `synthesis_service.py`, `agents/phase12_tools.py`, `agents/tools.py`, and `agents/crew.py` are jointly part of the Phase 12 contract. Future sector deepening should follow the same pattern: structured state first, agent augmentation second.
+
+---
+
+## AD-045: Sector-pack extractors must deduplicate repeated structured findings across chunk and evidence surfaces (2026-03-31)
+
+**Decision:** Phase 12 extractors must deduplicate asset-register rows, ALM bucket rows, and similar structured findings when the same document signal appears through both chunk text and evidence text surfaces.
+
+**Why:** The platform intentionally composes chunk text, evidence excerpts, titles, and filenames into one sector evidence view. Without dedupe, deterministic structured outputs inflate counts and create false flag volume simply because the same fact is represented in more than one stored surface.
+
+**Impact:** Sector extractors should fingerprint repeated findings before emitting them. This rule now applies to Phase 12 asset-register and ALM-bucket extraction and should be preserved for future structured extractors that operate over blended artifact and evidence text.
+
+---
+
 <!--
 Template for future decisions:
 

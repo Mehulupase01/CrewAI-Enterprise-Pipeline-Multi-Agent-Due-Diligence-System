@@ -17,6 +17,7 @@ from crewai_enterprise_pipeline_api.db.models import (
 from crewai_enterprise_pipeline_api.domain.models import (
     ReportBundleKind,
     RunEventLevel,
+    SectorPack,
     WorkflowRunCreate,
     WorkflowRunDetail,
     WorkflowRunEnqueueResult,
@@ -25,6 +26,7 @@ from crewai_enterprise_pipeline_api.domain.models import (
     WorkflowRunSummary,
     WorkstreamSynthesisStatus,
 )
+from crewai_enterprise_pipeline_api.services.bfsi_nbfc_service import BfsiNbfcService
 from crewai_enterprise_pipeline_api.services.buy_side_service import BuySideService
 from crewai_enterprise_pipeline_api.services.case_service import CaseService
 from crewai_enterprise_pipeline_api.services.checklist_service import ChecklistService
@@ -34,11 +36,13 @@ from crewai_enterprise_pipeline_api.services.cyber_service import CyberService
 from crewai_enterprise_pipeline_api.services.financial_qoe_service import FinancialQoEService
 from crewai_enterprise_pipeline_api.services.forensic_service import ForensicService
 from crewai_enterprise_pipeline_api.services.legal_service import LegalService
+from crewai_enterprise_pipeline_api.services.manufacturing_service import ManufacturingService
 from crewai_enterprise_pipeline_api.services.operations_service import OperationsService
 from crewai_enterprise_pipeline_api.services.regulatory_service import RegulatoryService
 from crewai_enterprise_pipeline_api.services.report_service import ReportService
 from crewai_enterprise_pipeline_api.services.synthesis_service import SynthesisService
 from crewai_enterprise_pipeline_api.services.tax_service import TaxService
+from crewai_enterprise_pipeline_api.services.tech_saas_service import TechSaaSService
 from crewai_enterprise_pipeline_api.services.vendor_service import VendorService
 
 logger = logging.getLogger(__name__)
@@ -47,6 +51,7 @@ logger = logging.getLogger(__name__)
 class WorkflowService:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+        self.bfsi_nbfc_service = BfsiNbfcService(session)
         self.buy_side_service = BuySideService(session)
         self.case_service = CaseService(session)
         self.checklist_service = ChecklistService(session)
@@ -56,8 +61,10 @@ class WorkflowService:
         self.financial_qoe_service = FinancialQoEService(session)
         self.forensic_service = ForensicService(session)
         self.legal_service = LegalService(session)
+        self.manufacturing_service = ManufacturingService(session)
         self.operations_service = OperationsService(session)
         self.tax_service = TaxService(session)
+        self.tech_saas_service = TechSaaSService(session)
         self.regulatory_service = RegulatoryService(session)
         self.report_service = ReportService(session)
         self.synthesis_service = SynthesisService()
@@ -209,6 +216,9 @@ class WorkflowService:
         buy_side_analysis = None
         borrower_scorecard = None
         vendor_risk_tier = None
+        tech_saas_metrics = None
+        manufacturing_metrics = None
+        bfsi_nbfc_metrics = None
         if case.motion_pack == "buy_side_diligence":
             buy_side_analysis = await self.buy_side_service.build_buy_side_analysis(
                 case_id,
@@ -221,6 +231,21 @@ class WorkflowService:
             )
         elif case.motion_pack == "vendor_onboarding":
             vendor_risk_tier = await self.vendor_service.build_vendor_risk_tier(
+                case_id,
+                persist_checklist=True,
+            )
+        if case.sector_pack == SectorPack.TECH_SAAS_SERVICES.value:
+            tech_saas_metrics = await self.tech_saas_service.build_tech_saas_metrics(
+                case_id,
+                persist_checklist=True,
+            )
+        elif case.sector_pack == SectorPack.MANUFACTURING_INDUSTRIALS.value:
+            manufacturing_metrics = await self.manufacturing_service.build_manufacturing_metrics(
+                case_id,
+                persist_checklist=True,
+            )
+        elif case.sector_pack == SectorPack.BFSI_NBFC.value:
+            bfsi_nbfc_metrics = await self.bfsi_nbfc_service.build_bfsi_nbfc_metrics(
                 case_id,
                 persist_checklist=True,
             )
@@ -249,6 +274,9 @@ class WorkflowService:
             buy_side_analysis,
             borrower_scorecard,
             vendor_risk_tier,
+            tech_saas_metrics,
+            manufacturing_metrics,
+            bfsi_nbfc_metrics,
         )
         synthesis_markdown = self.synthesis_service.render_markdown(case, syntheses)
 
@@ -268,6 +296,9 @@ class WorkflowService:
             buy_side_analysis,
             borrower_scorecard,
             vendor_risk_tier,
+            tech_saas_metrics,
+            manufacturing_metrics,
+            bfsi_nbfc_metrics,
         )
         report_bundles = self._build_report_bundles(
             case_id,
@@ -288,7 +319,7 @@ class WorkflowService:
             f"{len(syntheses)} workstream syntheses, with "
             f"{len(case.issues)} issues and "
             f"{coverage.open_mandatory_items} open mandatory checklist items. "
-            f"Motion pack: {case.motion_pack}."
+            f"Motion pack: {case.motion_pack}. Sector pack: {case.sector_pack}."
         )
 
         await self.session.commit()
@@ -355,6 +386,9 @@ class WorkflowService:
         buy_side_analysis = None
         borrower_scorecard = None
         vendor_risk_tier = None
+        tech_saas_metrics = None
+        manufacturing_metrics = None
+        bfsi_nbfc_metrics = None
         if case.motion_pack == "buy_side_diligence":
             buy_side_analysis = await self.buy_side_service.build_buy_side_analysis(
                 case_id,
@@ -367,6 +401,21 @@ class WorkflowService:
             )
         elif case.motion_pack == "vendor_onboarding":
             vendor_risk_tier = await self.vendor_service.build_vendor_risk_tier(
+                case_id,
+                persist_checklist=True,
+            )
+        if case.sector_pack == SectorPack.TECH_SAAS_SERVICES.value:
+            tech_saas_metrics = await self.tech_saas_service.build_tech_saas_metrics(
+                case_id,
+                persist_checklist=True,
+            )
+        elif case.sector_pack == SectorPack.MANUFACTURING_INDUSTRIALS.value:
+            manufacturing_metrics = await self.manufacturing_service.build_manufacturing_metrics(
+                case_id,
+                persist_checklist=True,
+            )
+        elif case.sector_pack == SectorPack.BFSI_NBFC.value:
+            bfsi_nbfc_metrics = await self.bfsi_nbfc_service.build_bfsi_nbfc_metrics(
                 case_id,
                 persist_checklist=True,
             )
@@ -441,6 +490,22 @@ class WorkflowService:
             )
         )
         seq += 1
+        self.session.add(
+            RunTraceEventRecord(
+                run_id=run_id,
+                sequence_number=seq,
+                step_key="sector_pack_deepening_refresh",
+                title="Sector-pack deepening summary refreshed",
+                message=self._phase12_refresh_note(
+                    case.sector_pack,
+                    tech_saas_metrics,
+                    manufacturing_metrics,
+                    bfsi_nbfc_metrics,
+                ),
+                level=RunEventLevel.INFO.value,
+            )
+        )
+        seq += 1
         await self.session.commit()
 
         # 1. Build case context
@@ -459,6 +524,9 @@ class WorkflowService:
             buy_side_analysis=buy_side_analysis,
             borrower_scorecard=borrower_scorecard,
             vendor_risk_tier=vendor_risk_tier,
+            tech_saas_metrics=tech_saas_metrics,
+            manufacturing_metrics=manufacturing_metrics,
+            bfsi_nbfc_metrics=bfsi_nbfc_metrics,
         )
         total_tools = sum(len(tools) for tools in tool_map.values())
         self.session.add(
@@ -468,9 +536,9 @@ class WorkflowService:
                 step_key="crew_initialized",
                 title="CrewAI crew initialized",
                 message=(
-                    f"Built crew with {len(case_ctx.workstreams)} workstream agents "
-                    f"and 1 coordinator. LLM: {settings.llm_provider}/{settings.llm_model}. "
-                    f"Scoped tools attached: {total_tools}."
+            f"Built crew with {len(case_ctx.workstreams)} workstream agents "
+            f"and 1 coordinator. LLM: {settings.llm_provider}/{settings.llm_model}. "
+            f"Scoped tools attached: {total_tools}."
                 ),
                 level=RunEventLevel.INFO.value,
             )
@@ -646,7 +714,8 @@ class WorkflowService:
             f"CrewAI run: {len(syntheses)} workstream analyses, "
             f"{len(report_bundles)} report bundles. "
             f"LLM: {settings.llm_provider}/{settings.llm_model}. "
-            f"Tool calls: {total_tool_calls(tool_map)}. Motion pack: {case.motion_pack}."
+            f"Tool calls: {total_tool_calls(tool_map)}. Motion pack: {case.motion_pack}. "
+            f"Sector pack: {case.sector_pack}."
         )
 
         # Build executive memo via deterministic service for the response object
@@ -730,6 +799,9 @@ class WorkflowService:
         buy_side_analysis,
         borrower_scorecard,
         vendor_risk_tier,
+        tech_saas_metrics,
+        manufacturing_metrics,
+        bfsi_nbfc_metrics,
     ) -> list[RunTraceEventRecord]:
         latest_approval = case.approvals[-1] if case.approvals else None
         approval_note = (
@@ -779,6 +851,12 @@ class WorkflowService:
             borrower_scorecard,
             vendor_risk_tier,
         )
+        phase12_note = self._phase12_refresh_note(
+            case.sector_pack,
+            tech_saas_metrics,
+            manufacturing_metrics,
+            bfsi_nbfc_metrics,
+        )
         return [
             RunTraceEventRecord(
                 run_id=run_id,
@@ -826,6 +904,14 @@ class WorkflowService:
             RunTraceEventRecord(
                 run_id=run_id,
                 sequence_number=6,
+                step_key="sector_pack_deepening_refresh",
+                title="Sector-pack deepening summary refreshed",
+                message=phase12_note,
+                level=RunEventLevel.INFO.value,
+            ),
+            RunTraceEventRecord(
+                run_id=run_id,
+                sequence_number=7,
                 step_key="issue_triage",
                 title="Issue register reviewed",
                 message=(
@@ -835,7 +921,7 @@ class WorkflowService:
             ),
             RunTraceEventRecord(
                 run_id=run_id,
-                sequence_number=7,
+                sequence_number=8,
                 step_key="coverage_check",
                 title="Checklist coverage computed",
                 message=(f"{coverage.open_mandatory_items} mandatory checklist items remain open."),
@@ -847,7 +933,7 @@ class WorkflowService:
             ),
             RunTraceEventRecord(
                 run_id=run_id,
-                sequence_number=8,
+                sequence_number=9,
                 step_key="approval_snapshot",
                 title="Approval state captured",
                 message=approval_note,
@@ -855,7 +941,7 @@ class WorkflowService:
             ),
             RunTraceEventRecord(
                 run_id=run_id,
-                sequence_number=9,
+                sequence_number=10,
                 step_key="workstream_synthesis",
                 title="Workstream syntheses generated",
                 message=(f"Generated {len(syntheses)} workstream summaries for the current run."),
@@ -863,7 +949,7 @@ class WorkflowService:
             ),
             RunTraceEventRecord(
                 run_id=run_id,
-                sequence_number=10,
+                sequence_number=11,
                 step_key="report_bundle_generation",
                 title="Report bundles generated",
                 message=(
@@ -983,3 +1069,62 @@ class WorkflowService:
                 f"questionnaire sections: {len(vendor_risk_tier.questionnaire)}."
             )
         return "No structured motion-pack summary detected yet."
+
+    def _phase12_refresh_note(
+        self,
+        sector_pack: str,
+        tech_saas_metrics,
+        manufacturing_metrics,
+        bfsi_nbfc_metrics,
+    ) -> str:
+        if sector_pack == SectorPack.TECH_SAAS_SERVICES.value and tech_saas_metrics is not None:
+            fragments: list[str] = []
+            if tech_saas_metrics.arr is not None:
+                fragments.append(f"ARR {tech_saas_metrics.arr:.2f}")
+            if tech_saas_metrics.nrr is not None:
+                fragments.append(f"NRR {tech_saas_metrics.nrr:.0%}")
+            if tech_saas_metrics.payback_months is not None:
+                fragments.append(f"payback {tech_saas_metrics.payback_months:.1f} months")
+            return (
+                "Tech/SaaS metrics refreshed: "
+                + (", ".join(fragments) if fragments else "structured sector metrics available")
+                + "."
+            )
+        if (
+            sector_pack == SectorPack.MANUFACTURING_INDUSTRIALS.value
+            and manufacturing_metrics is not None
+        ):
+            fragments = []
+            if manufacturing_metrics.capacity_utilization is not None:
+                fragments.append(
+                    f"capacity {manufacturing_metrics.capacity_utilization:.0%}"
+                )
+            if manufacturing_metrics.dio is not None:
+                fragments.append(f"DIO {manufacturing_metrics.dio:.0f} days")
+            if manufacturing_metrics.asset_turnover is not None:
+                fragments.append(
+                    f"asset turnover {manufacturing_metrics.asset_turnover:.2f}x"
+                )
+            return (
+                "Manufacturing metrics refreshed: "
+                + (", ".join(fragments) if fragments else "structured plant metrics available")
+                + "."
+            )
+        if sector_pack == SectorPack.BFSI_NBFC.value and bfsi_nbfc_metrics is not None:
+            fragments = []
+            if bfsi_nbfc_metrics.gnpa is not None:
+                fragments.append(f"GNPA {bfsi_nbfc_metrics.gnpa:.2%}")
+            if bfsi_nbfc_metrics.crar is not None:
+                fragments.append(f"CRAR {bfsi_nbfc_metrics.crar:.2%}")
+            if bfsi_nbfc_metrics.alm_mismatch is not None:
+                fragments.append(f"ALM mismatch {bfsi_nbfc_metrics.alm_mismatch:.2%}")
+            return (
+                "BFSI/NBFC metrics refreshed: "
+                + (
+                    ", ".join(fragments)
+                    if fragments
+                    else "structured balance-sheet metrics available"
+                )
+                + "."
+            )
+        return "No structured sector-pack summary detected yet."

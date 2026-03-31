@@ -2,8 +2,8 @@
 
 ## Current State
 
-**Completed phases:** 0-11 | **Next:** Phase 12
-**Tests:** 105 pytest, 17 eval scenarios (9 suites) | **Blockers:** None
+**Completed phases:** 0-12 | **Next:** Phase 13
+**Tests:** 110 pytest, 20 eval scenarios (10 suites) | **Blockers:** None
 
 ## Project Overview
 
@@ -13,6 +13,7 @@ CrewAI is wired through Phase 7 and activates only when `LLM_PROVIDER` + `LLM_AP
 Canonical Phase 9 is now complete with a Legal / Tax / Regulatory engine: structured legal summaries, contract clause review, DIN and shareholding extraction, tax compliance summaries, BFSI-aware compliance matrix generation, checklist auto-satisfaction, workflow refresh, report integration, CrewAI compliance tools, and a dedicated Phase 9 evaluation suite (AD-036 to AD-038).
 Canonical Phase 10 is now complete with Commercial / Operations / Cyber / Forensic engines: structured customer concentration and retention analysis, operations dependency and supplier-concentration analysis, DPDP/security control review with analyst-readable flagging, forensic flag detection, checklist automation, workflow/report integration, CrewAI Phase 10 tools, and a dedicated Phase 10 evaluation suite (AD-039 to AD-042).
 Canonical Phase 11 is now complete with Motion Pack Deepening: centralized motion-pack checklist composition, structured buy-side analysis, borrower scorecards, vendor risk tiering, motion-pack checklist auto-satisfaction, workflow/report/synthesis integration, CrewAI motion-pack specialist tools and prompts, and a dedicated Phase 11 evaluation suite (AD-043).
+Canonical Phase 12 is now complete with Sector Pack Deepening: deterministic Tech/SaaS ARR-waterfall and unit-economics metrics, Manufacturing capacity and asset-register analysis, BFSI/NBFC asset-quality and ALM analysis, sector-pack checklist auto-satisfaction, workflow/report/synthesis integration, CrewAI Phase 12 tools and snapshots, and a dedicated Phase 12 evaluation suite (AD-044 to AD-045).
 
 ## Execution Contract For This Repo
 

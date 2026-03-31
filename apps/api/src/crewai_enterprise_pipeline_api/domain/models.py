@@ -599,6 +599,7 @@ class ExecutiveMemoReport(BaseModel):
     case_name: str
     target_name: str
     motion_pack: MotionPack
+    sector_pack: SectorPack
     report_title: str
     generated_at: datetime
     report_status: str
@@ -608,6 +609,7 @@ class ExecutiveMemoReport(BaseModel):
     open_requests: list[RequestItemSummary]
     checklist_coverage: ChecklistCoverageSummary
     motion_pack_highlights: list[str] = Field(default_factory=list)
+    sector_pack_highlights: list[str] = Field(default_factory=list)
     next_actions: list[str]
 
 
@@ -694,6 +696,64 @@ class VendorRiskTier(BaseModel):
     questionnaire: list[VendorQuestionnaireItem] = Field(default_factory=list)
     certifications_required: list[str] = Field(default_factory=list)
     next_review_date: date
+    flags: list[str] = Field(default_factory=list)
+    checklist_updates: list[ChecklistAutoUpdate] = Field(default_factory=list)
+
+
+class ArrWaterfallItem(BaseModel):
+    label: str
+    amount: float
+    note: str
+
+
+class TechSaasMetricsSummary(BaseModel):
+    case_id: str
+    arr: float | None = None
+    mrr: float | None = None
+    nrr: float | None = Field(default=None, ge=0.0)
+    churn_rate: float | None = Field(default=None, ge=0.0, le=1.0)
+    ltv: float | None = None
+    cac: float | None = None
+    payback_months: float | None = Field(default=None, ge=0.0)
+    arr_waterfall: list[ArrWaterfallItem] = Field(default_factory=list)
+    flags: list[str] = Field(default_factory=list)
+    checklist_updates: list[ChecklistAutoUpdate] = Field(default_factory=list)
+
+
+class AssetRegisterItem(BaseModel):
+    asset_name: str
+    carrying_value: float | None = None
+    replacement_cost: float | None = None
+    replacement_gap: float | None = None
+    note: str
+
+
+class ManufacturingMetricsSummary(BaseModel):
+    case_id: str
+    capacity_utilization: float | None = Field(default=None, ge=0.0)
+    dio: float | None = Field(default=None, ge=0.0)
+    dso: float | None = Field(default=None, ge=0.0)
+    dpo: float | None = Field(default=None, ge=0.0)
+    asset_turnover: float | None = Field(default=None, ge=0.0)
+    asset_register: list[AssetRegisterItem] = Field(default_factory=list)
+    flags: list[str] = Field(default_factory=list)
+    checklist_updates: list[ChecklistAutoUpdate] = Field(default_factory=list)
+
+
+class AlmBucketGap(BaseModel):
+    bucket_label: str
+    mismatch_ratio: float = Field(ge=0.0)
+    note: str
+
+
+class BfsiNbfcMetricsSummary(BaseModel):
+    case_id: str
+    gnpa: float | None = Field(default=None, ge=0.0, le=1.0)
+    nnpa: float | None = Field(default=None, ge=0.0, le=1.0)
+    crar: float | None = Field(default=None, ge=0.0)
+    alm_mismatch: float | None = Field(default=None, ge=0.0)
+    psl_compliance: ComplianceStatus = ComplianceStatus.UNKNOWN
+    alm_bucket_gaps: list[AlmBucketGap] = Field(default_factory=list)
     flags: list[str] = Field(default_factory=list)
     checklist_updates: list[ChecklistAutoUpdate] = Field(default_factory=list)
 

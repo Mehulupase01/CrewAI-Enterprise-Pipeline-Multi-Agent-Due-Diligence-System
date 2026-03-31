@@ -150,6 +150,42 @@ class VendorRiskTierExpectation:
 
 
 @dataclass(slots=True)
+class TechSaasMetricsExpectation:
+    expected_arr: float | None = None
+    expected_mrr: float | None = None
+    expected_nrr: float | None = None
+    expected_churn: float | None = None
+    expected_payback_months: float | None = None
+    min_arr_waterfall_items: int = 0
+    flag_substrings: tuple[str, ...] = ()
+    min_checklist_updates: int = 0
+
+
+@dataclass(slots=True)
+class ManufacturingMetricsExpectation:
+    expected_capacity_utilization: float | None = None
+    expected_dio: float | None = None
+    expected_dso: float | None = None
+    expected_dpo: float | None = None
+    expected_asset_turnover: float | None = None
+    min_asset_register_items: int = 0
+    flag_substrings: tuple[str, ...] = ()
+    min_checklist_updates: int = 0
+
+
+@dataclass(slots=True)
+class BfsiNbfcMetricsExpectation:
+    expected_gnpa: float | None = None
+    expected_nnpa: float | None = None
+    expected_crar: float | None = None
+    expected_alm_mismatch: float | None = None
+    expected_psl_status: str | None = None
+    min_alm_bucket_gaps: int = 0
+    flag_substrings: tuple[str, ...] = ()
+    min_checklist_updates: int = 0
+
+
+@dataclass(slots=True)
 class ScenarioExpectation:
     approval_decision: str
     ready_for_export: bool
@@ -209,6 +245,9 @@ class EvaluationScenario:
     buy_side_analysis_expectation: BuySideAnalysisExpectation | None = None
     borrower_scorecard_expectation: BorrowerScorecardExpectation | None = None
     vendor_risk_tier_expectation: VendorRiskTierExpectation | None = None
+    tech_saas_metrics_expectation: TechSaasMetricsExpectation | None = None
+    manufacturing_metrics_expectation: ManufacturingMetricsExpectation | None = None
+    bfsi_nbfc_metrics_expectation: BfsiNbfcMetricsExpectation | None = None
     expectation: ScenarioExpectation = field(
         default_factory=lambda: ScenarioExpectation(
             approval_decision="changes_requested",
@@ -283,7 +322,7 @@ PHASE5_FIRST_SLICE_SCENARIOS: tuple[EvaluationScenario, ...] = (
             ready_for_export=False,
             report_status="not_ready",
             report_title="Executive Memo",
-            open_mandatory_items=34,
+            open_mandatory_items=33,
             min_blocking_issue_count=1,
             max_blocking_issue_count=1,
             min_issue_count=1,
@@ -482,7 +521,7 @@ CREDIT_LENDING_EXPANSION_SCENARIOS: tuple[EvaluationScenario, ...] = (
             ready_for_export=False,
             report_status="not_ready",
             report_title="Credit Memo",
-            open_mandatory_items=32,
+            open_mandatory_items=31,
             min_blocking_issue_count=1,
             max_blocking_issue_count=1,
             min_issue_count=1,
@@ -604,7 +643,7 @@ VENDOR_ONBOARDING_EXPANSION_SCENARIOS: tuple[EvaluationScenario, ...] = (
             report_status="not_ready",
             report_title="Third-Party Risk Memo",
             min_syntheses=7,
-            open_mandatory_items=31,
+            open_mandatory_items=30,
             min_blocking_issue_count=1,
             max_blocking_issue_count=1,
             min_issue_count=1,
@@ -905,7 +944,7 @@ BFSI_NBFC_EXPANSION_SCENARIOS: tuple[EvaluationScenario, ...] = (
             report_status="not_ready",
             report_title="Executive Memo",
             min_syntheses=7,
-            open_mandatory_items=38,
+            open_mandatory_items=37,
             min_blocking_issue_count=3,
             max_blocking_issue_count=3,
             min_issue_count=3,
@@ -1031,7 +1070,7 @@ PHASE8_FINANCIAL_QOE_SCENARIOS: tuple[EvaluationScenario, ...] = (
             ready_for_export=False,
             report_status="not_ready",
             report_title="Credit Memo",
-            open_mandatory_items=28,
+            open_mandatory_items=27,
             min_blocking_issue_count=0,
             max_blocking_issue_count=0,
             min_issue_count=0,
@@ -1184,7 +1223,7 @@ PHASE9_LEGAL_TAX_REGULATORY_SCENARIOS: tuple[EvaluationScenario, ...] = (
             ready_for_export=False,
             report_status="not_ready",
             report_title="Executive Memo",
-            open_mandatory_items=37,
+            open_mandatory_items=35,
             min_blocking_issue_count=0,
             max_blocking_issue_count=0,
             min_issue_count=0,
@@ -1710,7 +1749,303 @@ PHASE11_MOTION_PACK_DEEPENING_SCENARIOS: tuple[EvaluationScenario, ...] = (
 )
 
 
+PHASE12_SECTOR_PACK_DEEPENING_SCENARIOS: tuple[EvaluationScenario, ...] = (
+    EvaluationScenario(
+        code="phase12_tech_saas_sector_case",
+        name="Phase 12 tech/saas sector case",
+        description=(
+            "Validates that the Tech/SaaS sector engine produces ARR, retention, "
+            "unit-economics metrics, sector flags, and checklist automation."
+        ),
+        case_payload={
+            "name": "Project Phase12 Tech SaaS",
+            "target_name": "Phase12 Tech Systems Private Limited",
+            "summary": "Phase 12 evaluation scenario for Tech/SaaS sector depth.",
+            "motion_pack": "buy_side_diligence",
+            "sector_pack": "tech_saas_services",
+            "country": "India",
+        },
+        upload_documents=(
+            UploadDocumentFixture(
+                title="SaaS metrics pack",
+                filename="saas_metrics_pack.txt",
+                content=(
+                    "Beginning ARR 90.0. New ARR 25.0. Expansion ARR 18.0. "
+                    "Contraction ARR 6.0. Churned ARR 7.0. Ending ARR 120.0. "
+                    "MRR 10.0. Net revenue retention 118%. Gross churn 4%. "
+                    "CAC 1.8. LTV 9.0. CAC payback 7 months. "
+                    "Top customer contributes 42 percent of ARR."
+                ),
+                mime_type="text/plain",
+                document_kind="saas_metrics_pack",
+                source_kind="uploaded_dataroom",
+                workstream_domain="commercial",
+                evidence_kind="metric",
+            ),
+            UploadDocumentFixture(
+                title="Delivery model review",
+                filename="delivery_model_review.txt",
+                content=(
+                    "Implementation remains founder dependent and a named delivery lead approves "
+                    "migration cutovers. Shared services tooling still supports two major "
+                    "enterprise implementations."
+                ),
+                mime_type="text/plain",
+                document_kind="delivery_model_review",
+                source_kind="uploaded_dataroom",
+                workstream_domain="operations",
+                evidence_kind="risk",
+            ),
+            UploadDocumentFixture(
+                title="Security assurance memo",
+                filename="security_assurance_memo.txt",
+                content=(
+                    "Consent mechanism implemented and privacy controls documented. "
+                    "ISO 27001 certified but no SOC 2 report is currently available."
+                ),
+                mime_type="text/plain",
+                document_kind="security_assurance_memo",
+                source_kind="uploaded_dataroom",
+                workstream_domain="cyber_privacy",
+                evidence_kind="risk",
+            ),
+        ),
+        satisfy_all_checklist_items=True,
+        tech_saas_metrics_expectation=TechSaasMetricsExpectation(
+            expected_arr=120.0,
+            expected_mrr=10.0,
+            expected_nrr=1.18,
+            expected_churn=0.04,
+            expected_payback_months=7.0,
+            min_arr_waterfall_items=5,
+            flag_substrings=("Top customer concentration", "SOC 2"),
+            min_checklist_updates=0,
+        ),
+        expectation=ScenarioExpectation(
+            approval_decision="approved",
+            ready_for_export=True,
+            report_status="ready_for_export",
+            report_title="Executive Memo",
+            open_mandatory_items=0,
+            min_blocking_issue_count=0,
+            max_blocking_issue_count=0,
+            min_issue_count=0,
+            min_open_request_count=0,
+            min_evidence_count=3,
+        ),
+    ),
+    EvaluationScenario(
+        code="phase12_manufacturing_sector_case",
+        name="Phase 12 manufacturing sector case",
+        description=(
+            "Validates that the Manufacturing sector engine produces plant, working-capital, "
+            "asset-register metrics, sector flags, and checklist automation."
+        ),
+        case_payload={
+            "name": "Project Phase12 Manufacturing",
+            "target_name": "Phase12 Precision Components Private Limited",
+            "summary": "Phase 12 evaluation scenario for Manufacturing sector depth.",
+            "motion_pack": "buy_side_diligence",
+            "sector_pack": "manufacturing_industrials",
+            "country": "India",
+        },
+        upload_documents=(
+            UploadDocumentFixture(
+                title="Plant operating review",
+                filename="plant_operating_review.txt",
+                content=(
+                    "Capacity utilization 78%. DIO 74 days. DSO 61 days. DPO 39 days. "
+                    "Asset turnover 1.85. CNC Line A WDV 12.0 replacement cost 16.5. "
+                    "Paint Shop WDV 8.0 replacement cost 10.0. "
+                    "Top 3 suppliers account for 58 percent of spend."
+                ),
+                mime_type="text/plain",
+                document_kind="plant_operating_review",
+                source_kind="uploaded_dataroom",
+                workstream_domain="operations",
+                evidence_kind="metric",
+            ),
+            UploadDocumentFixture(
+                title="EHS compliance review",
+                filename="ehs_compliance_review.txt",
+                content=(
+                    "Pollution control board consent renewal pending and hazardous-waste manifest "
+                    "reconciliation remains partially complete."
+                ),
+                mime_type="text/plain",
+                document_kind="ehs_compliance_review",
+                source_kind="uploaded_dataroom",
+                workstream_domain="regulatory",
+                evidence_kind="risk",
+            ),
+            UploadDocumentFixture(
+                title="Procurement integrity note",
+                filename="procurement_integrity_note.txt",
+                content=(
+                    "Related-party procurement from a promoter-linked fabrication vendor was noted "
+                    "during the capex review."
+                ),
+                mime_type="text/plain",
+                document_kind="procurement_integrity_note",
+                source_kind="uploaded_dataroom",
+                workstream_domain="forensic_compliance",
+                evidence_kind="risk",
+            ),
+            UploadDocumentFixture(
+                title="Order book summary",
+                filename="order_book_summary.txt",
+                content=(
+                    "Order book remains concentrated in the top two OEM customers and dealer "
+                    "discount pressure is rising in the export segment."
+                ),
+                mime_type="text/plain",
+                document_kind="order_book_summary",
+                source_kind="uploaded_dataroom",
+                workstream_domain="commercial",
+                evidence_kind="risk",
+            ),
+        ),
+        satisfy_all_checklist_items=True,
+        manufacturing_metrics_expectation=ManufacturingMetricsExpectation(
+            expected_capacity_utilization=0.78,
+            expected_dio=74.0,
+            expected_dso=61.0,
+            expected_dpo=39.0,
+            expected_asset_turnover=1.85,
+            min_asset_register_items=2,
+            flag_substrings=("EHS/factory", "Order-book", "integrity"),
+            min_checklist_updates=0,
+        ),
+        expectation=ScenarioExpectation(
+            approval_decision="approved",
+            ready_for_export=True,
+            report_status="ready_for_export",
+            report_title="Executive Memo",
+            open_mandatory_items=0,
+            min_blocking_issue_count=0,
+            max_blocking_issue_count=0,
+            min_issue_count=0,
+            min_open_request_count=0,
+            min_evidence_count=4,
+        ),
+    ),
+    EvaluationScenario(
+        code="phase12_bfsi_nbfc_sector_case",
+        name="Phase 12 bfsi/nbfc sector case",
+        description=(
+            "Validates that the BFSI/NBFC sector engine produces asset-quality, capital, "
+            "liquidity, PSL, and sector checklist automation."
+        ),
+        case_payload={
+            "name": "Project Phase12 NBFC",
+            "target_name": "Phase12 Lending Private Limited",
+            "summary": "Phase 12 evaluation scenario for BFSI/NBFC sector depth.",
+            "motion_pack": "credit_lending",
+            "sector_pack": "bfsi_nbfc",
+            "country": "India",
+        },
+        upload_documents=(
+            UploadDocumentFixture(
+                title="NBFC portfolio monitor",
+                filename="nbfc_portfolio_monitor.txt",
+                content=(
+                    "GNPA 6.2%. NNPA 2.9%. CRAR 18.4%. ALM mismatch 12%. "
+                    "PSL compliance met target. 1-30 days bucket 9%. "
+                    "31-60 days bucket 6%."
+                ),
+                mime_type="text/plain",
+                document_kind="nbfc_portfolio_monitor",
+                source_kind="uploaded_dataroom",
+                workstream_domain="financial_qoe",
+                evidence_kind="metric",
+            ),
+            UploadDocumentFixture(
+                title="RBI returns note",
+                filename="rbi_returns_note.txt",
+                content=(
+                    "RBI registration remains current and prudential returns were filed on time."
+                ),
+                mime_type="text/plain",
+                document_kind="rbi_returns_note",
+                source_kind="uploaded_dataroom",
+                workstream_domain="regulatory",
+                evidence_kind="fact",
+            ),
+            UploadDocumentFixture(
+                title="Collections governance review",
+                filename="collections_governance_review.txt",
+                content=(
+                    "Collections overrides still depend on a zonal credit head and manual "
+                    "exception approval remains active."
+                ),
+                mime_type="text/plain",
+                document_kind="collections_governance_review",
+                source_kind="uploaded_dataroom",
+                workstream_domain="operations",
+                evidence_kind="risk",
+            ),
+            UploadDocumentFixture(
+                title="KYC AML controls note",
+                filename="kyc_aml_controls_note.txt",
+                content=(
+                    "KYC and AML controls are documented, but borrower-data access review remains "
+                    "partially complete."
+                ),
+                mime_type="text/plain",
+                document_kind="kyc_aml_controls_note",
+                source_kind="uploaded_dataroom",
+                workstream_domain="cyber_privacy",
+                evidence_kind="risk",
+            ),
+            UploadDocumentFixture(
+                title="Connected lending review",
+                filename="connected_lending_review.txt",
+                content=(
+                    "Connected lending and loan evergreening signals were reviewed in "
+                    "related-party "
+                    "borrower clusters."
+                ),
+                mime_type="text/plain",
+                document_kind="connected_lending_review",
+                source_kind="uploaded_dataroom",
+                workstream_domain="forensic_compliance",
+                evidence_kind="risk",
+            ),
+        ),
+        satisfy_all_checklist_items=True,
+        bfsi_nbfc_metrics_expectation=BfsiNbfcMetricsExpectation(
+            expected_gnpa=0.062,
+            expected_nnpa=0.029,
+            expected_crar=0.184,
+            expected_alm_mismatch=0.12,
+            expected_psl_status="compliant",
+            min_alm_bucket_gaps=2,
+            flag_substrings=("GNPA exceeds 5%", "KYC/AML", "Connected lending"),
+            min_checklist_updates=0,
+        ),
+        expectation=ScenarioExpectation(
+            approval_decision="approved",
+            ready_for_export=True,
+            report_status="ready_for_export",
+            report_title="Credit Memo",
+            open_mandatory_items=0,
+            min_blocking_issue_count=0,
+            max_blocking_issue_count=0,
+            min_issue_count=0,
+            min_open_request_count=0,
+            min_evidence_count=5,
+        ),
+    ),
+)
+
+
 EVALUATION_SUITES: dict[str, EvaluationSuiteDefinition] = {
+    "phase12_sector_pack_deepening": EvaluationSuiteDefinition(
+        key="phase12_sector_pack_deepening",
+        title="Phase 12 Sector Pack Deepening Evaluation",
+        artifact_prefix="phase12-sector-pack-deepening",
+        scenarios=PHASE12_SECTOR_PACK_DEEPENING_SCENARIOS,
+    ),
     "phase11_motion_pack_deepening": EvaluationSuiteDefinition(
         key="phase11_motion_pack_deepening",
         title="Phase 11 Motion Pack Deepening Evaluation",

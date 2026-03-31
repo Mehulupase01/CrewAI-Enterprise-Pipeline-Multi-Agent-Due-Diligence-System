@@ -27,6 +27,7 @@ from crewai_enterprise_pipeline_api.domain.models import (
     ApprovalDecisionCreate,
     ApprovalDecisionSummary,
     ArtifactSourceKind,
+    BfsiNbfcMetricsSummary,
     BorrowerScorecard,
     BuySideAnalysis,
     CaseCreate,
@@ -59,6 +60,7 @@ from crewai_enterprise_pipeline_api.domain.models import (
     IssueScanResult,
     IssueUpdate,
     LegalStructureSummary,
+    ManufacturingMetricsSummary,
     OperationsSummary,
     QaItemCreate,
     QaItemSummary,
@@ -70,6 +72,7 @@ from crewai_enterprise_pipeline_api.domain.models import (
     RunExportPackageSummary,
     SearchRequest,
     TaxComplianceSummary,
+    TechSaasMetricsSummary,
     VendorRiskTier,
     WorkflowRunCreate,
     WorkflowRunDetail,
@@ -80,6 +83,7 @@ from crewai_enterprise_pipeline_api.domain.models import (
     WorkstreamDomain,
 )
 from crewai_enterprise_pipeline_api.services.approval_service import ApprovalService
+from crewai_enterprise_pipeline_api.services.bfsi_nbfc_service import BfsiNbfcService
 from crewai_enterprise_pipeline_api.services.buy_side_service import BuySideService
 from crewai_enterprise_pipeline_api.services.case_service import CaseService
 from crewai_enterprise_pipeline_api.services.checklist_service import ChecklistService
@@ -92,11 +96,13 @@ from crewai_enterprise_pipeline_api.services.forensic_service import ForensicSer
 from crewai_enterprise_pipeline_api.services.ingestion_service import IngestionService
 from crewai_enterprise_pipeline_api.services.issue_service import IssueService
 from crewai_enterprise_pipeline_api.services.legal_service import LegalService
+from crewai_enterprise_pipeline_api.services.manufacturing_service import ManufacturingService
 from crewai_enterprise_pipeline_api.services.operations_service import OperationsService
 from crewai_enterprise_pipeline_api.services.regulatory_service import RegulatoryService
 from crewai_enterprise_pipeline_api.services.report_service import ReportService
 from crewai_enterprise_pipeline_api.services.search_service import SearchService
 from crewai_enterprise_pipeline_api.services.tax_service import TaxService
+from crewai_enterprise_pipeline_api.services.tech_saas_service import TechSaaSService
 from crewai_enterprise_pipeline_api.services.vendor_service import VendorService
 from crewai_enterprise_pipeline_api.services.workflow_service import WorkflowService
 from crewai_enterprise_pipeline_api.storage.service import DocumentStorageService
@@ -350,6 +356,78 @@ async def get_vendor_risk_tier(
     ),
 ) -> VendorRiskTier:
     summary = await VendorService(session).build_vendor_risk_tier(
+        case_id,
+        persist_checklist=persist_checklist,
+    )
+    if summary is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
+    return summary
+
+
+@router.get(
+    "/{case_id}/tech-saas-metrics",
+    response_model=TechSaasMetricsSummary,
+)
+async def get_tech_saas_metrics(
+    case_id: str,
+    session: DbSession,
+    persist_checklist: bool = Query(
+        True,
+        description=(
+            "When true, checklist items satisfied by the Tech/SaaS sector engine are "
+            "updated before the summary is returned."
+        ),
+    ),
+) -> TechSaasMetricsSummary:
+    summary = await TechSaaSService(session).build_tech_saas_metrics(
+        case_id,
+        persist_checklist=persist_checklist,
+    )
+    if summary is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
+    return summary
+
+
+@router.get(
+    "/{case_id}/manufacturing-metrics",
+    response_model=ManufacturingMetricsSummary,
+)
+async def get_manufacturing_metrics(
+    case_id: str,
+    session: DbSession,
+    persist_checklist: bool = Query(
+        True,
+        description=(
+            "When true, checklist items satisfied by the Manufacturing sector engine are "
+            "updated before the summary is returned."
+        ),
+    ),
+) -> ManufacturingMetricsSummary:
+    summary = await ManufacturingService(session).build_manufacturing_metrics(
+        case_id,
+        persist_checklist=persist_checklist,
+    )
+    if summary is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
+    return summary
+
+
+@router.get(
+    "/{case_id}/bfsi-nbfc-metrics",
+    response_model=BfsiNbfcMetricsSummary,
+)
+async def get_bfsi_nbfc_metrics(
+    case_id: str,
+    session: DbSession,
+    persist_checklist: bool = Query(
+        True,
+        description=(
+            "When true, checklist items satisfied by the BFSI/NBFC sector engine are "
+            "updated before the summary is returned."
+        ),
+    ),
+) -> BfsiNbfcMetricsSummary:
+    summary = await BfsiNbfcService(session).build_bfsi_nbfc_metrics(
         case_id,
         persist_checklist=persist_checklist,
     )

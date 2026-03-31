@@ -35,6 +35,7 @@ from crewai_enterprise_pipeline_api.agents.packs.vendor_crew import (
 )
 from crewai_enterprise_pipeline_api.agents.phase10_tools import format_phase10_snapshot
 from crewai_enterprise_pipeline_api.agents.phase11_tools import format_phase11_snapshot
+from crewai_enterprise_pipeline_api.agents.phase12_tools import format_phase12_snapshot
 from crewai_enterprise_pipeline_api.agents.tools import (
     build_case_tools,
     build_workstream_tools,
@@ -248,6 +249,22 @@ def _phase11_snapshot_block(
     return f"## Motion Pack Deepening Snapshot\n{phase11_snapshot}\n\n"
 
 
+def _phase12_snapshot_block(
+    *,
+    sector_pack: str,
+    tech_saas_metrics=None,
+    manufacturing_metrics=None,
+    bfsi_nbfc_metrics=None,
+) -> str:
+    phase12_snapshot = format_phase12_snapshot(
+        sector_pack=sector_pack,
+        tech_saas_metrics=tech_saas_metrics,
+        manufacturing_metrics=manufacturing_metrics,
+        bfsi_nbfc_metrics=bfsi_nbfc_metrics,
+    )
+    return f"## Sector Pack Deepening Snapshot\n{phase12_snapshot}\n\n"
+
+
 def _build_llm(settings) -> LLM:
     """Create a CrewAI LLM instance from application settings."""
     model_prefix = {
@@ -276,6 +293,9 @@ def build_due_diligence_crew(
     buy_side_analysis=None,
     borrower_scorecard=None,
     vendor_risk_tier=None,
+    tech_saas_metrics=None,
+    manufacturing_metrics=None,
+    bfsi_nbfc_metrics=None,
 ) -> tuple[Crew, dict[str, str], dict[str, list[Any]]]:
     """Build a CrewAI crew for the given case context."""
     llm = _build_llm(settings)
@@ -323,6 +343,9 @@ def build_due_diligence_crew(
             buy_side_analysis=buy_side_analysis,
             borrower_scorecard=borrower_scorecard,
             vendor_risk_tier=vendor_risk_tier,
+            tech_saas_metrics=tech_saas_metrics,
+            manufacturing_metrics=manufacturing_metrics,
+            bfsi_nbfc_metrics=bfsi_nbfc_metrics,
         )
         agent = Agent(
             role=agent_cfg["role"],
@@ -380,6 +403,12 @@ def build_due_diligence_crew(
             borrower_scorecard=borrower_scorecard,
             vendor_risk_tier=vendor_risk_tier,
         )
+        phase12_block = _phase12_snapshot_block(
+            sector_pack=case_ctx.sector_pack,
+            tech_saas_metrics=tech_saas_metrics,
+            manufacturing_metrics=manufacturing_metrics,
+            bfsi_nbfc_metrics=bfsi_nbfc_metrics,
+        )
         available_tools_block = f"## Available Tools\n{', '.join(tool.name for tool in tools)}\n\n"
         task = Task(
             name=task_name,
@@ -395,6 +424,7 @@ def build_due_diligence_crew(
                 + phase9_block
                 + phase10_block
                 + phase11_block
+                + phase12_block
                 + available_tools_block
                 + "Requirements:\n"
                 "1. Ground material claims in the snapshot or tool results only.\n"
@@ -440,6 +470,9 @@ def build_due_diligence_crew(
         buy_side_analysis=buy_side_analysis,
         borrower_scorecard=borrower_scorecard,
         vendor_risk_tier=vendor_risk_tier,
+        tech_saas_metrics=tech_saas_metrics,
+        manufacturing_metrics=manufacturing_metrics,
+        bfsi_nbfc_metrics=bfsi_nbfc_metrics,
     )
 
     motion_pack_config = None
@@ -537,6 +570,9 @@ def build_due_diligence_crew(
         buy_side_analysis=buy_side_analysis,
         borrower_scorecard=borrower_scorecard,
         vendor_risk_tier=vendor_risk_tier,
+        tech_saas_metrics=tech_saas_metrics,
+        manufacturing_metrics=manufacturing_metrics,
+        bfsi_nbfc_metrics=bfsi_nbfc_metrics,
     )
     coordinator = Agent(
         role=COORDINATOR_CONFIG["role"],
@@ -582,6 +618,12 @@ def build_due_diligence_crew(
                 buy_side_analysis=buy_side_analysis,
                 borrower_scorecard=borrower_scorecard,
                 vendor_risk_tier=vendor_risk_tier,
+            )
+            + _phase12_snapshot_block(
+                sector_pack=case_ctx.sector_pack,
+                tech_saas_metrics=tech_saas_metrics,
+                manufacturing_metrics=manufacturing_metrics,
+                bfsi_nbfc_metrics=bfsi_nbfc_metrics,
             )
             + coordinator_tools_block
             + "Synthesize the workstream findings into a cohesive executive summary. "

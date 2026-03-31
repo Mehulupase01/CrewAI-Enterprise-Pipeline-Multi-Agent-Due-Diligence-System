@@ -13,7 +13,7 @@ No phase is considered complete until all of the following exist together:
 
 ## Current Checks
 
-The current gate now covers the foundation plus the implemented canonical engine layers through Phase 11:
+The current gate now covers the foundation plus the implemented canonical engine layers through Phase 12:
 
 - backend app boot and schema lifecycle
 - typed configuration loading
@@ -51,6 +51,12 @@ The current gate now covers the foundation plus the implemented canonical engine
 - automatic checklist satisfaction for motion-pack-specific buy-side, credit, and vendor onboarding items
 - workflow refresh, trace-event enrichment, synthesis updates, and executive memo highlights for motion-pack depth
 - dedicated Phase 11 motion-pack deepening evaluation coverage
+- structured Tech/SaaS ARR waterfall, MRR, NRR, churn, LTV, CAC, and payback extraction
+- structured Manufacturing capacity, DIO/DSO/DPO, asset-turnover, and asset-register extraction
+- structured BFSI / NBFC GNPA, NNPA, CRAR, ALM mismatch, PSL posture, and ALM bucket extraction
+- automatic checklist satisfaction for sector-pack-specific Tech/SaaS, Manufacturing, and BFSI / NBFC items
+- workflow refresh, trace-event enrichment, synthesis updates, executive memo highlights, and CrewAI tool surfaces for sector-pack depth
+- dedicated Phase 12 sector-pack deepening evaluation coverage
 - deterministic end-to-end evaluation scenarios with saved JSON scorecards
 - repeat-scan regression checks for issue fingerprint reuse
 - enforced-auth and role-guard tests
@@ -116,6 +122,16 @@ The current gate now covers the foundation plus the implemented canonical engine
   and next-review guidance.
 - Phase 11 motion-pack outputs must refresh inside workflow runs and enrich
   trace events, syntheses, reports, and CrewAI tool surfaces consistently.
+- The API can build structured Tech/SaaS metrics from uploaded evidence,
+  including ARR waterfall, MRR, NRR, churn, LTV, CAC, payback, and sector flags.
+- The API can build structured Manufacturing metrics from uploaded evidence,
+  including capacity utilization, DIO/DSO/DPO, asset turnover, asset register,
+  and plant/commercial/regulatory sector flags.
+- The API can build structured BFSI / NBFC metrics from uploaded evidence,
+  including GNPA, NNPA, CRAR, ALM mismatch, PSL posture, ALM buckets, and
+  analyst-readable sector flags.
+- Phase 12 sector-pack outputs must refresh inside workflow runs and enrich
+  trace events, syntheses, reports, and CrewAI tool surfaces consistently.
 - The first-slice evaluation suite passes blocked, clean-approved, and
   approved-nonblocking-risk scenarios.
 - Every quality-gate run writes a machine-readable artifact under
@@ -126,8 +142,9 @@ The current gate now covers the foundation plus the implemented canonical engine
 - The evaluation runner passes all supported suites, including credit lending,
   vendor onboarding, manufacturing / industrials, BFSI / NBFC, the dedicated
   Phase 9 legal/tax/regulatory suite, and the dedicated Phase 10
-  commercial/operations/cyber/forensic suite, and the dedicated Phase 11
-  motion-pack deepening suite.
+  commercial/operations/cyber/forensic suite, the dedicated Phase 11
+  motion-pack deepening suite, and the dedicated Phase 12 sector-pack
+  deepening suite.
 - The web app exposes a dashboard, case workspace, and run viewer over the shared case model.
 - The workbench reflects the actual platform surface instead of generator boilerplate.
 - The repo contains reproducible scripts for bootstrap, dev, and checks.

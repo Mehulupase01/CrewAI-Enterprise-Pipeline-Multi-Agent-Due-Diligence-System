@@ -301,6 +301,27 @@ def _evaluate_scenario(scenario: EvaluationScenario) -> dict[str, Any]:
                     client.get(f"/api/v1/cases/{case_id}/vendor-risk-tier"),
                     200,
                 )
+            tech_saas_metrics: dict[str, Any] | None = None
+            if scenario.tech_saas_metrics_expectation is not None:
+                tech_saas_metrics = _ensure_success(
+                    "tech saas metrics",
+                    client.get(f"/api/v1/cases/{case_id}/tech-saas-metrics"),
+                    200,
+                )
+            manufacturing_metrics: dict[str, Any] | None = None
+            if scenario.manufacturing_metrics_expectation is not None:
+                manufacturing_metrics = _ensure_success(
+                    "manufacturing metrics",
+                    client.get(f"/api/v1/cases/{case_id}/manufacturing-metrics"),
+                    200,
+                )
+            bfsi_nbfc_metrics: dict[str, Any] | None = None
+            if scenario.bfsi_nbfc_metrics_expectation is not None:
+                bfsi_nbfc_metrics = _ensure_success(
+                    "bfsi nbfc metrics",
+                    client.get(f"/api/v1/cases/{case_id}/bfsi-nbfc-metrics"),
+                    200,
+                )
 
             approval = _ensure_success(
                 "approval review",
@@ -416,6 +437,21 @@ def _evaluate_scenario(scenario: EvaluationScenario) -> dict[str, Any]:
         metrics["vendor_tier_questionnaire_count"] = len(vendor_risk_tier["questionnaire"])
         metrics["vendor_tier_checklist_update_count"] = len(
             vendor_risk_tier.get("checklist_updates", [])
+        )
+    if tech_saas_metrics is not None:
+        metrics["tech_saas_arr_waterfall_count"] = len(tech_saas_metrics["arr_waterfall"])
+        metrics["tech_saas_checklist_update_count"] = len(
+            tech_saas_metrics.get("checklist_updates", [])
+        )
+    if manufacturing_metrics is not None:
+        metrics["manufacturing_asset_register_count"] = len(manufacturing_metrics["asset_register"])
+        metrics["manufacturing_checklist_update_count"] = len(
+            manufacturing_metrics.get("checklist_updates", [])
+        )
+    if bfsi_nbfc_metrics is not None:
+        metrics["bfsi_alm_bucket_count"] = len(bfsi_nbfc_metrics["alm_bucket_gaps"])
+        metrics["bfsi_checklist_update_count"] = len(
+            bfsi_nbfc_metrics.get("checklist_updates", [])
         )
 
     checks: list[dict[str, Any]] = []
@@ -1199,6 +1235,244 @@ def _evaluate_scenario(scenario: EvaluationScenario) -> dict[str, Any]:
             expected=f">= {vendor_expectation.min_checklist_updates}",
             detail="Vendor engine should auto-satisfy the expected minimum checklist items.",
         )
+    if scenario.tech_saas_metrics_expectation is not None and tech_saas_metrics is not None:
+        tech_expectation = scenario.tech_saas_metrics_expectation
+        if tech_expectation.expected_arr is not None:
+            actual_arr = tech_saas_metrics["arr"]
+            _append_check(
+                checks,
+                name="tech_saas_arr",
+                passed=actual_arr is not None
+                and abs(actual_arr - tech_expectation.expected_arr) < 0.0001,
+                actual=actual_arr,
+                expected=tech_expectation.expected_arr,
+                detail="Tech/SaaS ARR should match the expected sector extraction.",
+            )
+        if tech_expectation.expected_mrr is not None:
+            actual_mrr = tech_saas_metrics["mrr"]
+            _append_check(
+                checks,
+                name="tech_saas_mrr",
+                passed=actual_mrr is not None
+                and abs(actual_mrr - tech_expectation.expected_mrr) < 0.0001,
+                actual=actual_mrr,
+                expected=tech_expectation.expected_mrr,
+                detail="Tech/SaaS MRR should match the expected sector extraction.",
+            )
+        if tech_expectation.expected_nrr is not None:
+            actual_nrr = tech_saas_metrics["nrr"]
+            _append_check(
+                checks,
+                name="tech_saas_nrr",
+                passed=actual_nrr is not None
+                and abs(actual_nrr - tech_expectation.expected_nrr) < 0.0001,
+                actual=actual_nrr,
+                expected=tech_expectation.expected_nrr,
+                detail="Tech/SaaS NRR should match the expected sector extraction.",
+            )
+        if tech_expectation.expected_churn is not None:
+            actual_churn = tech_saas_metrics["churn_rate"]
+            _append_check(
+                checks,
+                name="tech_saas_churn",
+                passed=actual_churn is not None
+                and abs(actual_churn - tech_expectation.expected_churn) < 0.0001,
+                actual=actual_churn,
+                expected=tech_expectation.expected_churn,
+                detail="Tech/SaaS churn should match the expected sector extraction.",
+            )
+        if tech_expectation.expected_payback_months is not None:
+            actual_payback = tech_saas_metrics["payback_months"]
+            _append_check(
+                checks,
+                name="tech_saas_payback",
+                passed=actual_payback is not None
+                and abs(actual_payback - tech_expectation.expected_payback_months) < 0.0001,
+                actual=actual_payback,
+                expected=tech_expectation.expected_payback_months,
+                detail="Tech/SaaS payback should match the expected sector extraction.",
+            )
+        _append_check(
+            checks,
+            name="tech_saas_arr_waterfall_count",
+            passed=len(tech_saas_metrics["arr_waterfall"])
+            >= tech_expectation.min_arr_waterfall_items,
+            actual=len(tech_saas_metrics["arr_waterfall"]),
+            expected=f">= {tech_expectation.min_arr_waterfall_items}",
+            detail="Tech/SaaS engine should expose the expected ARR waterfall depth.",
+        )
+        if tech_expectation.flag_substrings:
+            _append_check(
+                checks,
+                name="tech_saas_flags",
+                passed=all(
+                    any(fragment.lower() in flag.lower() for flag in tech_saas_metrics["flags"])
+                    for fragment in tech_expectation.flag_substrings
+                ),
+                actual=tech_saas_metrics["flags"],
+                expected=list(tech_expectation.flag_substrings),
+                detail="Expected Tech/SaaS flag phrases should appear in the sector summary.",
+            )
+        _append_check(
+            checks,
+            name="tech_saas_checklist_updates",
+            passed=len(tech_saas_metrics.get("checklist_updates", []))
+            >= tech_expectation.min_checklist_updates,
+            actual=len(tech_saas_metrics.get("checklist_updates", [])),
+            expected=f">= {tech_expectation.min_checklist_updates}",
+            detail="Tech/SaaS engine should auto-satisfy the expected minimum checklist items.",
+        )
+    if scenario.manufacturing_metrics_expectation is not None and manufacturing_metrics is not None:
+        manufacturing_expectation = scenario.manufacturing_metrics_expectation
+        for name, actual, expected, detail in (
+            (
+                "manufacturing_capacity_utilization",
+                manufacturing_metrics["capacity_utilization"],
+                manufacturing_expectation.expected_capacity_utilization,
+                "Manufacturing capacity utilization should match the expected sector extraction.",
+            ),
+            (
+                "manufacturing_dio",
+                manufacturing_metrics["dio"],
+                manufacturing_expectation.expected_dio,
+                "Manufacturing DIO should match the expected sector extraction.",
+            ),
+            (
+                "manufacturing_dso",
+                manufacturing_metrics["dso"],
+                manufacturing_expectation.expected_dso,
+                "Manufacturing DSO should match the expected sector extraction.",
+            ),
+            (
+                "manufacturing_dpo",
+                manufacturing_metrics["dpo"],
+                manufacturing_expectation.expected_dpo,
+                "Manufacturing DPO should match the expected sector extraction.",
+            ),
+            (
+                "manufacturing_asset_turnover",
+                manufacturing_metrics["asset_turnover"],
+                manufacturing_expectation.expected_asset_turnover,
+                "Manufacturing asset turnover should match the expected sector extraction.",
+            ),
+        ):
+            if expected is None:
+                continue
+            _append_check(
+                checks,
+                name=name,
+                passed=actual is not None and abs(actual - expected) < 0.0001,
+                actual=actual,
+                expected=expected,
+                detail=detail,
+            )
+        _append_check(
+            checks,
+            name="manufacturing_asset_register_count",
+            passed=len(manufacturing_metrics["asset_register"])
+            >= manufacturing_expectation.min_asset_register_items,
+            actual=len(manufacturing_metrics["asset_register"]),
+            expected=f">= {manufacturing_expectation.min_asset_register_items}",
+            detail="Manufacturing engine should expose the expected asset-register depth.",
+        )
+        if manufacturing_expectation.flag_substrings:
+            _append_check(
+                checks,
+                name="manufacturing_flags",
+                passed=all(
+                    any(fragment.lower() in flag.lower() for flag in manufacturing_metrics["flags"])
+                    for fragment in manufacturing_expectation.flag_substrings
+                ),
+                actual=manufacturing_metrics["flags"],
+                expected=list(manufacturing_expectation.flag_substrings),
+                detail="Expected manufacturing flag phrases should appear in the sector summary.",
+            )
+        _append_check(
+            checks,
+            name="manufacturing_checklist_updates",
+            passed=len(manufacturing_metrics.get("checklist_updates", []))
+            >= manufacturing_expectation.min_checklist_updates,
+            actual=len(manufacturing_metrics.get("checklist_updates", [])),
+            expected=f">= {manufacturing_expectation.min_checklist_updates}",
+            detail="Manufacturing engine should auto-satisfy the expected minimum checklist items.",
+        )
+    if scenario.bfsi_nbfc_metrics_expectation is not None and bfsi_nbfc_metrics is not None:
+        bfsi_expectation = scenario.bfsi_nbfc_metrics_expectation
+        for name, actual, expected, detail in (
+            (
+                "bfsi_gnpa",
+                bfsi_nbfc_metrics["gnpa"],
+                bfsi_expectation.expected_gnpa,
+                "BFSI GNPA should match the expected sector extraction.",
+            ),
+            (
+                "bfsi_nnpa",
+                bfsi_nbfc_metrics["nnpa"],
+                bfsi_expectation.expected_nnpa,
+                "BFSI NNPA should match the expected sector extraction.",
+            ),
+            (
+                "bfsi_crar",
+                bfsi_nbfc_metrics["crar"],
+                bfsi_expectation.expected_crar,
+                "BFSI CRAR should match the expected sector extraction.",
+            ),
+            (
+                "bfsi_alm_mismatch",
+                bfsi_nbfc_metrics["alm_mismatch"],
+                bfsi_expectation.expected_alm_mismatch,
+                "BFSI ALM mismatch should match the expected sector extraction.",
+            ),
+        ):
+            if expected is None:
+                continue
+            _append_check(
+                checks,
+                name=name,
+                passed=actual is not None and abs(actual - expected) < 0.0001,
+                actual=actual,
+                expected=expected,
+                detail=detail,
+            )
+        if bfsi_expectation.expected_psl_status is not None:
+            _append_check(
+                checks,
+                name="bfsi_psl_status",
+                passed=bfsi_nbfc_metrics["psl_compliance"] == bfsi_expectation.expected_psl_status,
+                actual=bfsi_nbfc_metrics["psl_compliance"],
+                expected=bfsi_expectation.expected_psl_status,
+                detail="BFSI PSL status should match the expected sector extraction.",
+            )
+        _append_check(
+            checks,
+            name="bfsi_alm_bucket_gaps",
+            passed=len(bfsi_nbfc_metrics["alm_bucket_gaps"])
+            >= bfsi_expectation.min_alm_bucket_gaps,
+            actual=len(bfsi_nbfc_metrics["alm_bucket_gaps"]),
+            expected=f">= {bfsi_expectation.min_alm_bucket_gaps}",
+            detail="BFSI engine should expose the expected ALM bucket depth.",
+        )
+        if bfsi_expectation.flag_substrings:
+            _append_check(
+                checks,
+                name="bfsi_flags",
+                passed=all(
+                    any(fragment.lower() in flag.lower() for flag in bfsi_nbfc_metrics["flags"])
+                    for fragment in bfsi_expectation.flag_substrings
+                ),
+                actual=bfsi_nbfc_metrics["flags"],
+                expected=list(bfsi_expectation.flag_substrings),
+                detail="Expected BFSI flag phrases should appear in the sector summary.",
+            )
+        _append_check(
+            checks,
+            name="bfsi_checklist_updates",
+            passed=len(bfsi_nbfc_metrics.get("checklist_updates", []))
+            >= bfsi_expectation.min_checklist_updates,
+            actual=len(bfsi_nbfc_metrics.get("checklist_updates", [])),
+            expected=f">= {bfsi_expectation.min_checklist_updates}",
+            detail="BFSI engine should auto-satisfy the expected minimum checklist items.",
+        )
 
     return {
         "code": scenario.code,
@@ -1222,6 +1496,9 @@ def _evaluate_scenario(scenario: EvaluationScenario) -> dict[str, Any]:
         "buy_side_analysis": buy_side_analysis,
         "borrower_scorecard": borrower_scorecard,
         "vendor_risk_tier": vendor_risk_tier,
+        "tech_saas_metrics": tech_saas_metrics,
+        "manufacturing_metrics": manufacturing_metrics,
+        "bfsi_nbfc_metrics": bfsi_nbfc_metrics,
         "scenario": {
             "case_payload": scenario.case_payload,
             "satisfy_all_checklist_items": scenario.satisfy_all_checklist_items,
