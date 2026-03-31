@@ -14,6 +14,7 @@ from crewai_enterprise_pipeline_api.agents.config import (
     motion_pack_context,
     sector_pack_context,
 )
+from crewai_enterprise_pipeline_api.agents.financial_tools import format_financial_snapshot
 from crewai_enterprise_pipeline_api.agents.models import (
     ExecutiveSummaryOutput,
     WorkstreamAnalysisOutput,
@@ -204,6 +205,7 @@ def _build_llm(settings) -> LLM:
 def build_due_diligence_crew(
     case_ctx: CaseContext,
     settings,
+    financial_summary=None,
 ) -> tuple[Crew, dict[str, str], dict[str, list[Any]]]:
     """Build a CrewAI crew for the given case context."""
     llm = _build_llm(settings)
@@ -238,6 +240,8 @@ def build_due_diligence_crew(
             chunk_items=ws_ctx.chunks,
             default_top_k=settings.crew_tool_top_k,
             max_usage_count=settings.crew_tool_max_usage,
+            financial_summary=financial_summary,
+            sector_pack=case_ctx.sector_pack,
         )
         agent = Agent(
             role=agent_cfg["role"],
@@ -264,6 +268,13 @@ def build_due_diligence_crew(
                 "material assertions.\n\n"
                 "## Workstream Snapshot\n"
                 f"{_format_workstream_snapshot(ws_ctx)}\n\n"
+                + (
+                    "## Financial QoE Snapshot\n"
+                    f"{format_financial_snapshot(financial_summary)}\n\n"
+                    if ws_domain == WorkstreamDomain.FINANCIAL_QOE.value
+                    else ""
+                )
+                +
                 "## Available Tools\n"
                 f"{', '.join(tool.name for tool in tools)}\n\n"
                 "Requirements:\n"
@@ -297,6 +308,8 @@ def build_due_diligence_crew(
         chunk_items=case_ctx.chunks,
         default_top_k=settings.crew_tool_top_k,
         max_usage_count=settings.crew_tool_max_usage,
+        financial_summary=financial_summary,
+        sector_pack=case_ctx.sector_pack,
     )
     coordinator = Agent(
         role=COORDINATOR_CONFIG["role"],
@@ -321,6 +334,8 @@ def build_due_diligence_crew(
             f"Workstreams covered: {', '.join(case_ctx.workstreams.keys())}.\n\n"
             "## Case Snapshot\n"
             f"{_format_case_snapshot(case_ctx)}\n\n"
+            "## Financial QoE Snapshot\n"
+            f"{format_financial_snapshot(financial_summary)}\n\n"
             "## Available Tools\n"
             f"{', '.join(tool.name for tool in coordinator_tools)}\n\n"
             "Synthesize the workstream findings into a cohesive executive summary. "

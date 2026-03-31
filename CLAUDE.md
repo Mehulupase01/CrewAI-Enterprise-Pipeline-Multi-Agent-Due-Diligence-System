@@ -2,18 +2,18 @@
 
 ## Current State
 
-**Completed phases:** 0-7 | **Next:** Phase 8
-**Tests:** 87 pytest, 11 eval scenarios (5 suites) | **Blockers:** None
+**Completed phases:** 0-8 | **Next:** Phase 9
+**Tests:** 92 pytest, 12 eval scenarios (6 suites) | **Blockers:** None
 
 ## Project Overview
 
 India-focused due diligence system: FastAPI API (`apps/api/`) + Next.js workbench (`apps/web/`).
 Pack model: `motion_packs x sector_packs x India rule_packs`.
-CrewAI is wired through Phase 7 and activates only when `LLM_PROVIDER` + `LLM_API_KEY` are set. A post-Phase-7 enhancement added scoped read-only evidence, issue, and checklist tools over pre-loaded case snapshots, but the next canonical master-plan phase is still Phase 8: Financial Quality of Earnings (QoE) Engine. Deterministic fallback remains the default safety path (AD-001, AD-027, AD-030).
+CrewAI is wired through Phase 7 and activates only when `LLM_PROVIDER` + `LLM_API_KEY` are set. A post-Phase-7 enhancement added scoped read-only evidence, issue, and checklist tools over pre-loaded case snapshots, and canonical Phase 8 is now complete with a Financial Quality of Earnings (QoE) engine: structured workbook parsing, normalized EBITDA adjustments, ratio analysis, financial flags, workflow integration, and checklist auto-satisfaction. Deterministic fallback remains the default safety path (AD-001, AD-027, AD-030).
 
 ## Execution Contract For This Repo
 
-- Use `docs/MASTERPLAN.pdf` as the strategic roadmap.
+- Use `docs/MASTERPLAN.docx` as the strategic roadmap when available. Treat `docs/MASTERPLAN.pdf` as the presentation/export companion.
 - Use the actual repo code, tests, scripts, and verified command outputs as the execution truth.
 - Complete one master-plan phase at a time unless the user explicitly asks for batching.
 - Do not call a phase complete if it is still a prototype, partial slice, or happy-path-only implementation.
@@ -29,7 +29,7 @@ When resuming this repo in a new session, read in this order:
 4. `docs/DECISIONS.md`
 5. `docs/architecture.md`
 6. `docs/verification.md`
-7. the relevant part of `docs/MASTERPLAN.pdf`
+7. the relevant part of `docs/MASTERPLAN.docx` (preferred) or `docs/MASTERPLAN.pdf`
 
 If docs disagree with the code, trust the code/tests/runtime outputs for the current state and then repair the docs.
 
@@ -78,7 +78,8 @@ cd apps/api && python -m crewai_enterprise_pipeline_api.evaluation.runner --suit
 - `docs/PROGRESS.md` - completion history per phase
 - `docs/DECISIONS.md` - architecture rationale (AD-001 onward)
 - `docs/architecture.md` - file layout, component inventory, honest current-state assessment
-- `docs/MASTERPLAN.pdf` - 18-phase blueprint
+- `docs/MASTERPLAN.docx` - canonical machine-readable 18-phase blueprint
+- `docs/MASTERPLAN.pdf` - visual/export companion to the master plan
 
 ## After Every Phase
 

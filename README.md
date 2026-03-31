@@ -46,12 +46,14 @@ docker-compose.yml
 
 ## Current Phase
 
-The repository has completed Phases 0-7 from the current master-plan execution
+The repository has completed Phases 0-8 from the current master-plan execution
 sequence. After Phase 7, the repo also received an additional CrewAI depth
-enhancement: tool-grounded evidence access for the LLM path. The current build
-includes the first flagship buy-side slice, all planned motion and sector
-expansions, analyst-ready export archives, and scoped CrewAI evidence tools on
-top of the existing hardened platform spine:
+enhancement: tool-grounded evidence access for the LLM path. Phase 8 is now
+closed as the canonical Financial Quality of Earnings (QoE) engine. The current
+build includes the first flagship buy-side slice, all planned motion and sector
+expansions, analyst-ready export archives, scoped CrewAI evidence tools, and a
+workflow-integrated financial analysis layer on top of the existing hardened
+platform spine:
 
 - persisted case operations backed by SQLAlchemy
 - document upload, parsing, storage, and evidence extraction
@@ -60,6 +62,12 @@ top of the existing hardened platform spine:
 - approval review gate plus executive memo report preview endpoint
 - persisted workflow runs with trace events and generated report bundles
 - workstream synthesis for the first diligence slice
+- structured financial workbook parsing into annual periods and QoE adjustments
+- `GET /api/v1/cases/{case_id}/financial-summary` for normalized EBITDA,
+  financial ratios, and red-flag analysis
+- automatic checklist satisfaction for relevant financial workstream items
+- CrewAI financial tools and sector benchmarks for the financial workstream and
+  coordinator
 - tool-grounded CrewAI workstream analysis with scoped evidence, issue, and
   checklist review tools over pre-loaded case snapshots
 - analyst workbench dashboard, case workspace, and run viewer with live API support
@@ -160,6 +168,12 @@ To run only the BFSI / NBFC expansion suite:
 
 ```powershell
 ./scripts/evaluate.ps1 -Suite bfsi_nbfc_expansion
+```
+
+To run only the Phase 8 financial QoE suite:
+
+```powershell
+./scripts/evaluate.ps1 -Suite phase8_financial_qoe
 ```
 
 To run a live API smoke check after the stack is up:

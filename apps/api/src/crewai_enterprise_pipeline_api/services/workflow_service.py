@@ -27,6 +27,7 @@ from crewai_enterprise_pipeline_api.domain.models import (
 )
 from crewai_enterprise_pipeline_api.services.case_service import CaseService
 from crewai_enterprise_pipeline_api.services.checklist_service import ChecklistService
+from crewai_enterprise_pipeline_api.services.financial_qoe_service import FinancialQoEService
 from crewai_enterprise_pipeline_api.services.report_service import ReportService
 from crewai_enterprise_pipeline_api.services.synthesis_service import SynthesisService
 
@@ -38,6 +39,7 @@ class WorkflowService:
         self.session = session
         self.case_service = CaseService(session)
         self.checklist_service = ChecklistService(session)
+        self.financial_qoe_service = FinancialQoEService(session)
         self.report_service = ReportService(session)
         self.synthesis_service = SynthesisService()
 
@@ -152,6 +154,14 @@ class WorkflowService:
         case_id: str,
     ) -> WorkflowRunResult | None:
         """Original deterministic workflow — no LLM, pure template logic."""
+        financial_summary = await self.financial_qoe_service.build_financial_summary(
+            case_id,
+            persist_checklist=True,
+        )
+        case = await self.case_service._get_case_record(case_id)
+        if case is None:
+            return None
+
         coverage = await self.checklist_service.get_coverage_summary(case_id)
         executive_memo = await self.report_service.build_executive_memo(case_id)
         executive_memo_markdown = await self.report_service.render_executive_memo_markdown(
@@ -163,10 +173,20 @@ class WorkflowService:
         if coverage is None or executive_memo is None:
             return None
 
-        syntheses = self.synthesis_service.build_workstream_syntheses(case, run_id)
+        syntheses = self.synthesis_service.build_workstream_syntheses(
+            case,
+            run_id,
+            financial_summary,
+        )
         synthesis_markdown = self.synthesis_service.render_markdown(case, syntheses)
 
-        trace_events = self._build_trace_events(case, run_id, coverage, syntheses)
+        trace_events = self._build_trace_events(
+            case,
+            run_id,
+            coverage,
+            syntheses,
+            financial_summary,
+        )
         report_bundles = self._build_report_bundles(
             case_id,
             run_id,
@@ -217,9 +237,39 @@ class WorkflowService:
         settings = get_settings()
         seq = 1
 
+        financial_summary = await self.financial_qoe_service.build_financial_summary(
+            case_id,
+            persist_checklist=True,
+        )
+        case = await self.case_service._get_case_record(case_id)
+        if case is None:
+            return None
+        self.session.add(
+            RunTraceEventRecord(
+                run_id=run_id,
+                sequence_number=seq,
+                step_key="financial_qoe_refresh",
+                title="Financial QoE summary refreshed",
+                message=(
+                    "Parsed "
+                    f"{0 if financial_summary is None else financial_summary.statement_count} "
+                    "financial statements into "
+                    f"{0 if financial_summary is None else len(financial_summary.periods)} "
+                    "periods."
+                ),
+                level=RunEventLevel.INFO.value,
+            )
+        )
+        seq += 1
+        await self.session.commit()
+
         # 1. Build case context
         case_ctx = build_case_context(case)
-        crew, task_map, tool_map = build_due_diligence_crew(case_ctx, settings)
+        crew, task_map, tool_map = build_due_diligence_crew(
+            case_ctx,
+            settings,
+            financial_summary=financial_summary,
+        )
         total_tools = sum(len(tools) for tools in tool_map.values())
         self.session.add(
             RunTraceEventRecord(
@@ -460,12 +510,21 @@ class WorkflowService:
         run_id: str,
         coverage,
         syntheses: list[WorkstreamSynthesisRecord],
+        financial_summary,
     ) -> list[RunTraceEventRecord]:
         latest_approval = case.approvals[-1] if case.approvals else None
         approval_note = (
             "No approval review recorded yet."
             if latest_approval is None
             else f"Latest decision: {latest_approval.decision}"
+        )
+        financial_note = (
+            "No structured financial statements detected yet."
+            if financial_summary is None or not financial_summary.periods
+            else (
+                f"Parsed {financial_summary.statement_count} statements into "
+                f"{len(financial_summary.periods)} financial periods."
+            )
         )
         return [
             RunTraceEventRecord(
@@ -482,6 +541,14 @@ class WorkflowService:
             RunTraceEventRecord(
                 run_id=run_id,
                 sequence_number=2,
+                step_key="financial_qoe_refresh",
+                title="Financial QoE summary refreshed",
+                message=financial_note,
+                level=RunEventLevel.INFO.value,
+            ),
+            RunTraceEventRecord(
+                run_id=run_id,
+                sequence_number=3,
                 step_key="issue_triage",
                 title="Issue register reviewed",
                 message=(
@@ -491,7 +558,7 @@ class WorkflowService:
             ),
             RunTraceEventRecord(
                 run_id=run_id,
-                sequence_number=3,
+                sequence_number=4,
                 step_key="coverage_check",
                 title="Checklist coverage computed",
                 message=(
@@ -505,7 +572,7 @@ class WorkflowService:
             ),
             RunTraceEventRecord(
                 run_id=run_id,
-                sequence_number=4,
+                sequence_number=5,
                 step_key="approval_snapshot",
                 title="Approval state captured",
                 message=approval_note,
@@ -513,7 +580,7 @@ class WorkflowService:
             ),
             RunTraceEventRecord(
                 run_id=run_id,
-                sequence_number=5,
+                sequence_number=6,
                 step_key="workstream_synthesis",
                 title="Workstream syntheses generated",
                 message=(
@@ -523,7 +590,7 @@ class WorkflowService:
             ),
             RunTraceEventRecord(
                 run_id=run_id,
-                sequence_number=6,
+                sequence_number=7,
                 step_key="report_bundle_generation",
                 title="Report bundles generated",
                 message=(

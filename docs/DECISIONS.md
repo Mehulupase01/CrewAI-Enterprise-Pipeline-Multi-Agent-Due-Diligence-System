@@ -334,7 +334,7 @@ name-based).
 
 ## AD-028: Roadmap documents guide direction, but repo state is execution truth (2026-03-31)
 
-**Decision:** `docs/MASTERPLAN.pdf` and related planning docs define the intended roadmap, but implementation decisions during execution must be grounded in actual code, tests, runnable commands, and verified outputs.
+**Decision:** `docs/MASTERPLAN.docx` is the preferred machine-readable roadmap source, with `docs/MASTERPLAN.pdf` as its presentation/export companion. Both define intended direction, but implementation decisions during execution must be grounded in actual code, tests, runnable commands, and verified outputs.
 
 **Why:** Long-running flagship projects often accumulate drift between strategy documents and repo reality. Without an explicit rule, future sessions can optimize against stale planning text and misreport progress.
 
@@ -369,6 +369,46 @@ name-based).
 **Why:** This adds auditability for the LLM path without introducing thread-safe live database writes or a mid-run event queue. It improves reviewability while keeping the execution model aligned with AD-026.
 
 **Impact:** The SSE viewer still observes events after completion rather than true live tool streaming. A future phase can add step-level callbacks and a queue-backed streaming bridge if the roadmap requires real-time agent telemetry.
+
+---
+
+## AD-032: Phase 8 financial summaries are computed on demand, not stored as a separate table (2026-03-31)
+
+**Decision:** The QoE engine computes the case financial summary from uploaded financial artifacts on demand and refreshes it inside workflow execution before coverage, approvals, syntheses, and reports. It is not persisted as a separate derived database table in Phase 8.
+
+**Why:** The financial summary is fully derivable from stored artifacts plus deterministic parsing logic. Persisting it would add schema churn, stale-data risk, and migration overhead for a phase that is still refining extraction logic.
+
+**Impact:** `financial_qoe_service.py` is the single source of truth for Phase 8 ratios, normalized EBITDA, and flags. Workflow execution must call the QoE refresh before downstream report and approval logic.
+
+---
+
+## AD-033: Financial metric matching prefers exact and longer aliases over generic substrings (2026-03-31)
+
+**Decision:** Financial label normalization ranks exact alias matches ahead of word-boundary matches and prefers longer aliases over shorter generic ones.
+
+**Why:** A naive substring strategy caused real extraction errors: `EBITDA` could be consumed by the generic `EBIT` alias, and `Q4 Revenue Share` could be misread as `revenue`. Phase 8 needs deterministic and trustworthy parsing for downstream ratios and checklist automation.
+
+**Impact:** New aliases in `financial_parser.py` must remain specific and test-backed. Parser regressions in label resolution should be treated as high-severity because they silently distort downstream QoE metrics.
+
+---
+
+## AD-034: Financial checklist automation happens by default when the summary endpoint is called (2026-03-31)
+
+**Decision:** `GET /cases/{id}/financial-summary` persists checklist auto-satisfaction by default, with `persist_checklist=false` available for dry-run access.
+
+**Why:** The master plan explicitly requires automatic checklist satisfaction for financial workstream items. Doing this only inside the workflow path would make direct analyst and evaluation access inconsistent with the canonical phase behavior.
+
+**Impact:** The financial summary endpoint has stateful side effects by default. Callers that need read-only inspection must opt out explicitly.
+
+---
+
+## AD-035: CrewAI financial workstreams consume structured QoE state plus benchmarks, not only narrative prompt context (2026-03-31)
+
+**Decision:** The financial workstream and coordinator receive a structured financial snapshot plus dedicated financial ratio and benchmark tools during CrewAI runs.
+
+**Why:** Phase 8 is about deterministic financial depth, not just richer prose. If the CrewAI path continued to rely on generic narrative-only prompts, the QoE engine would not materially improve the LLM execution path.
+
+**Impact:** `agents/financial_tools.py`, `agents/tools.py`, and `agents/crew.py` are now part of the canonical financial analysis surface. Future financial phases should extend these structured tools before adding more prompt text.
 
 ---
 

@@ -1,6 +1,6 @@
 # Architecture Overview
 
-> **Last updated:** 2026-03-31 (Phase 7 complete + post-Phase-7 enhancement)
+> **Last updated:** 2026-03-31 (Phase 8 complete + post-Phase-7 enhancement)
 > **Update rule:** This file is updated after every masterplan phase to reflect actual system state.
 
 ## System Summary
@@ -11,7 +11,7 @@ reviewer approvals, workflow runs, report bundles, and durable ZIP export packag
 
 ## Architecture Diagram
 
-See `docs/MASTERPLAN.pdf` pages 3-8 for full diagrams including:
+See `docs/MASTERPLAN.docx` (preferred) or `docs/MASTERPLAN.pdf` for the roadmap diagrams including:
 - System architecture (all components and connections)
 - 7-step data flow pipeline
 - Phase dependency graph
@@ -22,18 +22,19 @@ See `docs/MASTERPLAN.pdf` pages 3-8 for full diagrams including:
 ## Current State (Honest Assessment)
 
 ### What is REAL and WORKING
-- 15 SQLAlchemy ORM models with proper relationships, cascades, timestamps
-- 103 Pydantic schemas with consistent naming conventions
-- 11 service classes + CrewAI multi-agent orchestration (activates with LLM config)
-- 41 REST endpoints (full CRUD + SSE streaming + chunks + search + conflicts)
+- 14 SQLAlchemy ORM models with proper relationships, cascades, timestamps
+- 54 BaseModel/ORMModel schemas with consistent naming conventions, plus shared enums
+- 12 service classes + CrewAI multi-agent orchestration (activates with LLM config)
+- 48 REST endpoints (full CRUD + SSE streaming + chunks + search + conflicts + financial summary)
 - Document parsing for 6 formats (PDF with tables, DOCX with headings+tables, XLSX multi-sheet, CSV, JSON, TXT)
+- Structured financial workbook parsing for annual periods, QoE adjustments, normalized EBITDA, ratios, and financial flags
 - Semantic chunking engine (heading > paragraph > sentence splitting, 1200 char max)
 - Rule-based entity extraction (financial, legal, regulatory, India identifiers)
 - SHA256 document dedup (same content returns existing artifact)
 - Header-based RBAC with 4 roles (VIEWER, ANALYST, REVIEWER, ADMIN)
-- Evaluation harness with 5 suites, 11 scenarios
-- 87 pytest unit tests
-- Export ZIP packages (markdown only)
+- Evaluation harness with 6 suites, 12 scenarios
+- 92 pytest unit tests
+- Export ZIP packages (markdown + JSON metadata / snapshots)
 - Docker Compose stack (PostgreSQL 17, Redis 7.4, MinIO)
 
 ### What was ADDED after Phase 7
@@ -42,6 +43,14 @@ See `docs/MASTERPLAN.pdf` pages 3-8 for full diagrams including:
 - Compact workstream and coordinator prompts that rely on tool usage instead of prompt-stuffing the full case state
 - Persisted tool-usage summaries in run trace events plus total tool-call counts in CrewAI run summaries
 - 4 new pytest tests covering tool behavior and traced CrewAI runs
+
+### What was ADDED in Phase 8
+- `ingestion/financial_parser.py` for structured XLSX financial statement extraction and QoE adjustment detection
+- `services/financial_qoe_service.py` for on-demand financial summaries, ratio computation, normalized EBITDA bridge, red-flag detection, and checklist auto-satisfaction
+- `GET /cases/{id}/financial-summary` for analysts, evaluators, and workflow orchestration
+- Workflow-integrated financial refresh so approvals, syntheses, CrewAI prompts, and executive reporting all consume the same structured QoE state
+- `agents/financial_tools.py` plus financial prompt context so the CrewAI financial workstream and coordinator can use ratios and sector benchmarks directly
+- Dedicated Phase 8 evaluation coverage and five focused pytest cases for parser, ratios, checklist automation, tool attachment, and workflow integration
 
 ### What was ADDED in Phase 7
 - CrewAI multi-agent orchestration (`agents/` package) — 9 workstream agents + 1 coordinator
@@ -112,6 +121,7 @@ See `docs/MASTERPLAN.pdf` pages 3-8 for full diagrams including:
 - No multi-tenancy
 - CrewAI agents wired with scoped read-only tools, but they still require LLM_PROVIDER + LLM_API_KEY to activate
 - Real-time tool and step streaming is still not implemented; trace events are persisted after crew completion
+- No dedicated financial summary panel in the Next.js case workspace yet; Phase 8 is currently exposed through the API, workflow output, and reports rather than a bespoke UI view
 
 ## Layers
 
@@ -127,6 +137,7 @@ apps/api/src/crewai_enterprise_pipeline_api/
     config.py          # 9 workstream agent configs + coordinator + pack context helpers
     models.py          # WorkstreamAnalysisOutput, ExecutiveSummaryOutput
     crew.py            # CaseContext, compact prompt snapshots, crew factory, run_crew async wrapper
+    financial_tools.py # Structured financial ratio and sector benchmark tools for CrewAI
     tools.py           # Scoped read-only CrewAI tools over pre-loaded evidence, issues, checklist, and chunks
   api/
     router.py          # Mounts /system, /source-adapters, /cases under /api/v1/
@@ -150,11 +161,13 @@ apps/api/src/crewai_enterprise_pipeline_api/
     workflow_service.py    # Orchestrates runs (CrewAI when LLM configured, deterministic fallback)
     synthesis_service.py   # Workstream synthesis (deterministic template fill)
     report_service.py      # Executive memo generation
+    financial_qoe_service.py  # Phase 8 QoE summary, ratios, flags, checklist automation
     embedding_service.py   # Vector embedding generation (none/openai/local providers)
     export_service.py      # ZIP export package creation
     search_service.py      # Hybrid BM25+cosine search, evidence conflict detection
   ingestion/
     parsers.py         # PDF (tables), DOCX (headings+tables), XLSX (multi-sheet), CSV, JSON, TXT
+    financial_parser.py # Structured financial workbook parser for QoE metrics and adjustments
     chunker.py         # Semantic chunking: heading > paragraph > sentence (1200 char max)
     entity_extractor.py  # Rule-based: financial, legal, regulatory, India IDs (CIN, GSTIN)
   storage/
@@ -233,7 +246,7 @@ Motion Packs x Sector Packs x India Rule Packs. Any combination is valid.
 
 ## Target Architecture
 
-See `docs/MASTERPLAN.pdf` for the 18-phase plan to reach full production state:
+See `docs/MASTERPLAN.docx` for the 18-phase plan to reach full production state:
 - Real CrewAI multi-agent orchestration with 9 domain agents
 - pgvector hybrid search for evidence intelligence
 - Interactive frontend with full CRUD + live SSE streaming

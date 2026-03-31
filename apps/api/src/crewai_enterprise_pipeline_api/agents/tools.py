@@ -8,6 +8,9 @@ from typing import Any
 from crewai.tools import BaseTool
 from pydantic import BaseModel, Field, PrivateAttr
 
+from crewai_enterprise_pipeline_api.agents.financial_tools import build_financial_tools
+from crewai_enterprise_pipeline_api.domain.models import FinancialMetricSummary
+
 
 def _clip(text: str, limit: int = 220) -> str:
     cleaned = " ".join(text.split())
@@ -406,10 +409,12 @@ def build_workstream_tools(
     chunk_items: list[Any],
     max_usage_count: int,
     default_top_k: int = 5,
-) -> list[InstrumentedReadOnlyTool]:
+    financial_summary: FinancialMetricSummary | None = None,
+    sector_pack: str = "tech_saas_services",
+) -> list[BaseTool]:
     scope_label = workstream_domain.replace("_", " ")
     scope_slug = workstream_domain.lower()
-    return [
+    tools: list[Any] = [
         EvidenceSearchTool(
             name=f"search_{scope_slug}_evidence",
             description=(
@@ -443,6 +448,14 @@ def build_workstream_tools(
             max_usage_count=max_usage_count,
         ),
     ]
+    if workstream_domain == "financial_qoe":
+        tools.extend(
+            build_financial_tools(
+                financial_summary=financial_summary,
+                sector_pack=sector_pack,
+            )
+        )
+    return tools
 
 
 def build_case_tools(
@@ -453,8 +466,10 @@ def build_case_tools(
     chunk_items: list[Any],
     max_usage_count: int,
     default_top_k: int = 5,
-) -> list[InstrumentedReadOnlyTool]:
-    return [
+    financial_summary: FinancialMetricSummary | None = None,
+    sector_pack: str = "tech_saas_services",
+) -> list[BaseTool]:
+    tools: list[Any] = [
         EvidenceSearchTool(
             name="search_case_evidence",
             description="Search evidence nodes and document chunks across the full case.",
@@ -481,15 +496,26 @@ def build_case_tools(
             max_usage_count=max_usage_count,
         ),
     ]
+    tools.extend(
+        build_financial_tools(
+            financial_summary=financial_summary,
+            sector_pack=sector_pack,
+        )
+    )
+    return tools
 
 
-def summarize_tool_usage(tools: list[InstrumentedReadOnlyTool]) -> str:
+def summarize_tool_usage(tools: list[BaseTool]) -> str:
     used_fragments: list[str] = []
     for tool in tools:
-        if tool.current_usage_count <= 0:
+        usage_count = getattr(tool, "current_usage_count", 0)
+        if usage_count <= 0:
             continue
-        latest = tool.usage_records()[-1] if tool.usage_records() else None
-        fragment = f"{tool.name} x{tool.current_usage_count}"
+        latest = None
+        if hasattr(tool, "usage_records"):
+            records = tool.usage_records()
+            latest = records[-1] if records else None
+        fragment = f"{tool.name} x{usage_count}"
         if latest and latest["query"]:
             fragment += f" (latest: {_clip(str(latest['query']), 40)})"
         used_fragments.append(fragment)
@@ -500,5 +526,9 @@ def summarize_tool_usage(tools: list[InstrumentedReadOnlyTool]) -> str:
     return "; ".join(used_fragments)
 
 
-def total_tool_calls(tool_map: dict[str, list[InstrumentedReadOnlyTool]]) -> int:
-    return sum(tool.current_usage_count for tools in tool_map.values() for tool in tools)
+def total_tool_calls(tool_map: dict[str, list[BaseTool]]) -> int:
+    return sum(
+        getattr(tool, "current_usage_count", 0)
+        for tools in tool_map.values()
+        for tool in tools
+    )

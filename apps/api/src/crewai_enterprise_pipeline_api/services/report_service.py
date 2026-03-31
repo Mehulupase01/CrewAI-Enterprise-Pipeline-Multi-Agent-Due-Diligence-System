@@ -12,6 +12,7 @@ from crewai_enterprise_pipeline_api.domain.models import (
 )
 from crewai_enterprise_pipeline_api.services.case_service import CaseService
 from crewai_enterprise_pipeline_api.services.checklist_service import ChecklistService
+from crewai_enterprise_pipeline_api.services.financial_qoe_service import FinancialQoEService
 
 SEVERITY_ORDER = {
     FlagSeverity.CRITICAL.value: 0,
@@ -27,6 +28,7 @@ class ReportService:
         self.session = session
         self.case_service = CaseService(session)
         self.checklist_service = ChecklistService(session)
+        self.financial_qoe_service = FinancialQoEService(session)
 
     async def build_executive_memo(self, case_id: str) -> ExecutiveMemoReport | None:
         case = await self.case_service._get_case_record(case_id)
@@ -52,6 +54,10 @@ class ReportService:
         ]
         motion_pack = MotionPack(case.motion_pack)
         report_title = self._report_title_for_motion(motion_pack)
+        financial_summary = await self.financial_qoe_service.build_financial_summary(
+            case_id,
+            persist_checklist=False,
+        )
 
         executive_summary = self._build_summary(
             motion_pack,
@@ -60,6 +66,7 @@ class ReportService:
             len(sorted_issues),
             coverage.open_mandatory_items,
             len(open_requests),
+            financial_summary,
         )
         next_actions = self._build_next_actions(
             motion_pack,
@@ -225,23 +232,42 @@ class ReportService:
         issue_count: int,
         open_mandatory_items: int,
         open_request_count: int,
+        financial_summary,
     ) -> str:
+        financial_note = ""
+        if financial_summary is not None and financial_summary.periods:
+            latest = financial_summary.periods[-1]
+            fragments: list[str] = []
+            if latest.revenue is not None:
+                fragments.append(f"latest revenue {latest.revenue:.2f}")
+            if latest.ebitda is not None:
+                fragments.append(f"reported EBITDA {latest.ebitda:.2f}")
+            if financial_summary.normalized_ebitda is not None:
+                fragments.append(
+                    f"normalized EBITDA {financial_summary.normalized_ebitda:.2f}"
+                )
+            if fragments:
+                financial_note = " Financial QoE parsing extracted " + ", ".join(fragments) + "."
+
         if motion_pack == MotionPack.CREDIT_LENDING:
             return (
                 f"{case_name} for {target_name} currently has {issue_count} tracked credit-risk "
                 f"items, {open_mandatory_items} open mandatory underwriting checklist items, "
                 f"and {open_request_count} open borrower information requests."
+                f"{financial_note}"
             )
         if motion_pack == MotionPack.VENDOR_ONBOARDING:
             return (
                 f"{case_name} for {target_name} currently has {issue_count} tracked "
                 f"third-party risk items, {open_mandatory_items} open mandatory onboarding "
                 f"checklist items, and {open_request_count} open vendor follow-up requests."
+                f"{financial_note}"
             )
         return (
             f"{case_name} for {target_name} currently has {issue_count} tracked issues, "
             f"{open_mandatory_items} open mandatory checklist items, and "
             f"{open_request_count} open diligence requests."
+            f"{financial_note}"
         )
 
     def _report_title_for_motion(self, motion_pack: MotionPack) -> str:

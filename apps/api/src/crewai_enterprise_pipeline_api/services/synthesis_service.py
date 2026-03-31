@@ -27,7 +27,12 @@ COMPLETED_CHECKLIST_STATUSES = {
 
 
 class SynthesisService:
-    def build_workstream_syntheses(self, case, run_id: str) -> list[WorkstreamSynthesisRecord]:
+    def build_workstream_syntheses(
+        self,
+        case,
+        run_id: str,
+        financial_summary=None,
+    ) -> list[WorkstreamSynthesisRecord]:
         syntheses: list[WorkstreamSynthesisRecord] = []
         for workstream in WorkstreamDomain:
             scoped_checklist = [
@@ -82,6 +87,7 @@ class SynthesisService:
                 scoped_evidence,
                 scoped_issues,
                 open_mandatory,
+                financial_summary,
             )
             recommended_next_action = self._build_next_action(
                 scoped_issues,
@@ -159,6 +165,7 @@ class SynthesisService:
         scoped_evidence,
         scoped_issues,
         open_mandatory,
+        financial_summary,
     ) -> str:
         evidence_note = (
             f"The evidence ledger includes {len(scoped_evidence)} items"
@@ -187,9 +194,30 @@ class SynthesisService:
                 f"Impact: {top_issue.business_impact}"
             )
 
+        financial_note = ""
+        if (
+            workstream == WorkstreamDomain.FINANCIAL_QOE
+            and financial_summary is not None
+            and financial_summary.periods
+        ):
+            latest = financial_summary.periods[-1]
+            metrics: list[str] = []
+            if latest.revenue is not None:
+                metrics.append(f"latest revenue {latest.revenue:.2f}")
+            if latest.ebitda is not None:
+                metrics.append(f"reported EBITDA {latest.ebitda:.2f}")
+            if financial_summary.normalized_ebitda is not None:
+                metrics.append(
+                    f"normalized EBITDA {financial_summary.normalized_ebitda:.2f}"
+                )
+            if metrics:
+                financial_note = " Parsed financial package shows " + ", ".join(metrics) + "."
+            if financial_summary.flags:
+                financial_note += " Flags: " + "; ".join(financial_summary.flags[:3]) + "."
+
         return (
             f"{self._label_for_domain(workstream.value)} synthesis: {evidence_note} {issue_note}. "
-            f"{checklist_note}{top_issue_note}"
+            f"{checklist_note}{top_issue_note}{financial_note}"
         )
 
     def _build_next_action(

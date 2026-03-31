@@ -158,6 +158,11 @@ def _evaluate_scenario(scenario: EvaluationScenario) -> dict[str, Any]:
                 _update_checklist_item(client, case_id, checklist_items, update)
 
             for upload in scenario.upload_documents:
+                file_bytes = (
+                    upload.content_bytes
+                    if upload.content_bytes is not None
+                    else upload.content.encode("utf-8")
+                )
                 response = client.post(
                     f"/api/v1/cases/{case_id}/documents/upload",
                     data={
@@ -170,7 +175,7 @@ def _evaluate_scenario(scenario: EvaluationScenario) -> dict[str, Any]:
                     files={
                         "file": (
                             upload.filename,
-                            upload.content.encode("utf-8"),
+                            file_bytes,
                             upload.mime_type,
                         )
                     },
@@ -220,6 +225,14 @@ def _evaluate_scenario(scenario: EvaluationScenario) -> dict[str, Any]:
             for qa_item in scenario.qa_items:
                 response = client.post(f"/api/v1/cases/{case_id}/qa", json=qa_item.payload)
                 _ensure_success("create q&a item", response, 201)
+
+            financial_summary: dict[str, Any] | None = None
+            if scenario.financial_summary_expectation is not None:
+                financial_summary = _ensure_success(
+                    "financial summary",
+                    client.get(f"/api/v1/cases/{case_id}/financial-summary"),
+                    200,
+                )
 
             approval = _ensure_success(
                 "approval review",
@@ -278,6 +291,12 @@ def _evaluate_scenario(scenario: EvaluationScenario) -> dict[str, Any]:
         "workstream_synthesis_count": len(run_detail["workstream_syntheses"]),
         "bundle_kinds": bundle_kinds,
     }
+    if financial_summary is not None:
+        metrics["financial_period_count"] = len(financial_summary["periods"])
+        metrics["financial_flag_count"] = len(financial_summary["flags"])
+        metrics["financial_checklist_update_count"] = len(
+            financial_summary.get("checklist_updates", [])
+        )
 
     checks: list[dict[str, Any]] = []
     expectation = scenario.expectation
@@ -427,6 +446,66 @@ def _evaluate_scenario(scenario: EvaluationScenario) -> dict[str, Any]:
                 "duplicating flags."
             ),
         )
+    if scenario.financial_summary_expectation is not None and financial_summary is not None:
+        fin_expectation = scenario.financial_summary_expectation
+        _append_check(
+            checks,
+            name="financial_period_count",
+            passed=len(financial_summary["periods"]) >= fin_expectation.min_periods,
+            actual=len(financial_summary["periods"]),
+            expected=f">= {fin_expectation.min_periods}",
+            detail="Financial QoE endpoint should parse the expected minimum number of periods.",
+        )
+        if fin_expectation.expected_normalized_ebitda is not None:
+            actual_normalized = financial_summary["normalized_ebitda"]
+            passed = actual_normalized is not None and abs(
+                actual_normalized - fin_expectation.expected_normalized_ebitda
+            ) < 0.0001
+            _append_check(
+                checks,
+                name="financial_normalized_ebitda",
+                passed=passed,
+                actual=actual_normalized,
+                expected=fin_expectation.expected_normalized_ebitda,
+                detail="Normalized EBITDA should match the expected hand calculation.",
+            )
+        if fin_expectation.required_ratio_keys:
+            actual_ratio_keys = sorted(
+                key for key, value in financial_summary["ratios"].items() if value is not None
+            )
+            _append_check(
+                checks,
+                name="financial_ratio_keys",
+                passed=set(fin_expectation.required_ratio_keys).issubset(actual_ratio_keys),
+                actual=actual_ratio_keys,
+                expected=list(fin_expectation.required_ratio_keys),
+                detail="Required financial ratios should be available in the QoE summary.",
+            )
+        if fin_expectation.flag_substrings:
+            actual_flags = financial_summary["flags"]
+            _append_check(
+                checks,
+                name="financial_flags",
+                passed=all(
+                    any(fragment.lower() in flag.lower() for flag in actual_flags)
+                    for fragment in fin_expectation.flag_substrings
+                ),
+                actual=actual_flags,
+                expected=list(fin_expectation.flag_substrings),
+                detail="Expected financial red-flag phrases should appear in the QoE summary.",
+            )
+            _append_check(
+                checks,
+                name="financial_checklist_updates",
+                passed=len(financial_summary.get("checklist_updates", []))
+                >= fin_expectation.min_checklist_updates,
+                actual=len(financial_summary.get("checklist_updates", [])),
+                expected=f">= {fin_expectation.min_checklist_updates}",
+                detail=(
+                    "Financial QoE refresh should auto-satisfy the expected minimum "
+                    "checklist items."
+                ),
+            )
 
     return {
         "code": scenario.code,
@@ -439,6 +518,7 @@ def _evaluate_scenario(scenario: EvaluationScenario) -> dict[str, Any]:
             "first": issue_scan_first,
             "second": issue_scan_second,
         },
+        "financial_summary": financial_summary,
         "scenario": {
             "case_payload": scenario.case_payload,
             "satisfy_all_checklist_items": scenario.satisfy_all_checklist_items,

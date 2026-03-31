@@ -2,13 +2,13 @@
 
 > This file is the single source of truth for what has been implemented.
 > Any AI agent resuming work should read this file + CLAUDE.md first.
-> Strategic roadmap comes from `docs/MASTERPLAN.pdf`; execution truth comes from the actual repo state.
+> Strategic roadmap comes from `docs/MASTERPLAN.docx` (preferred) and `docs/MASTERPLAN.pdf` (companion export); execution truth comes from the actual repo state.
 
-## Status: Phase 7 Complete + Post-Phase-7 Enhancement Landed
+## Status: Phase 8 Complete + Post-Phase-7 Enhancement Landed
 
 **Last updated:** 2026-03-31
-**Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7
-**Next phase:** Phase 8 (Financial Quality of Earnings (QoE) Engine)
+**Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7, Phase 8
+**Next phase:** Phase 9 (Legal / Tax / Regulatory Engine)
 **Blocking issues:** None
 
 ---
@@ -451,6 +451,63 @@
 **Notes for next canonical phase:**
 - CrewAI now has scoped evidence/issue/checklist tools, but trace events are still persisted after completion rather than streamed mid-run
 - The next master-plan phase remains Phase 8: Financial Quality of Earnings (QoE) Engine
+
+---
+
+### Phase 8: Financial Quality of Earnings (QoE) Engine (2026-03-31)
+
+**What was done:**
+- Added structured financial statement parsing for XLSX financial workbooks, including annual period normalization for revenue, EBITDA, PAT, operating cash flow, debt, interest, working capital, total assets, equity, customer concentration, and Q4 revenue share
+- Added QoE adjustment extraction for one-time and non-recurring items and a normalized EBITDA bridge
+- Added a dedicated Phase 8 service that builds on-demand financial summaries from uploaded artifacts and computes core ratios for diligence and underwriting
+- Added automatic red-flag detection for customer concentration, negative cash conversion, declining revenue growth, Q4 seasonality, leverage pressure, and low interest coverage
+- Added automatic checklist satisfaction for relevant financial workstream items, with persisted notes and an opt-out query flag for dry-run access
+- Added `GET /cases/{case_id}/financial-summary` and wired the financial summary refresh into workflow execution before coverage, approvals, syntheses, and report generation
+- Added CrewAI-facing financial tools and sector benchmarks so the financial workstream and coordinator can use the structured QoE state instead of relying only on narrative prompt context
+- Added a dedicated Phase 8 evaluation suite plus focused pytest coverage for parsing, ratios, checklist auto-satisfaction, tool attachment, and workflow integration
+
+**Files created:**
+- apps/api/src/.../ingestion/financial_parser.py -- structured XLSX financial parser and QoE adjustment extraction
+- apps/api/src/.../services/financial_qoe_service.py -- financial summary, ratio, flag, and checklist automation service
+- apps/api/src/.../agents/financial_tools.py -- financial ratio review and sector benchmark tools for CrewAI
+- apps/api/src/.../evaluation/financial_fixtures.py -- reusable financial workbook fixture generator
+- apps/api/tests/test_phase8_financial_qoe.py -- 5 focused Phase 8 test cases
+
+**Files modified:**
+- apps/api/src/.../domain/models.py -- new FinancialPeriod, QoEAdjustment, FinancialStatement, FinancialMetricSummary, ChecklistAutoUpdate
+- apps/api/src/.../api/routes/cases.py -- GET /cases/{id}/financial-summary
+- apps/api/src/.../services/report_service.py -- financial QoE note integration
+- apps/api/src/.../services/synthesis_service.py -- financial narrative enrichment
+- apps/api/src/.../services/workflow_service.py -- financial summary refresh in deterministic and CrewAI run paths
+- apps/api/src/.../agents/tools.py -- financial tool wiring for coordinator and financial workstream
+- apps/api/src/.../agents/crew.py -- financial summary prompt/context injection
+- apps/api/src/.../agents/config.py -- richer financial QoE agent remit
+- apps/api/src/.../evaluation/scenarios.py -- Phase 8 scenario and expectation contracts
+- apps/api/src/.../evaluation/runner.py -- financial summary evaluation assertions
+- apps/api/tests/test_evaluation.py -- Phase 8 suite registration
+
+**Decisions made:**
+- AD-032: `MASTERPLAN.docx` is the canonical machine-readable roadmap source; the PDF remains a companion export
+- AD-033: Financial summaries are computed from stored artifacts on demand and refreshed inside workflows rather than persisted as a separate derived table
+- AD-034: Financial metric labels prefer exact and longer alias matches over generic substrings to avoid misclassifying EBITDA and seasonality rows
+- AD-035: `GET /financial-summary` persists checklist auto-satisfaction by default, with `persist_checklist=false` available for dry-run access
+
+**Blockers encountered:**
+- Initial parser alias matching was too greedy (`EBITDA` could be consumed by `EBIT`, and `Q4 Revenue Share` by `revenue`); this was fixed before phase closure
+
+**Test results:**
+- pytest: 92/92 pass (87 existing + 5 new)
+- eval suites: 12/12 pass (all 6 suites at 100%)
+- ruff: clean
+- npm lint: clean
+- npm typecheck: clean
+- check gate: `./scripts/check.ps1` passed
+- dedicated Phase 8 eval artifact: `artifacts/evaluations/phase8-financial-qoe-20260331T112934Z.json`
+- latest full-gate eval artifact: `artifacts/evaluations/all-supported-suites-20260331T112825Z.json`
+
+**Notes for next phase:**
+- Phase 9 should build the canonical Legal / Tax / Regulatory engine from `MASTERPLAN.docx`
+- Phase 8 currently exposes a complete backend and workflow surface; a dedicated frontend financial summary panel is still optional future UX depth, not a blocker for canonical Phase 8 closure
 
 ---
 

@@ -27,6 +27,11 @@ The current gate now covers both the foundation and the first operations layer:
 - persisted workstream synthesis outputs per run
 - tool-grounded CrewAI workstream analysis over pre-loaded evidence, issue, checklist, and chunk snapshots
 - persisted tool-usage trace summaries for CrewAI workstream and coordinator runs
+- structured financial workbook parsing and annual period normalization
+- financial QoE adjustments, normalized EBITDA bridge, and ratio computation
+- financial red-flag detection for concentration, cash conversion, leverage, coverage, seasonality, and growth quality
+- automatic checklist satisfaction for financial workstream items
+- dedicated Phase 8 financial QoE evaluation coverage
 - deterministic end-to-end evaluation scenarios with saved JSON scorecards
 - repeat-scan regression checks for issue fingerprint reuse
 - enforced-auth and role-guard tests
@@ -59,6 +64,10 @@ The current gate now covers both the foundation and the first operations layer:
 - A run produces durable workstream syntheses for the first diligence domains.
 - When CrewAI is active, agent runs can drill into scoped evidence, issue, and
   checklist tools without breaking the deterministic fallback path.
+- The API can build a financial summary from uploaded workbooks, including
+  normalized EBITDA, core ratios, and financial diligence flags.
+- Financial summaries can auto-satisfy relevant checklist items and that state
+  is reflected in workflow coverage, approvals, and report generation.
 - The first-slice evaluation suite passes blocked, clean-approved, and
   approved-nonblocking-risk scenarios.
 - Every quality-gate run writes a machine-readable artifact under

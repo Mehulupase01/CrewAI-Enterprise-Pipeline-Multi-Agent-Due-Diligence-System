@@ -422,6 +422,13 @@ class ChecklistCoverageSummary(BaseModel):
     workstream_breakdown: list[WorkstreamCoverageSummary]
 
 
+class ChecklistAutoUpdate(BaseModel):
+    checklist_id: str
+    template_key: str
+    status: ChecklistItemStatus
+    note: str
+
+
 class ApprovalDecisionSummary(ORMModel):
     id: str
     reviewer: str
@@ -606,6 +613,51 @@ class WorkflowRunEnqueueResult(BaseModel):
     case_id: str
     status: WorkflowRunStatus = WorkflowRunStatus.QUEUED
     message: str = "Workflow run enqueued for background processing"
+
+
+class FinancialPeriod(BaseModel):
+    label: str
+    revenue: float | None = None
+    gross_profit: float | None = None
+    operating_profit: float | None = None
+    ebitda: float | None = None
+    pat: float | None = None
+    operating_cash_flow: float | None = None
+    net_debt: float | None = None
+    interest_expense: float | None = None
+    working_capital: float | None = None
+    total_assets: float | None = None
+    shareholder_equity: float | None = None
+    customer_concentration_top_3: float | None = None
+    q4_revenue_share: float | None = None
+
+
+class QoEAdjustment(BaseModel):
+    label: str
+    amount: float
+    category: str
+
+
+class FinancialStatement(BaseModel):
+    artifact_id: str | None = None
+    artifact_title: str
+    document_kind: str
+    parser_name: str
+    periods: list[FinancialPeriod] = Field(default_factory=list)
+    qoe_adjustments: list[QoEAdjustment] = Field(default_factory=list)
+    flags: list[str] = Field(default_factory=list)
+
+
+class FinancialMetricSummary(BaseModel):
+    case_id: str
+    statement_count: int
+    statements: list[FinancialStatement] = Field(default_factory=list)
+    periods: list[FinancialPeriod] = Field(default_factory=list)
+    ratios: dict[str, float | None] = Field(default_factory=dict)
+    qoe_adjustments: list[QoEAdjustment] = Field(default_factory=list)
+    normalized_ebitda: float | None = None
+    flags: list[str] = Field(default_factory=list)
+    checklist_updates: list[ChecklistAutoUpdate] = Field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------

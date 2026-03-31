@@ -4,16 +4,16 @@
 
 ## Current State
 
-**Active phase:** None (Phase 7 complete + post-Phase-7 enhancement landed, ready to start canonical Phase 8)
+**Active phase:** None (Phase 8 complete, ready to start canonical Phase 9)
 **Last session:** 2026-03-31
-**Completed phases:** 0, 1, 2, 3, 4, 5, 6, 7
-**Test counts:** 87 pytest, 11 eval scenarios (5 suites)
-**Execution mode:** roadmap from `MASTERPLAN.pdf`, execution truth from repo code/tests/commands
+**Completed phases:** 0, 1, 2, 3, 4, 5, 6, 7, 8
+**Test counts:** 92 pytest, 12 eval scenarios (6 suites)
+**Execution mode:** roadmap from `MASTERPLAN.docx` (preferred) / `MASTERPLAN.pdf` (companion), execution truth from repo code/tests/commands
 
 ## What to Do Next
 
-Start canonical Phase 8: Financial Quality of Earnings (QoE) Engine, and close it fully before moving beyond it.
-Treat the recent CrewAI tool work as a post-Phase-7 enhancement, not as fulfillment of the master-plan Phase 8.
+Start canonical Phase 9: Legal / Tax / Regulatory Engine, and close it fully before moving beyond it.
+Treat Phase 8 as complete: the repo now has structured financial parsing, normalized EBITDA adjustments, financial ratio and flag computation, workflow-integrated QoE refresh, checklist auto-satisfaction, CrewAI financial tools, and a dedicated Phase 8 evaluation suite.
 
 ## Blockers
 

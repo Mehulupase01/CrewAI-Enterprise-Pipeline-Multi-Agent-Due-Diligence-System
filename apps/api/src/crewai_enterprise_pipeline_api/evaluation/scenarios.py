@@ -3,6 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from crewai_enterprise_pipeline_api.evaluation.financial_fixtures import (
+    build_financial_workbook_bytes,
+)
+
 
 @dataclass(slots=True)
 class UploadDocumentFixture:
@@ -14,6 +18,7 @@ class UploadDocumentFixture:
     source_kind: str
     workstream_domain: str
     evidence_kind: str = "fact"
+    content_bytes: bytes | None = None
 
 
 @dataclass(slots=True)
@@ -40,6 +45,15 @@ class QaFixture:
 class ChecklistUpdateFixture:
     template_key: str
     payload: dict[str, Any]
+
+
+@dataclass(slots=True)
+class FinancialSummaryExpectation:
+    min_periods: int
+    expected_normalized_ebitda: float | None = None
+    required_ratio_keys: tuple[str, ...] = ()
+    flag_substrings: tuple[str, ...] = ()
+    min_checklist_updates: int = 0
 
 
 @dataclass(slots=True)
@@ -91,6 +105,7 @@ class EvaluationScenario:
             "note": "Automated run for the current evaluation suite.",
         }
     )
+    financial_summary_expectation: FinancialSummaryExpectation | None = None
     expectation: ScenarioExpectation = field(
         default_factory=lambda: ScenarioExpectation(
             approval_decision="changes_requested",
@@ -865,7 +880,77 @@ BFSI_NBFC_EXPANSION_SCENARIOS: tuple[EvaluationScenario, ...] = (
 )
 
 
+PHASE8_FINANCIAL_QOE_SCENARIOS: tuple[EvaluationScenario, ...] = (
+    EvaluationScenario(
+        code="financial_qoe_credit_signal_case",
+        name="Financial QoE credit signal case",
+        description=(
+            "Validates that the Phase 8 QoE engine parses structured financial "
+            "statements, computes normalized EBITDA and ratios, flags red signals, "
+            "and auto-satisfies relevant credit financial checklist items."
+        ),
+        case_payload={
+            "name": "Project Tidal Underwriting Review",
+            "target_name": "Tidal Commerce Private Limited",
+            "summary": "Phase 8 evaluation scenario for financial QoE parsing and automation.",
+            "motion_pack": "credit_lending",
+            "sector_pack": "tech_saas_services",
+            "country": "India",
+        },
+        upload_documents=(
+            UploadDocumentFixture(
+                title="Borrower financial workbook",
+                filename="borrower_financial_pack.xlsx",
+                content="",
+                content_bytes=build_financial_workbook_bytes(bridge_variant="credit"),
+                mime_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                document_kind="borrower_financial_pack",
+                source_kind="uploaded_dataroom",
+                workstream_domain="financial_qoe",
+                evidence_kind="metric",
+            ),
+        ),
+        financial_summary_expectation=FinancialSummaryExpectation(
+            min_periods=4,
+            expected_normalized_ebitda=24.8,
+            required_ratio_keys=(
+                "revenue_cagr_3y",
+                "ebitda_margin",
+                "cash_conversion",
+                "debt_to_ebitda",
+                "interest_coverage",
+                "working_capital_days",
+            ),
+            flag_substrings=(
+                "top 3 customers",
+                "negative despite positive EBITDA",
+                "Q4 contributes more than 40%",
+            ),
+            min_checklist_updates=3,
+        ),
+        expectation=ScenarioExpectation(
+            approval_decision="changes_requested",
+            ready_for_export=False,
+            report_status="not_ready",
+            report_title="Credit Memo",
+            open_mandatory_items=8,
+            min_blocking_issue_count=0,
+            max_blocking_issue_count=0,
+            min_issue_count=0,
+            min_open_request_count=0,
+            min_evidence_count=1,
+        ),
+    ),
+)
+
+
 EVALUATION_SUITES: dict[str, EvaluationSuiteDefinition] = {
+    "phase8_financial_qoe": EvaluationSuiteDefinition(
+        key="phase8_financial_qoe",
+        title="Phase 8 Financial QoE Evaluation",
+        artifact_prefix="phase8-financial-qoe",
+        scenarios=PHASE8_FINANCIAL_QOE_SCENARIOS,
+    ),
     "phase5_first_slice": EvaluationSuiteDefinition(
         key="phase5_first_slice",
         title="Phase 5 First Slice Evaluation",

@@ -47,6 +47,7 @@ from crewai_enterprise_pipeline_api.domain.models import (
     EvidenceKind,
     EvidenceSearchResponse,
     ExecutiveMemoReport,
+    FinancialMetricSummary,
     IssueRegisterItemCreate,
     IssueRegisterItemSummary,
     IssueScanResult,
@@ -72,6 +73,7 @@ from crewai_enterprise_pipeline_api.services.approval_service import ApprovalSer
 from crewai_enterprise_pipeline_api.services.case_service import CaseService
 from crewai_enterprise_pipeline_api.services.checklist_service import ChecklistService
 from crewai_enterprise_pipeline_api.services.export_service import ExportService
+from crewai_enterprise_pipeline_api.services.financial_qoe_service import FinancialQoEService
 from crewai_enterprise_pipeline_api.services.ingestion_service import IngestionService
 from crewai_enterprise_pipeline_api.services.issue_service import IssueService
 from crewai_enterprise_pipeline_api.services.report_service import ReportService
@@ -238,6 +240,30 @@ async def upload_document(
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
     return result
+
+
+@router.get(
+    "/{case_id}/financial-summary",
+    response_model=FinancialMetricSummary,
+)
+async def get_financial_summary(
+    case_id: str,
+    session: DbSession,
+    persist_checklist: bool = Query(
+        True,
+        description=(
+            "When true, checklist items satisfied by the parsed financial package "
+            "are updated before the summary is returned."
+        ),
+    ),
+) -> FinancialMetricSummary:
+    summary = await FinancialQoEService(session).build_financial_summary(
+        case_id,
+        persist_checklist=persist_checklist,
+    )
+    if summary is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
+    return summary
 
 
 # ---------------------------------------------------------------------------
