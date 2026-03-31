@@ -8,6 +8,7 @@ from typing import Any
 
 from crewai import LLM, Agent, Crew, Process, Task
 
+from crewai_enterprise_pipeline_api.agents.compliance_tools import format_phase9_snapshot
 from crewai_enterprise_pipeline_api.agents.config import (
     COORDINATOR_CONFIG,
     WORKSTREAM_AGENT_CONFIGS,
@@ -188,6 +189,22 @@ def _format_case_snapshot(case_ctx: CaseContext) -> str:
     return "\n".join(lines)
 
 
+def _phase9_snapshot_block(
+    legal_summary,
+    tax_summary,
+    compliance_summary,
+) -> str:
+    phase9_snapshot = format_phase9_snapshot(
+        legal_summary=legal_summary,
+        tax_summary=tax_summary,
+        compliance_summary=compliance_summary,
+    )
+    return (
+        "## Legal / Tax / Regulatory Snapshot\n"
+        f"{phase9_snapshot}\n\n"
+    )
+
+
 def _build_llm(settings) -> LLM:
     """Create a CrewAI LLM instance from application settings."""
     model_prefix = {
@@ -206,6 +223,9 @@ def build_due_diligence_crew(
     case_ctx: CaseContext,
     settings,
     financial_summary=None,
+    legal_summary=None,
+    tax_summary=None,
+    compliance_summary=None,
 ) -> tuple[Crew, dict[str, str], dict[str, list[Any]]]:
     """Build a CrewAI crew for the given case context."""
     llm = _build_llm(settings)
@@ -241,6 +261,9 @@ def build_due_diligence_crew(
             default_top_k=settings.crew_tool_top_k,
             max_usage_count=settings.crew_tool_max_usage,
             financial_summary=financial_summary,
+            legal_summary=legal_summary,
+            tax_summary=tax_summary,
+            compliance_summary=compliance_summary,
             sector_pack=case_ctx.sector_pack,
         )
         agent = Agent(
@@ -258,6 +281,30 @@ def build_due_diligence_crew(
         agents.append(agent)
 
         task_name = f"analyze_{ws_domain}"
+        financial_block = (
+            "## Financial QoE Snapshot\n"
+            f"{format_financial_snapshot(financial_summary)}\n\n"
+            if ws_domain == WorkstreamDomain.FINANCIAL_QOE.value
+            else ""
+        )
+        phase9_block = (
+            _phase9_snapshot_block(
+                legal_summary,
+                tax_summary,
+                compliance_summary,
+            )
+            if ws_domain
+            in {
+                WorkstreamDomain.LEGAL_CORPORATE.value,
+                WorkstreamDomain.TAX.value,
+                WorkstreamDomain.REGULATORY.value,
+            }
+            else ""
+        )
+        available_tools_block = (
+            "## Available Tools\n"
+            f"{', '.join(tool.name for tool in tools)}\n\n"
+        )
         task = Task(
             name=task_name,
             description=(
@@ -268,15 +315,10 @@ def build_due_diligence_crew(
                 "material assertions.\n\n"
                 "## Workstream Snapshot\n"
                 f"{_format_workstream_snapshot(ws_ctx)}\n\n"
-                + (
-                    "## Financial QoE Snapshot\n"
-                    f"{format_financial_snapshot(financial_summary)}\n\n"
-                    if ws_domain == WorkstreamDomain.FINANCIAL_QOE.value
-                    else ""
-                )
+                + financial_block
+                + phase9_block
+                + available_tools_block
                 +
-                "## Available Tools\n"
-                f"{', '.join(tool.name for tool in tools)}\n\n"
                 "Requirements:\n"
                 "1. Ground material claims in the snapshot or tool results only.\n"
                 "2. Use the evidence search tool when you need cited support.\n"
@@ -309,6 +351,9 @@ def build_due_diligence_crew(
         default_top_k=settings.crew_tool_top_k,
         max_usage_count=settings.crew_tool_max_usage,
         financial_summary=financial_summary,
+        legal_summary=legal_summary,
+        tax_summary=tax_summary,
+        compliance_summary=compliance_summary,
         sector_pack=case_ctx.sector_pack,
     )
     coordinator = Agent(
@@ -325,6 +370,10 @@ def build_due_diligence_crew(
     )
     agents.append(coordinator)
     tool_map["coordinator"] = coordinator_tools
+    coordinator_tools_block = (
+        "## Available Tools\n"
+        f"{', '.join(tool.name for tool in coordinator_tools)}\n\n"
+    )
 
     summary_task = Task(
         name="executive_synthesis",
@@ -336,8 +385,13 @@ def build_due_diligence_crew(
             f"{_format_case_snapshot(case_ctx)}\n\n"
             "## Financial QoE Snapshot\n"
             f"{format_financial_snapshot(financial_summary)}\n\n"
-            "## Available Tools\n"
-            f"{', '.join(tool.name for tool in coordinator_tools)}\n\n"
+            + _phase9_snapshot_block(
+                legal_summary,
+                tax_summary,
+                compliance_summary,
+            )
+            + coordinator_tools_block
+            +
             "Synthesize the workstream findings into a cohesive executive summary. "
             "Use the case-wide tools if you need to validate the top risks or inspect "
             "underlying evidence before finalizing the recommendation."

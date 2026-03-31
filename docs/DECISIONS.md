@@ -412,6 +412,36 @@ name-based).
 
 ---
 
+## AD-036: Phase 9 legal, tax, and regulatory summaries are computed on demand and refreshed inside workflows (2026-03-31)
+
+**Decision:** The legal structure summary, tax compliance summary, and regulatory compliance matrix are computed from uploaded evidence on demand. They are refreshed inside workflow execution before coverage, approvals, syntheses, and report generation, and are not persisted as separate derived tables in Phase 9.
+
+**Why:** The Phase 9 outputs are deterministic derivations over case evidence, chunk text, and checklist state. Persisting them now would add schema churn, stale-summary risk, and migration overhead while the extraction heuristics are still evolving.
+
+**Impact:** `legal_service.py`, `tax_service.py`, and `regulatory_service.py` become the single sources of truth for Phase 9 structured outputs. Any future UI panels or downstream engines must call these services rather than inventing parallel summary stores.
+
+---
+
+## AD-037: Tax and regulatory phrase matching is negation-aware, not naive substring logic (2026-03-31)
+
+**Decision:** Tax and regulatory status evaluation uses regex-based phrase matching with lightweight negation awareness, so phrases like `no tax notice`, `no demand`, or `no sanctions` do not incorrectly flip a case into a negative compliance state.
+
+**Why:** Phase 9 relies on text-heavy statutory notes, management responses, and regulatory summaries. Pure substring matching is too brittle for production-grade diligence because it over-flags benign or explicitly clean language.
+
+**Impact:** `tax_service.py` and `regulatory_service.py` must treat signal rules as language-sensitive heuristics, not flat keyword bags. Future rule-pack additions should preserve the negation-aware matching pattern and add tests for positive, negative, and mixed-language evidence.
+
+---
+
+## AD-038: Phase 9 structured state must flow through APIs, workflow syntheses, reports, and CrewAI tools together (2026-03-31)
+
+**Decision:** Phase 9 outputs are not considered complete unless the same structured legal, tax, and compliance state is exposed through direct endpoints, workflow refresh, workstream syntheses, executive reporting, and CrewAI-accessible tools.
+
+**Why:** A flagship diligence engine fails if structured outputs exist in one surface but vanish in others. Analysts, reviewers, automated evaluations, and CrewAI workstreams all need the same canonical Phase 9 state.
+
+**Impact:** `cases.py`, `workflow_service.py`, `synthesis_service.py`, `report_service.py`, `agents/tools.py`, and `agents/compliance_tools.py` are jointly part of the Phase 9 contract. Future phases should follow the same rule: new domain engines must integrate across all execution surfaces, not just one API endpoint.
+
+---
+
 <!--
 Template for future decisions:
 

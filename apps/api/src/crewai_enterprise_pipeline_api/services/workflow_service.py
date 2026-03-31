@@ -28,8 +28,11 @@ from crewai_enterprise_pipeline_api.domain.models import (
 from crewai_enterprise_pipeline_api.services.case_service import CaseService
 from crewai_enterprise_pipeline_api.services.checklist_service import ChecklistService
 from crewai_enterprise_pipeline_api.services.financial_qoe_service import FinancialQoEService
+from crewai_enterprise_pipeline_api.services.legal_service import LegalService
+from crewai_enterprise_pipeline_api.services.regulatory_service import RegulatoryService
 from crewai_enterprise_pipeline_api.services.report_service import ReportService
 from crewai_enterprise_pipeline_api.services.synthesis_service import SynthesisService
+from crewai_enterprise_pipeline_api.services.tax_service import TaxService
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +43,9 @@ class WorkflowService:
         self.case_service = CaseService(session)
         self.checklist_service = ChecklistService(session)
         self.financial_qoe_service = FinancialQoEService(session)
+        self.legal_service = LegalService(session)
+        self.tax_service = TaxService(session)
+        self.regulatory_service = RegulatoryService(session)
         self.report_service = ReportService(session)
         self.synthesis_service = SynthesisService()
 
@@ -158,6 +164,18 @@ class WorkflowService:
             case_id,
             persist_checklist=True,
         )
+        legal_summary = await self.legal_service.build_legal_summary(
+            case_id,
+            persist_checklist=True,
+        )
+        tax_summary = await self.tax_service.build_tax_summary(
+            case_id,
+            persist_checklist=True,
+        )
+        compliance_summary = await self.regulatory_service.build_compliance_matrix(
+            case_id,
+            persist_checklist=True,
+        )
         case = await self.case_service._get_case_record(case_id)
         if case is None:
             return None
@@ -177,6 +195,9 @@ class WorkflowService:
             case,
             run_id,
             financial_summary,
+            legal_summary,
+            tax_summary,
+            compliance_summary,
         )
         synthesis_markdown = self.synthesis_service.render_markdown(case, syntheses)
 
@@ -186,6 +207,9 @@ class WorkflowService:
             coverage,
             syntheses,
             financial_summary,
+            legal_summary,
+            tax_summary,
+            compliance_summary,
         )
         report_bundles = self._build_report_bundles(
             case_id,
@@ -241,6 +265,18 @@ class WorkflowService:
             case_id,
             persist_checklist=True,
         )
+        legal_summary = await self.legal_service.build_legal_summary(
+            case_id,
+            persist_checklist=True,
+        )
+        tax_summary = await self.tax_service.build_tax_summary(
+            case_id,
+            persist_checklist=True,
+        )
+        compliance_summary = await self.regulatory_service.build_compliance_matrix(
+            case_id,
+            persist_checklist=True,
+        )
         case = await self.case_service._get_case_record(case_id)
         if case is None:
             return None
@@ -261,6 +297,24 @@ class WorkflowService:
             )
         )
         seq += 1
+        self.session.add(
+            RunTraceEventRecord(
+                run_id=run_id,
+                sequence_number=seq,
+                step_key="legal_tax_regulatory_refresh",
+                title="Legal / Tax / Regulatory summaries refreshed",
+                message=(
+                    "Legal artifacts: "
+                    f"{0 if legal_summary is None else legal_summary.artifact_count}; "
+                    "tax evidence areas: "
+                    f"{self._count_known_statuses(tax_summary)}; "
+                    "compliance matrix items: "
+                    f"{0 if compliance_summary is None else len(compliance_summary.items)}."
+                ),
+                level=RunEventLevel.INFO.value,
+            )
+        )
+        seq += 1
         await self.session.commit()
 
         # 1. Build case context
@@ -269,6 +323,9 @@ class WorkflowService:
             case_ctx,
             settings,
             financial_summary=financial_summary,
+            legal_summary=legal_summary,
+            tax_summary=tax_summary,
+            compliance_summary=compliance_summary,
         )
         total_tools = sum(len(tools) for tools in tool_map.values())
         self.session.add(
@@ -511,6 +568,9 @@ class WorkflowService:
         coverage,
         syntheses: list[WorkstreamSynthesisRecord],
         financial_summary,
+        legal_summary,
+        tax_summary,
+        compliance_summary,
     ) -> list[RunTraceEventRecord]:
         latest_approval = case.approvals[-1] if case.approvals else None
         approval_note = (
@@ -524,6 +584,22 @@ class WorkflowService:
             else (
                 f"Parsed {financial_summary.statement_count} statements into "
                 f"{len(financial_summary.periods)} financial periods."
+            )
+        )
+        phase9_note = (
+            "No structured legal/tax/regulatory summaries detected yet."
+            if (
+                legal_summary is None
+                and tax_summary is None
+                and compliance_summary is None
+            )
+            else (
+                "Legal artifacts: "
+                f"{0 if legal_summary is None else legal_summary.artifact_count}; "
+                "tax areas with evidence: "
+                f"{self._count_known_statuses(tax_summary)}; "
+                "compliance matrix items: "
+                f"{0 if compliance_summary is None else len(compliance_summary.items)}."
             )
         )
         return [
@@ -549,6 +625,14 @@ class WorkflowService:
             RunTraceEventRecord(
                 run_id=run_id,
                 sequence_number=3,
+                step_key="legal_tax_regulatory_refresh",
+                title="Legal / Tax / Regulatory summaries refreshed",
+                message=phase9_note,
+                level=RunEventLevel.INFO.value,
+            ),
+            RunTraceEventRecord(
+                run_id=run_id,
+                sequence_number=4,
                 step_key="issue_triage",
                 title="Issue register reviewed",
                 message=(
@@ -558,7 +642,7 @@ class WorkflowService:
             ),
             RunTraceEventRecord(
                 run_id=run_id,
-                sequence_number=4,
+                sequence_number=5,
                 step_key="coverage_check",
                 title="Checklist coverage computed",
                 message=(
@@ -572,7 +656,7 @@ class WorkflowService:
             ),
             RunTraceEventRecord(
                 run_id=run_id,
-                sequence_number=5,
+                sequence_number=6,
                 step_key="approval_snapshot",
                 title="Approval state captured",
                 message=approval_note,
@@ -580,7 +664,7 @@ class WorkflowService:
             ),
             RunTraceEventRecord(
                 run_id=run_id,
-                sequence_number=6,
+                sequence_number=7,
                 step_key="workstream_synthesis",
                 title="Workstream syntheses generated",
                 message=(
@@ -590,7 +674,7 @@ class WorkflowService:
             ),
             RunTraceEventRecord(
                 run_id=run_id,
-                sequence_number=7,
+                sequence_number=8,
                 step_key="report_bundle_generation",
                 title="Report bundles generated",
                 message=(
@@ -647,3 +731,9 @@ class WorkflowService:
                 )
             )
         return bundles
+
+    @staticmethod
+    def _count_known_statuses(summary) -> int:
+        if summary is None:
+            return 0
+        return len([item for item in summary.items if item.status.value != "unknown"])

@@ -4,16 +4,16 @@
 
 ## Current State
 
-**Active phase:** None (Phase 8 complete, ready to start canonical Phase 9)
+**Active phase:** None (Phase 9 complete, ready to start canonical Phase 10)
 **Last session:** 2026-03-31
-**Completed phases:** 0, 1, 2, 3, 4, 5, 6, 7, 8
-**Test counts:** 92 pytest, 12 eval scenarios (6 suites)
+**Completed phases:** 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
+**Test counts:** 97 pytest, 13 eval scenarios (7 suites)
 **Execution mode:** roadmap from `MASTERPLAN.docx` (preferred) / `MASTERPLAN.pdf` (companion), execution truth from repo code/tests/commands
 
 ## What to Do Next
 
-Start canonical Phase 9: Legal / Tax / Regulatory Engine, and close it fully before moving beyond it.
-Treat Phase 8 as complete: the repo now has structured financial parsing, normalized EBITDA adjustments, financial ratio and flag computation, workflow-integrated QoE refresh, checklist auto-satisfaction, CrewAI financial tools, and a dedicated Phase 8 evaluation suite.
+Start canonical Phase 10: Commercial / Operations / Cyber / Forensic Engine, and close it fully before moving beyond it.
+Treat Phase 9 as complete: the repo now has structured legal summaries, contract clause review, tax compliance summaries, a sector-aware compliance matrix, checklist auto-satisfaction across legal/tax/regulatory lanes, workflow/report integration, CrewAI compliance tools, and a dedicated Phase 9 evaluation suite.
 
 ## Blockers
 

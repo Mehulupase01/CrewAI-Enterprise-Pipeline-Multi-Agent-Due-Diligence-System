@@ -37,6 +37,7 @@ from crewai_enterprise_pipeline_api.domain.models import (
     ChecklistItemUpdate,
     ChecklistSeedResult,
     ChunkSummary,
+    ComplianceMatrixItem,
     DocumentArtifactCreate,
     DocumentArtifactSummary,
     DocumentIngestionResult,
@@ -52,6 +53,7 @@ from crewai_enterprise_pipeline_api.domain.models import (
     IssueRegisterItemSummary,
     IssueScanResult,
     IssueUpdate,
+    LegalStructureSummary,
     QaItemCreate,
     QaItemSummary,
     QaItemUpdate,
@@ -61,6 +63,7 @@ from crewai_enterprise_pipeline_api.domain.models import (
     RunExportPackageCreate,
     RunExportPackageSummary,
     SearchRequest,
+    TaxComplianceSummary,
     WorkflowRunCreate,
     WorkflowRunDetail,
     WorkflowRunEnqueueResult,
@@ -76,8 +79,11 @@ from crewai_enterprise_pipeline_api.services.export_service import ExportService
 from crewai_enterprise_pipeline_api.services.financial_qoe_service import FinancialQoEService
 from crewai_enterprise_pipeline_api.services.ingestion_service import IngestionService
 from crewai_enterprise_pipeline_api.services.issue_service import IssueService
+from crewai_enterprise_pipeline_api.services.legal_service import LegalService
+from crewai_enterprise_pipeline_api.services.regulatory_service import RegulatoryService
 from crewai_enterprise_pipeline_api.services.report_service import ReportService
 from crewai_enterprise_pipeline_api.services.search_service import SearchService
+from crewai_enterprise_pipeline_api.services.tax_service import TaxService
 from crewai_enterprise_pipeline_api.services.workflow_service import WorkflowService
 from crewai_enterprise_pipeline_api.storage.service import DocumentStorageService
 
@@ -264,6 +270,78 @@ async def get_financial_summary(
     if summary is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
     return summary
+
+
+@router.get(
+    "/{case_id}/legal-summary",
+    response_model=LegalStructureSummary,
+)
+async def get_legal_summary(
+    case_id: str,
+    session: DbSession,
+    persist_checklist: bool = Query(
+        True,
+        description=(
+            "When true, checklist items satisfied by the legal engine are updated "
+            "before the summary is returned."
+        ),
+    ),
+) -> LegalStructureSummary:
+    summary = await LegalService(session).build_legal_summary(
+        case_id,
+        persist_checklist=persist_checklist,
+    )
+    if summary is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
+    return summary
+
+
+@router.get(
+    "/{case_id}/tax-summary",
+    response_model=TaxComplianceSummary,
+)
+async def get_tax_summary(
+    case_id: str,
+    session: DbSession,
+    persist_checklist: bool = Query(
+        True,
+        description=(
+            "When true, checklist items satisfied by the tax engine are updated "
+            "before the summary is returned."
+        ),
+    ),
+) -> TaxComplianceSummary:
+    summary = await TaxService(session).build_tax_summary(
+        case_id,
+        persist_checklist=persist_checklist,
+    )
+    if summary is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
+    return summary
+
+
+@router.get(
+    "/{case_id}/compliance-matrix",
+    response_model=list[ComplianceMatrixItem],
+)
+async def get_compliance_matrix(
+    case_id: str,
+    session: DbSession,
+    persist_checklist: bool = Query(
+        True,
+        description=(
+            "When true, checklist items satisfied by the regulatory engine are "
+            "updated before the compliance matrix is returned."
+        ),
+    ),
+) -> list[ComplianceMatrixItem]:
+    summary = await RegulatoryService(session).build_compliance_matrix(
+        case_id,
+        persist_checklist=persist_checklist,
+    )
+    if summary is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
+    return summary.items
 
 
 # ---------------------------------------------------------------------------

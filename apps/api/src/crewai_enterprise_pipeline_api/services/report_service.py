@@ -13,6 +13,9 @@ from crewai_enterprise_pipeline_api.domain.models import (
 from crewai_enterprise_pipeline_api.services.case_service import CaseService
 from crewai_enterprise_pipeline_api.services.checklist_service import ChecklistService
 from crewai_enterprise_pipeline_api.services.financial_qoe_service import FinancialQoEService
+from crewai_enterprise_pipeline_api.services.legal_service import LegalService
+from crewai_enterprise_pipeline_api.services.regulatory_service import RegulatoryService
+from crewai_enterprise_pipeline_api.services.tax_service import TaxService
 
 SEVERITY_ORDER = {
     FlagSeverity.CRITICAL.value: 0,
@@ -29,6 +32,9 @@ class ReportService:
         self.case_service = CaseService(session)
         self.checklist_service = ChecklistService(session)
         self.financial_qoe_service = FinancialQoEService(session)
+        self.legal_service = LegalService(session)
+        self.tax_service = TaxService(session)
+        self.regulatory_service = RegulatoryService(session)
 
     async def build_executive_memo(self, case_id: str) -> ExecutiveMemoReport | None:
         case = await self.case_service._get_case_record(case_id)
@@ -58,6 +64,18 @@ class ReportService:
             case_id,
             persist_checklist=False,
         )
+        legal_summary = await self.legal_service.build_legal_summary(
+            case_id,
+            persist_checklist=False,
+        )
+        tax_summary = await self.tax_service.build_tax_summary(
+            case_id,
+            persist_checklist=False,
+        )
+        compliance_summary = await self.regulatory_service.build_compliance_matrix(
+            case_id,
+            persist_checklist=False,
+        )
 
         executive_summary = self._build_summary(
             motion_pack,
@@ -67,6 +85,9 @@ class ReportService:
             coverage.open_mandatory_items,
             len(open_requests),
             financial_summary,
+            legal_summary,
+            tax_summary,
+            compliance_summary,
         )
         next_actions = self._build_next_actions(
             motion_pack,
@@ -233,6 +254,9 @@ class ReportService:
         open_mandatory_items: int,
         open_request_count: int,
         financial_summary,
+        legal_summary,
+        tax_summary,
+        compliance_summary,
     ) -> str:
         financial_note = ""
         if financial_summary is not None and financial_summary.periods:
@@ -249,25 +273,59 @@ class ReportService:
             if fragments:
                 financial_note = " Financial QoE parsing extracted " + ", ".join(fragments) + "."
 
+        compliance_fragments: list[str] = []
+        if legal_summary is not None:
+            if legal_summary.contract_reviews:
+                compliance_fragments.append(
+                    f"{len(legal_summary.contract_reviews)} contract reviews"
+                )
+            if legal_summary.flags:
+                compliance_fragments.append(
+                    f"{len(legal_summary.flags)} legal governance flags"
+                )
+        if tax_summary is not None:
+            known_tax_items = [
+                item for item in tax_summary.items if item.status.value != "unknown"
+            ]
+            if known_tax_items:
+                compliance_fragments.append(
+                    f"{len(known_tax_items)} tax areas with evidence"
+                )
+        if compliance_summary is not None:
+            known_matrix_items = [
+                item
+                for item in compliance_summary.items
+                if item.status.value != "unknown"
+            ]
+            if known_matrix_items:
+                compliance_fragments.append(
+                    f"{len(known_matrix_items)} compliance-matrix items with determined status"
+                )
+        compliance_note = (
+            ""
+            if not compliance_fragments
+            else " Phase 9 engines identified " + ", ".join(compliance_fragments) + "."
+        )
+
         if motion_pack == MotionPack.CREDIT_LENDING:
             return (
                 f"{case_name} for {target_name} currently has {issue_count} tracked credit-risk "
                 f"items, {open_mandatory_items} open mandatory underwriting checklist items, "
                 f"and {open_request_count} open borrower information requests."
-                f"{financial_note}"
+                f"{financial_note}{compliance_note}"
             )
         if motion_pack == MotionPack.VENDOR_ONBOARDING:
             return (
                 f"{case_name} for {target_name} currently has {issue_count} tracked "
                 f"third-party risk items, {open_mandatory_items} open mandatory onboarding "
                 f"checklist items, and {open_request_count} open vendor follow-up requests."
-                f"{financial_note}"
+                f"{financial_note}{compliance_note}"
             )
         return (
             f"{case_name} for {target_name} currently has {issue_count} tracked issues, "
             f"{open_mandatory_items} open mandatory checklist items, and "
             f"{open_request_count} open diligence requests."
-            f"{financial_note}"
+            f"{financial_note}{compliance_note}"
         )
 
     def _report_title_for_motion(self, motion_pack: MotionPack) -> str:

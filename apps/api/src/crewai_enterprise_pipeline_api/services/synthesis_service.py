@@ -32,6 +32,9 @@ class SynthesisService:
         case,
         run_id: str,
         financial_summary=None,
+        legal_summary=None,
+        tax_summary=None,
+        compliance_summary=None,
     ) -> list[WorkstreamSynthesisRecord]:
         syntheses: list[WorkstreamSynthesisRecord] = []
         for workstream in WorkstreamDomain:
@@ -88,6 +91,9 @@ class SynthesisService:
                 scoped_issues,
                 open_mandatory,
                 financial_summary,
+                legal_summary,
+                tax_summary,
+                compliance_summary,
             )
             recommended_next_action = self._build_next_action(
                 scoped_issues,
@@ -166,6 +172,9 @@ class SynthesisService:
         scoped_issues,
         open_mandatory,
         financial_summary,
+        legal_summary,
+        tax_summary,
+        compliance_summary,
     ) -> str:
         evidence_note = (
             f"The evidence ledger includes {len(scoped_evidence)} items"
@@ -215,9 +224,44 @@ class SynthesisService:
             if financial_summary.flags:
                 financial_note += " Flags: " + "; ".join(financial_summary.flags[:3]) + "."
 
+        phase9_note = ""
+        if workstream == WorkstreamDomain.LEGAL_CORPORATE and legal_summary is not None:
+            phase9_note = (
+                " Structured legal analysis identified "
+                f"{len(legal_summary.directors)} directors, "
+                f"{len(legal_summary.contract_reviews)} contract reviews, and "
+                f"{legal_summary.charges_detected} charge references."
+            )
+            if legal_summary.flags:
+                phase9_note += " Flags: " + "; ".join(legal_summary.flags[:3]) + "."
+        elif workstream == WorkstreamDomain.TAX and tax_summary is not None:
+            known_tax_items = [
+                item for item in tax_summary.items if item.status.value != "unknown"
+            ]
+            phase9_note = (
+                " Structured tax analysis identified "
+                f"{len(known_tax_items)} tax areas with evidence and "
+                f"{len(tax_summary.gstins)} GSTIN references."
+            )
+            if tax_summary.flags:
+                phase9_note += " Flags: " + "; ".join(tax_summary.flags[:3]) + "."
+        elif workstream == WorkstreamDomain.REGULATORY and compliance_summary is not None:
+            known_matrix_items = [
+                item
+                for item in compliance_summary.items
+                if item.status.value != "unknown"
+            ]
+            phase9_note = (
+                " Compliance matrix generated "
+                f"{len(compliance_summary.items)} items with "
+                f"{len(known_matrix_items)} determined statuses."
+            )
+            if compliance_summary.flags:
+                phase9_note += " Flags: " + "; ".join(compliance_summary.flags[:3]) + "."
+
         return (
             f"{self._label_for_domain(workstream.value)} synthesis: {evidence_note} {issue_note}. "
-            f"{checklist_note}{top_issue_note}{financial_note}"
+            f"{checklist_note}{top_issue_note}{financial_note}{phase9_note}"
         )
 
     def _build_next_action(

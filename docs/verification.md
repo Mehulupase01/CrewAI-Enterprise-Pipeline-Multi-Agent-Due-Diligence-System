@@ -32,6 +32,12 @@ The current gate now covers both the foundation and the first operations layer:
 - financial red-flag detection for concentration, cash conversion, leverage, coverage, seasonality, and growth quality
 - automatic checklist satisfaction for financial workstream items
 - dedicated Phase 8 financial QoE evaluation coverage
+- structured legal summary generation for directors, DINs, shareholding, subsidiaries, charges, and contract clauses
+- structured tax compliance summary generation for GST, income tax, TDS/payroll, transfer pricing, and deferred-tax signals
+- sector-aware regulatory compliance matrix generation across MCA, licensing, and BFSI-specific RBI or SEBI regimes
+- negation-aware tax and regulatory phrase matching to avoid false negatives from language like `no notice` or `no sanctions`
+- automatic checklist satisfaction for legal, tax, and regulatory workstream items
+- dedicated Phase 9 legal/tax/regulatory evaluation coverage
 - deterministic end-to-end evaluation scenarios with saved JSON scorecards
 - repeat-scan regression checks for issue fingerprint reuse
 - enforced-auth and role-guard tests
@@ -68,6 +74,14 @@ The current gate now covers both the foundation and the first operations layer:
   normalized EBITDA, core ratios, and financial diligence flags.
 - Financial summaries can auto-satisfy relevant checklist items and that state
   is reflected in workflow coverage, approvals, and report generation.
+- The API can build a legal summary from uploaded documents, including DIN,
+  shareholding, subsidiary, charge, and contract-clause extraction.
+- The API can build a tax summary from uploaded documents, including GSTIN
+  extraction, tax-area statuses, and checklist auto-satisfaction.
+- The API can build a sector-aware compliance matrix from uploaded documents,
+  including MCA and BFSI-style RBI or SEBI compliance statuses.
+- Legal, tax, and regulatory summaries must refresh inside workflow runs and
+  enrich trace events, syntheses, reports, and CrewAI tool surfaces consistently.
 - The first-slice evaluation suite passes blocked, clean-approved, and
   approved-nonblocking-risk scenarios.
 - Every quality-gate run writes a machine-readable artifact under
@@ -76,7 +90,8 @@ The current gate now covers both the foundation and the first operations layer:
 - The API returns a request ID header on responses.
 - The repo includes deployment, runbook, smoke-check, and release-checklist assets.
 - The evaluation runner passes all supported suites, including credit lending
-  vendor onboarding, manufacturing / industrials, and BFSI / NBFC.
+  vendor onboarding, manufacturing / industrials, BFSI / NBFC, and the
+  dedicated Phase 9 legal/tax/regulatory suite.
 - The web app exposes a dashboard, case workspace, and run viewer over the shared case model.
 - The workbench reflects the actual platform surface instead of generator boilerplate.
 - The repo contains reproducible scripts for bootstrap, dev, and checks.

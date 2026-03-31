@@ -2,14 +2,15 @@
 
 ## Current State
 
-**Completed phases:** 0-8 | **Next:** Phase 9
-**Tests:** 92 pytest, 12 eval scenarios (6 suites) | **Blockers:** None
+**Completed phases:** 0-9 | **Next:** Phase 10
+**Tests:** 97 pytest, 13 eval scenarios (7 suites) | **Blockers:** None
 
 ## Project Overview
 
 India-focused due diligence system: FastAPI API (`apps/api/`) + Next.js workbench (`apps/web/`).
 Pack model: `motion_packs x sector_packs x India rule_packs`.
 CrewAI is wired through Phase 7 and activates only when `LLM_PROVIDER` + `LLM_API_KEY` are set. A post-Phase-7 enhancement added scoped read-only evidence, issue, and checklist tools over pre-loaded case snapshots, and canonical Phase 8 is now complete with a Financial Quality of Earnings (QoE) engine: structured workbook parsing, normalized EBITDA adjustments, ratio analysis, financial flags, workflow integration, and checklist auto-satisfaction. Deterministic fallback remains the default safety path (AD-001, AD-027, AD-030).
+Canonical Phase 9 is now complete with a Legal / Tax / Regulatory engine: structured legal summaries, contract clause review, DIN and shareholding extraction, tax compliance summaries, BFSI-aware compliance matrix generation, checklist auto-satisfaction, workflow refresh, report integration, CrewAI compliance tools, and a dedicated Phase 9 evaluation suite (AD-036 to AD-038).
 
 ## Execution Contract For This Repo
 

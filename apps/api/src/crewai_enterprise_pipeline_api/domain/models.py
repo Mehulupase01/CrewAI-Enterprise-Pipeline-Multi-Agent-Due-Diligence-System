@@ -151,6 +151,13 @@ class UserRole(StrEnum):
     ADMIN = "admin"
 
 
+class ComplianceStatus(StrEnum):
+    COMPLIANT = "compliant"
+    NON_COMPLIANT = "non_compliant"
+    PARTIALLY_COMPLIANT = "partially_compliant"
+    UNKNOWN = "unknown"
+
+
 class ORMModel(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -656,6 +663,71 @@ class FinancialMetricSummary(BaseModel):
     ratios: dict[str, float | None] = Field(default_factory=dict)
     qoe_adjustments: list[QoEAdjustment] = Field(default_factory=list)
     normalized_ebitda: float | None = None
+    flags: list[str] = Field(default_factory=list)
+    checklist_updates: list[ChecklistAutoUpdate] = Field(default_factory=list)
+
+
+class DirectorProfile(BaseModel):
+    name: str | None = None
+    din: str
+    din_valid_format: bool
+    source_artifact_id: str | None = None
+
+
+class ContractClauseReview(BaseModel):
+    clause_key: str
+    present: bool
+    note: str
+
+
+class ContractReviewResult(BaseModel):
+    artifact_id: str | None = None
+    contract_title: str
+    contract_type: str
+    governing_law: str | None = None
+    clauses: list[ContractClauseReview] = Field(default_factory=list)
+    flags: list[str] = Field(default_factory=list)
+
+
+class LegalStructureSummary(BaseModel):
+    case_id: str
+    artifact_count: int
+    directors: list[DirectorProfile] = Field(default_factory=list)
+    shareholding_summary: dict[str, float] = Field(default_factory=dict)
+    charges_detected: int = 0
+    subsidiary_mentions: list[str] = Field(default_factory=list)
+    contract_reviews: list[ContractReviewResult] = Field(default_factory=list)
+    flags: list[str] = Field(default_factory=list)
+    checklist_updates: list[ChecklistAutoUpdate] = Field(default_factory=list)
+
+
+class TaxComplianceItem(BaseModel):
+    tax_area: str
+    status: ComplianceStatus
+    evidence_ids: list[str] = Field(default_factory=list)
+    notes: str
+
+
+class TaxComplianceSummary(BaseModel):
+    case_id: str
+    gstins: list[str] = Field(default_factory=list)
+    items: list[TaxComplianceItem] = Field(default_factory=list)
+    flags: list[str] = Field(default_factory=list)
+    checklist_updates: list[ChecklistAutoUpdate] = Field(default_factory=list)
+
+
+class ComplianceMatrixItem(BaseModel):
+    regulation: str
+    regulator: str
+    status: ComplianceStatus
+    evidence_ids: list[str] = Field(default_factory=list)
+    notes: str
+
+
+class ComplianceMatrixSummary(BaseModel):
+    case_id: str
+    sector_pack: SectorPack
+    items: list[ComplianceMatrixItem] = Field(default_factory=list)
     flags: list[str] = Field(default_factory=list)
     checklist_updates: list[ChecklistAutoUpdate] = Field(default_factory=list)
 

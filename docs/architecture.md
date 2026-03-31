@@ -1,6 +1,6 @@
 # Architecture Overview
 
-> **Last updated:** 2026-03-31 (Phase 8 complete + post-Phase-7 enhancement)
+> **Last updated:** 2026-03-31 (Phase 9 complete)
 > **Update rule:** This file is updated after every masterplan phase to reflect actual system state.
 
 ## System Summary
@@ -23,17 +23,18 @@ See `docs/MASTERPLAN.docx` (preferred) or `docs/MASTERPLAN.pdf` for the roadmap 
 
 ### What is REAL and WORKING
 - 14 SQLAlchemy ORM models with proper relationships, cascades, timestamps
-- 54 BaseModel/ORMModel schemas with consistent naming conventions, plus shared enums
-- 12 service classes + CrewAI multi-agent orchestration (activates with LLM config)
-- 48 REST endpoints (full CRUD + SSE streaming + chunks + search + conflicts + financial summary)
+- 87 domain models and enums with consistent naming conventions across API, workflow, and evaluation surfaces
+- 19 service and engine classes + CrewAI multi-agent orchestration (activates with LLM config)
+- 51 REST endpoints (full CRUD + SSE streaming + chunks + search + conflicts + financial/legal/tax/compliance summaries)
 - Document parsing for 6 formats (PDF with tables, DOCX with headings+tables, XLSX multi-sheet, CSV, JSON, TXT)
 - Structured financial workbook parsing for annual periods, QoE adjustments, normalized EBITDA, ratios, and financial flags
+- Structured legal, tax, and regulatory parsing for directors, DINs, shareholding, contract clauses, GST posture, and compliance-matrix generation
 - Semantic chunking engine (heading > paragraph > sentence splitting, 1200 char max)
 - Rule-based entity extraction (financial, legal, regulatory, India identifiers)
 - SHA256 document dedup (same content returns existing artifact)
 - Header-based RBAC with 4 roles (VIEWER, ANALYST, REVIEWER, ADMIN)
-- Evaluation harness with 6 suites, 12 scenarios
-- 92 pytest unit tests
+- Evaluation harness with 7 suites, 13 scenarios
+- 97 pytest unit tests
 - Export ZIP packages (markdown + JSON metadata / snapshots)
 - Docker Compose stack (PostgreSQL 17, Redis 7.4, MinIO)
 
@@ -51,6 +52,16 @@ See `docs/MASTERPLAN.docx` (preferred) or `docs/MASTERPLAN.pdf` for the roadmap 
 - Workflow-integrated financial refresh so approvals, syntheses, CrewAI prompts, and executive reporting all consume the same structured QoE state
 - `agents/financial_tools.py` plus financial prompt context so the CrewAI financial workstream and coordinator can use ratios and sector benchmarks directly
 - Dedicated Phase 8 evaluation coverage and five focused pytest cases for parser, ratios, checklist automation, tool attachment, and workflow integration
+
+### What was ADDED in Phase 9
+- `services/document_signal_utils.py` so legal, tax, and regulatory engines can operate over shared artifact text snapshots with chunk and evidence lineage
+- `services/legal_service.py` for director, DIN, shareholding, subsidiary, charge, and contract-clause extraction plus legal checklist automation
+- `services/tax_service.py` for GSTIN extraction, tax-area compliance assessment, negation-aware statutory signal matching, and tax checklist automation
+- `services/regulatory_service.py` for sector-aware compliance matrix generation across MCA, licensing, DPDP, factory/EHS, RBI, and SEBI-style regimes
+- `GET /cases/{id}/legal-summary`, `GET /cases/{id}/tax-summary`, and `GET /cases/{id}/compliance-matrix`
+- Workflow-integrated legal/tax/regulatory refresh so syntheses, reports, trace events, and CrewAI prompts consume the same Phase 9 state
+- `agents/compliance_tools.py` plus compliance prompt context so legal, tax, regulatory, and coordinator agents can drill into structured Phase 9 outputs directly
+- Dedicated Phase 9 evaluation coverage and five focused pytest cases for clause extraction, tax statuses, compliance-matrix generation, tool attachment, and workflow integration
 
 ### What was ADDED in Phase 7
 - CrewAI multi-agent orchestration (`agents/` package) — 9 workstream agents + 1 coordinator
@@ -122,6 +133,7 @@ See `docs/MASTERPLAN.docx` (preferred) or `docs/MASTERPLAN.pdf` for the roadmap 
 - CrewAI agents wired with scoped read-only tools, but they still require LLM_PROVIDER + LLM_API_KEY to activate
 - Real-time tool and step streaming is still not implemented; trace events are persisted after crew completion
 - No dedicated financial summary panel in the Next.js case workspace yet; Phase 8 is currently exposed through the API, workflow output, and reports rather than a bespoke UI view
+- No dedicated legal/tax/regulatory analyst panels in the Next.js workspace yet; Phase 9 is currently exposed through APIs, workflow outputs, and evaluation surfaces rather than bespoke UI views
 
 ## Layers
 
@@ -137,6 +149,7 @@ apps/api/src/crewai_enterprise_pipeline_api/
     config.py          # 9 workstream agent configs + coordinator + pack context helpers
     models.py          # WorkstreamAnalysisOutput, ExecutiveSummaryOutput
     crew.py            # CaseContext, compact prompt snapshots, crew factory, run_crew async wrapper
+    compliance_tools.py # Structured legal/tax/regulatory lookup tools for CrewAI
     financial_tools.py # Structured financial ratio and sector benchmark tools for CrewAI
     tools.py           # Scoped read-only CrewAI tools over pre-loaded evidence, issues, checklist, and chunks
   api/
@@ -161,7 +174,11 @@ apps/api/src/crewai_enterprise_pipeline_api/
     workflow_service.py    # Orchestrates runs (CrewAI when LLM configured, deterministic fallback)
     synthesis_service.py   # Workstream synthesis (deterministic template fill)
     report_service.py      # Executive memo generation
+    document_signal_utils.py  # Shared artifact text snapshots for Phase 9 signal extraction
     financial_qoe_service.py  # Phase 8 QoE summary, ratios, flags, checklist automation
+    legal_service.py          # Phase 9 legal structure and contract-clause analysis
+    tax_service.py            # Phase 9 tax compliance summary and checklist automation
+    regulatory_service.py     # Phase 9 compliance matrix generation and checklist automation
     embedding_service.py   # Vector embedding generation (none/openai/local providers)
     export_service.py      # ZIP export package creation
     search_service.py      # Hybrid BM25+cosine search, evidence conflict detection
@@ -175,7 +192,7 @@ apps/api/src/crewai_enterprise_pipeline_api/
   evaluation/
     runner.py          # CLI: python -m ...evaluation.runner --suite <name>
     harness.py         # Test infrastructure (isolated SQLite per run)
-    scenarios.py       # 11 scenarios across 5 suites
+    scenarios.py       # 13 scenarios across 7 suites
 ```
 
 ### Layer 2: Web Workbench (`apps/web/`)

@@ -233,6 +233,27 @@ def _evaluate_scenario(scenario: EvaluationScenario) -> dict[str, Any]:
                     client.get(f"/api/v1/cases/{case_id}/financial-summary"),
                     200,
                 )
+            legal_summary: dict[str, Any] | None = None
+            if scenario.legal_summary_expectation is not None:
+                legal_summary = _ensure_success(
+                    "legal summary",
+                    client.get(f"/api/v1/cases/{case_id}/legal-summary"),
+                    200,
+                )
+            tax_summary: dict[str, Any] | None = None
+            if scenario.tax_summary_expectation is not None:
+                tax_summary = _ensure_success(
+                    "tax summary",
+                    client.get(f"/api/v1/cases/{case_id}/tax-summary"),
+                    200,
+                )
+            compliance_matrix: list[dict[str, Any]] | None = None
+            if scenario.compliance_matrix_expectation is not None:
+                compliance_matrix = _ensure_success(
+                    "compliance matrix",
+                    client.get(f"/api/v1/cases/{case_id}/compliance-matrix"),
+                    200,
+                )
 
             approval = _ensure_success(
                 "approval review",
@@ -296,6 +317,21 @@ def _evaluate_scenario(scenario: EvaluationScenario) -> dict[str, Any]:
         metrics["financial_flag_count"] = len(financial_summary["flags"])
         metrics["financial_checklist_update_count"] = len(
             financial_summary.get("checklist_updates", [])
+        )
+    if legal_summary is not None:
+        metrics["legal_director_count"] = len(legal_summary["directors"])
+        metrics["legal_contract_review_count"] = len(legal_summary["contract_reviews"])
+        metrics["legal_checklist_update_count"] = len(legal_summary.get("checklist_updates", []))
+    if tax_summary is not None:
+        metrics["tax_known_status_count"] = len(
+            [item for item in tax_summary["items"] if item["status"] != "unknown"]
+        )
+        metrics["tax_gstin_count"] = len(tax_summary["gstins"])
+        metrics["tax_checklist_update_count"] = len(tax_summary.get("checklist_updates", []))
+    if compliance_matrix is not None:
+        metrics["compliance_item_count"] = len(compliance_matrix)
+        metrics["compliance_known_status_count"] = len(
+            [item for item in compliance_matrix if item["status"] != "unknown"]
         )
 
     checks: list[dict[str, Any]] = []
@@ -506,6 +542,173 @@ def _evaluate_scenario(scenario: EvaluationScenario) -> dict[str, Any]:
                     "checklist items."
                 ),
             )
+    if scenario.legal_summary_expectation is not None and legal_summary is not None:
+        legal_expectation = scenario.legal_summary_expectation
+        actual_clause_keys = sorted(
+            {
+                clause["clause_key"]
+                for review in legal_summary["contract_reviews"]
+                for clause in review["clauses"]
+                if clause["present"]
+            }
+        )
+        _append_check(
+            checks,
+            name="legal_director_count",
+            passed=len(legal_summary["directors"]) >= legal_expectation.min_directors,
+            actual=len(legal_summary["directors"]),
+            expected=f">= {legal_expectation.min_directors}",
+            detail="Legal summary should extract the expected minimum number of directors.",
+        )
+        _append_check(
+            checks,
+            name="legal_contract_review_count",
+            passed=len(legal_summary["contract_reviews"])
+            >= legal_expectation.min_contract_reviews,
+            actual=len(legal_summary["contract_reviews"]),
+            expected=f">= {legal_expectation.min_contract_reviews}",
+            detail="Contract review extraction should find the expected number of contracts.",
+        )
+        if legal_expectation.required_clause_keys:
+            _append_check(
+                checks,
+                name="legal_clause_keys",
+                passed=set(legal_expectation.required_clause_keys).issubset(actual_clause_keys),
+                actual=actual_clause_keys,
+                expected=list(legal_expectation.required_clause_keys),
+                detail="Required contract clause keys should be present in the legal summary.",
+            )
+        if legal_expectation.flag_substrings:
+            actual_flags = legal_summary["flags"]
+            _append_check(
+                checks,
+                name="legal_flags",
+                passed=all(
+                    any(fragment.lower() in flag.lower() for flag in actual_flags)
+                    for fragment in legal_expectation.flag_substrings
+                ),
+                actual=actual_flags,
+                expected=list(legal_expectation.flag_substrings),
+                detail="Expected legal flag phrases should appear in the legal summary.",
+            )
+        _append_check(
+            checks,
+            name="legal_checklist_updates",
+            passed=len(legal_summary.get("checklist_updates", []))
+            >= legal_expectation.min_checklist_updates,
+            actual=len(legal_summary.get("checklist_updates", [])),
+            expected=f">= {legal_expectation.min_checklist_updates}",
+            detail="Legal engine should auto-satisfy the expected minimum checklist items.",
+        )
+    if scenario.tax_summary_expectation is not None and tax_summary is not None:
+        tax_expectation = scenario.tax_summary_expectation
+        tax_status_map = {item["tax_area"]: item["status"] for item in tax_summary["items"]}
+        actual_tax_areas = sorted(tax_status_map)
+        if tax_expectation.required_tax_areas:
+            _append_check(
+                checks,
+                name="tax_areas",
+                passed=set(tax_expectation.required_tax_areas).issubset(actual_tax_areas),
+                actual=actual_tax_areas,
+                expected=list(tax_expectation.required_tax_areas),
+                detail="Expected tax areas should be represented in the tax summary.",
+            )
+        if tax_expectation.required_statuses:
+            _append_check(
+                checks,
+                name="tax_statuses",
+                passed=all(
+                    tax_status_map.get(area) == status
+                    for area, status in tax_expectation.required_statuses.items()
+                ),
+                actual=tax_status_map,
+                expected=tax_expectation.required_statuses,
+                detail="Tax statuses should match the expected compliance matrix.",
+            )
+        _append_check(
+            checks,
+            name="tax_gstins",
+            passed=len(tax_summary["gstins"]) >= tax_expectation.min_gstins,
+            actual=len(tax_summary["gstins"]),
+            expected=f">= {tax_expectation.min_gstins}",
+            detail="Tax summary should extract the expected minimum GSTIN volume.",
+        )
+        if tax_expectation.flag_substrings:
+            actual_flags = tax_summary["flags"]
+            _append_check(
+                checks,
+                name="tax_flags",
+                passed=all(
+                    any(fragment.lower() in flag.lower() for flag in actual_flags)
+                    for fragment in tax_expectation.flag_substrings
+                ),
+                actual=actual_flags,
+                expected=list(tax_expectation.flag_substrings),
+                detail="Expected tax flag phrases should appear in the tax summary.",
+            )
+        _append_check(
+            checks,
+            name="tax_checklist_updates",
+            passed=len(tax_summary.get("checklist_updates", []))
+            >= tax_expectation.min_checklist_updates,
+            actual=len(tax_summary.get("checklist_updates", [])),
+            expected=f">= {tax_expectation.min_checklist_updates}",
+            detail="Tax engine should auto-satisfy the expected minimum checklist items.",
+        )
+    if (
+        scenario.compliance_matrix_expectation is not None
+        and compliance_matrix is not None
+    ):
+        compliance_expectation = scenario.compliance_matrix_expectation
+        regulation_status_map = {
+            item["regulation"]: item["status"] for item in compliance_matrix
+        }
+        actual_regulations = sorted(regulation_status_map)
+        if compliance_expectation.required_regulations:
+            _append_check(
+                checks,
+                name="compliance_regulations",
+                passed=set(compliance_expectation.required_regulations).issubset(
+                    actual_regulations
+                ),
+                actual=actual_regulations,
+                expected=list(compliance_expectation.required_regulations),
+                detail="Compliance matrix should include the expected regulations.",
+            )
+        if compliance_expectation.required_statuses:
+            _append_check(
+                checks,
+                name="compliance_statuses",
+                passed=all(
+                    regulation_status_map.get(regulation) == status
+                    for regulation, status in compliance_expectation.required_statuses.items()
+                ),
+                actual=regulation_status_map,
+                expected=compliance_expectation.required_statuses,
+                detail="Compliance statuses should match the expected matrix outcome.",
+            )
+        _append_check(
+            checks,
+            name="compliance_known_statuses",
+            passed=metrics["compliance_known_status_count"]
+            >= compliance_expectation.min_known_statuses,
+            actual=metrics["compliance_known_status_count"],
+            expected=f">= {compliance_expectation.min_known_statuses}",
+            detail="Compliance matrix should determine the expected minimum number of statuses.",
+        )
+        if compliance_expectation.flag_substrings:
+            actual_notes = [item["notes"] for item in compliance_matrix]
+            _append_check(
+                checks,
+                name="compliance_flags",
+                passed=all(
+                    any(fragment.lower() in note.lower() for note in actual_notes)
+                    for fragment in compliance_expectation.flag_substrings
+                ),
+                actual=actual_notes,
+                expected=list(compliance_expectation.flag_substrings),
+                detail="Expected compliance-note phrases should appear in the matrix.",
+            )
 
     return {
         "code": scenario.code,
@@ -519,6 +722,9 @@ def _evaluate_scenario(scenario: EvaluationScenario) -> dict[str, Any]:
             "second": issue_scan_second,
         },
         "financial_summary": financial_summary,
+        "legal_summary": legal_summary,
+        "tax_summary": tax_summary,
+        "compliance_matrix": compliance_matrix,
         "scenario": {
             "case_payload": scenario.case_payload,
             "satisfy_all_checklist_items": scenario.satisfy_all_checklist_items,

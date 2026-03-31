@@ -57,6 +57,33 @@ class FinancialSummaryExpectation:
 
 
 @dataclass(slots=True)
+class LegalSummaryExpectation:
+    min_directors: int = 0
+    min_contract_reviews: int = 0
+    required_clause_keys: tuple[str, ...] = ()
+    flag_substrings: tuple[str, ...] = ()
+    min_checklist_updates: int = 0
+
+
+@dataclass(slots=True)
+class TaxSummaryExpectation:
+    required_tax_areas: tuple[str, ...] = ()
+    required_statuses: dict[str, str] = field(default_factory=dict)
+    min_gstins: int = 0
+    flag_substrings: tuple[str, ...] = ()
+    min_checklist_updates: int = 0
+
+
+@dataclass(slots=True)
+class ComplianceMatrixExpectation:
+    required_regulations: tuple[str, ...] = ()
+    required_statuses: dict[str, str] = field(default_factory=dict)
+    min_known_statuses: int = 0
+    flag_substrings: tuple[str, ...] = ()
+    min_checklist_updates: int = 0
+
+
+@dataclass(slots=True)
 class ScenarioExpectation:
     approval_decision: str
     ready_for_export: bool
@@ -106,6 +133,9 @@ class EvaluationScenario:
         }
     )
     financial_summary_expectation: FinancialSummaryExpectation | None = None
+    legal_summary_expectation: LegalSummaryExpectation | None = None
+    tax_summary_expectation: TaxSummaryExpectation | None = None
+    compliance_matrix_expectation: ComplianceMatrixExpectation | None = None
     expectation: ScenarioExpectation = field(
         default_factory=lambda: ScenarioExpectation(
             approval_decision="changes_requested",
@@ -180,7 +210,7 @@ PHASE5_FIRST_SLICE_SCENARIOS: tuple[EvaluationScenario, ...] = (
             ready_for_export=False,
             report_status="not_ready",
             report_title="Executive Memo",
-            open_mandatory_items=10,
+            open_mandatory_items=9,
             min_blocking_issue_count=1,
             max_blocking_issue_count=1,
             min_issue_count=1,
@@ -656,7 +686,7 @@ MANUFACTURING_INDUSTRIALS_EXPANSION_SCENARIOS: tuple[EvaluationScenario, ...] = 
             report_status="not_ready",
             report_title="Executive Memo",
             min_syntheses=7,
-            open_mandatory_items=13,
+            open_mandatory_items=11,
             min_blocking_issue_count=1,
             max_blocking_issue_count=1,
             min_issue_count=3,
@@ -807,7 +837,7 @@ BFSI_NBFC_EXPANSION_SCENARIOS: tuple[EvaluationScenario, ...] = (
             report_status="not_ready",
             report_title="Executive Memo",
             min_syntheses=7,
-            open_mandatory_items=13,
+            open_mandatory_items=12,
             min_blocking_issue_count=3,
             max_blocking_issue_count=3,
             min_issue_count=3,
@@ -944,7 +974,167 @@ PHASE8_FINANCIAL_QOE_SCENARIOS: tuple[EvaluationScenario, ...] = (
 )
 
 
+PHASE9_LEGAL_TAX_REGULATORY_SCENARIOS: tuple[EvaluationScenario, ...] = (
+    EvaluationScenario(
+        code="phase9_bfsi_compliance_case",
+        name="Phase 9 BFSI compliance case",
+        description=(
+            "Validates that the legal, tax, and regulatory engines extract "
+            "structured Phase 9 outputs and auto-satisfy the expected checklist items."
+        ),
+        case_payload={
+            "name": "Project Meridian Compliance Review",
+            "target_name": "Meridian Finance Private Limited",
+            "summary": "Phase 9 evaluation scenario for legal, tax, and regulatory depth.",
+            "motion_pack": "buy_side_diligence",
+            "sector_pack": "bfsi_nbfc",
+            "country": "India",
+        },
+        upload_documents=(
+            UploadDocumentFixture(
+                title="MCA secretarial summary",
+                filename="mca_secretarial_summary.txt",
+                content=(
+                    "MCA annual return filed and charge register current. "
+                    "Ananya Sharma DIN 01234567. "
+                    "Rohan Mehta DIN 07654321. "
+                    "Promoter shareholding 62.5% and Public shareholding 37.5%. "
+                    "Wholly owned subsidiary: Meridian Payments Private Limited. "
+                    "A current charge in favour of Axis Bank remains registered."
+                ),
+                mime_type="text/plain",
+                document_kind="mca_secretarial_summary",
+                source_kind="uploaded_dataroom",
+                workstream_domain="legal_corporate",
+                evidence_kind="fact",
+            ),
+            UploadDocumentFixture(
+                title="Enterprise customer MSA",
+                filename="enterprise_customer_msa.txt",
+                content=(
+                    "This Master Services Agreement may terminate upon a change of control. "
+                    "Assignment requires prior written consent. "
+                    "Either party may terminate for material breach. "
+                    "The supplier will indemnify the customer for third-party claims. "
+                    "Aggregate liability cap equals fees paid in the prior twelve months. "
+                    "This agreement is governed by the laws of India and subject to the "
+                    "jurisdiction of Mumbai courts."
+                ),
+                mime_type="text/plain",
+                document_kind="customer_msa",
+                source_kind="uploaded_dataroom",
+                workstream_domain="legal_corporate",
+                evidence_kind="contract",
+            ),
+            UploadDocumentFixture(
+                title="Tax statutory note",
+                filename="tax_statutory_note.txt",
+                content=(
+                    "GSTIN 27ABCDE1234F1Z5 remains active and current. "
+                    "GST returns filed on time. Income tax return current. "
+                    "TDS and payroll compliance current. "
+                    "Transfer pricing study current and arm's length. "
+                    "Deferred tax asset schedule current and compliant."
+                ),
+                mime_type="text/plain",
+                document_kind="tax_statutory_note",
+                source_kind="uploaded_dataroom",
+                workstream_domain="tax",
+                evidence_kind="fact",
+            ),
+            UploadDocumentFixture(
+                title="RBI regulatory note",
+                filename="rbi_regulatory_note.txt",
+                content=(
+                    "RBI certificate of registration remains current and valid. "
+                    "NBFC registration is compliant. Prudential returns filed and CRAR "
+                    "remains within threshold. SEBI disclosure calendar current and compliant."
+                ),
+                mime_type="text/plain",
+                document_kind="rbi_regulatory_note",
+                source_kind="uploaded_dataroom",
+                workstream_domain="regulatory",
+                evidence_kind="fact",
+            ),
+        ),
+        legal_summary_expectation=LegalSummaryExpectation(
+            min_directors=2,
+            min_contract_reviews=1,
+            required_clause_keys=(
+                "change_of_control",
+                "assignment",
+                "termination",
+                "indemnity",
+                "liability_cap",
+                "governing_law",
+            ),
+            flag_substrings=(
+                "change-of-control clause detected",
+                "charge or encumbrance",
+            ),
+            min_checklist_updates=2,
+        ),
+        tax_summary_expectation=TaxSummaryExpectation(
+            required_tax_areas=(
+                "gst",
+                "income_tax",
+                "tds_payroll",
+                "transfer_pricing",
+                "deferred_tax",
+            ),
+            required_statuses={
+                "gst": "compliant",
+                "income_tax": "compliant",
+                "tds_payroll": "compliant",
+                "transfer_pricing": "compliant",
+                "deferred_tax": "compliant",
+            },
+            min_gstins=1,
+            flag_substrings=(
+                "transfer-pricing evidence detected",
+                "deferred-tax or MAT-credit references detected",
+            ),
+            min_checklist_updates=1,
+        ),
+        compliance_matrix_expectation=ComplianceMatrixExpectation(
+            required_regulations=(
+                "MCA Statutory Filings",
+                "RBI NBFC Registration",
+                "RBI / Prudential Returns",
+                "SEBI / Capital Markets Compliance",
+            ),
+            required_statuses={
+                "MCA Statutory Filings": "compliant",
+                "RBI NBFC Registration": "compliant",
+                "RBI / Prudential Returns": "compliant",
+                "SEBI / Capital Markets Compliance": "compliant",
+            },
+            min_known_statuses=4,
+        ),
+        expectation=ScenarioExpectation(
+            approval_decision="changes_requested",
+            ready_for_export=False,
+            report_status="not_ready",
+            report_title="Executive Memo",
+            open_mandatory_items=8,
+            min_blocking_issue_count=0,
+            max_blocking_issue_count=0,
+            min_issue_count=0,
+            min_open_request_count=0,
+            min_evidence_count=4,
+            min_syntheses=7,
+        ),
+    ),
+)
+
+
 EVALUATION_SUITES: dict[str, EvaluationSuiteDefinition] = {
+    "phase9_legal_tax_regulatory": EvaluationSuiteDefinition(
+        key="phase9_legal_tax_regulatory",
+        title="Phase 9 Legal Tax Regulatory Evaluation",
+        artifact_prefix="phase9-legal-tax-regulatory",
+        scenarios=PHASE9_LEGAL_TAX_REGULATORY_SCENARIOS,
+    ),
     "phase8_financial_qoe": EvaluationSuiteDefinition(
         key="phase8_financial_qoe",
         title="Phase 8 Financial QoE Evaluation",

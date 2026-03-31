@@ -8,8 +8,16 @@ from typing import Any
 from crewai.tools import BaseTool
 from pydantic import BaseModel, Field, PrivateAttr
 
+from crewai_enterprise_pipeline_api.agents.compliance_tools import (
+    build_compliance_tools,
+)
 from crewai_enterprise_pipeline_api.agents.financial_tools import build_financial_tools
-from crewai_enterprise_pipeline_api.domain.models import FinancialMetricSummary
+from crewai_enterprise_pipeline_api.domain.models import (
+    ComplianceMatrixSummary,
+    FinancialMetricSummary,
+    LegalStructureSummary,
+    TaxComplianceSummary,
+)
 
 
 def _clip(text: str, limit: int = 220) -> str:
@@ -410,6 +418,9 @@ def build_workstream_tools(
     max_usage_count: int,
     default_top_k: int = 5,
     financial_summary: FinancialMetricSummary | None = None,
+    legal_summary: LegalStructureSummary | None = None,
+    tax_summary: TaxComplianceSummary | None = None,
+    compliance_summary: ComplianceMatrixSummary | None = None,
     sector_pack: str = "tech_saas_services",
 ) -> list[BaseTool]:
     scope_label = workstream_domain.replace("_", " ")
@@ -455,6 +466,14 @@ def build_workstream_tools(
                 sector_pack=sector_pack,
             )
         )
+    if workstream_domain in {"legal_corporate", "tax", "regulatory"}:
+        tools.extend(
+            build_compliance_tools(
+                legal_summary=legal_summary,
+                tax_summary=tax_summary,
+                compliance_summary=compliance_summary,
+            )
+        )
     return tools
 
 
@@ -467,6 +486,9 @@ def build_case_tools(
     max_usage_count: int,
     default_top_k: int = 5,
     financial_summary: FinancialMetricSummary | None = None,
+    legal_summary: LegalStructureSummary | None = None,
+    tax_summary: TaxComplianceSummary | None = None,
+    compliance_summary: ComplianceMatrixSummary | None = None,
     sector_pack: str = "tech_saas_services",
 ) -> list[BaseTool]:
     tools: list[Any] = [
@@ -500,6 +522,13 @@ def build_case_tools(
         build_financial_tools(
             financial_summary=financial_summary,
             sector_pack=sector_pack,
+        )
+    )
+    tools.extend(
+        build_compliance_tools(
+            legal_summary=legal_summary,
+            tax_summary=tax_summary,
+            compliance_summary=compliance_summary,
         )
     )
     return tools

@@ -4,11 +4,11 @@
 > Any AI agent resuming work should read this file + CLAUDE.md first.
 > Strategic roadmap comes from `docs/MASTERPLAN.docx` (preferred) and `docs/MASTERPLAN.pdf` (companion export); execution truth comes from the actual repo state.
 
-## Status: Phase 8 Complete + Post-Phase-7 Enhancement Landed
+## Status: Phase 9 Complete
 
 **Last updated:** 2026-03-31
-**Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7, Phase 8
-**Next phase:** Phase 9 (Legal / Tax / Regulatory Engine)
+**Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7, Phase 8, Phase 9
+**Next phase:** Phase 10 (Commercial / Operations / Cyber / Forensic Engine)
 **Blocking issues:** None
 
 ---
@@ -508,6 +508,65 @@
 **Notes for next phase:**
 - Phase 9 should build the canonical Legal / Tax / Regulatory engine from `MASTERPLAN.docx`
 - Phase 8 currently exposes a complete backend and workflow surface; a dedicated frontend financial summary panel is still optional future UX depth, not a blocker for canonical Phase 8 closure
+
+---
+
+### Phase 9: Legal / Tax / Regulatory Engine (2026-03-31)
+
+**What was done:**
+- Added a shared document-signal utility so multiple domain engines can operate over the same artifact, chunk, and evidence lineage without duplicating parsing glue
+- Added a legal engine that extracts directors, DINs, shareholding, subsidiary references, charge signals, and structured contract-clause reviews from uploaded documents
+- Added a tax engine that extracts GSTINs, computes tax-area compliance states, applies negation-aware statutory phrase matching, and auto-satisfies relevant checklist items
+- Added a sector-aware regulatory engine that builds a compliance matrix across MCA, licensing, and BFSI-specific RBI or SEBI obligations
+- Added `GET /cases/{case_id}/legal-summary`, `GET /cases/{case_id}/tax-summary`, and `GET /cases/{case_id}/compliance-matrix`
+- Wired Phase 9 refresh into workflow execution before coverage, approvals, syntheses, reports, and CrewAI prompts
+- Added compliance-focused CrewAI tools so legal, tax, regulatory, and coordinator agents can inspect structured Phase 9 state directly
+- Added a dedicated Phase 9 evaluation suite plus focused pytest coverage for clause extraction, tax statuses, compliance-matrix generation, tool attachment, and workflow integration
+
+**Files created:**
+- apps/api/src/.../services/document_signal_utils.py -- shared artifact text snapshot and relevance scoring helpers
+- apps/api/src/.../services/legal_service.py -- legal structure and contract review engine
+- apps/api/src/.../services/tax_service.py -- tax compliance summary engine
+- apps/api/src/.../services/regulatory_service.py -- compliance matrix engine
+- apps/api/src/.../agents/compliance_tools.py -- structured legal/tax/regulatory CrewAI tools
+- apps/api/tests/test_phase9_legal_tax_regulatory.py -- 5 focused Phase 9 test cases
+
+**Files modified:**
+- apps/api/src/.../domain/models.py -- new Phase 9 summary and item models plus `ComplianceStatus`
+- apps/api/src/.../api/routes/cases.py -- new legal-summary, tax-summary, and compliance-matrix endpoints
+- apps/api/src/.../agents/tools.py -- compliance tool wiring for coordinator and legal/tax/regulatory workstreams
+- apps/api/src/.../agents/crew.py -- compact Phase 9 snapshot injection into CrewAI task descriptions
+- apps/api/src/.../agents/config.py -- richer legal, tax, and regulatory agent remit definitions
+- apps/api/src/.../services/report_service.py -- Phase 9 report note integration
+- apps/api/src/.../services/synthesis_service.py -- legal/tax/regulatory narrative enrichment
+- apps/api/src/.../services/workflow_service.py -- legal/tax/regulatory refresh and trace integration in deterministic and CrewAI paths
+- apps/api/src/.../evaluation/scenarios.py -- Phase 9 scenario and expectation contracts plus updated blocked-scenario baselines
+- apps/api/src/.../evaluation/runner.py -- legal/tax/compliance evaluation assertions
+- apps/api/tests/test_evaluation.py -- Phase 9 suite registration
+- apps/api/src/.../core/settings.py -- current_phase updated to Phase 9 complete
+
+**Decisions made:**
+- AD-036: Phase 9 legal, tax, and regulatory summaries are computed on demand and refreshed inside workflows rather than stored as derived tables
+- AD-037: Tax and regulatory phrase matching is negation-aware, not naive substring logic
+- AD-038: Phase 9 structured state must surface through APIs, workflows, reports, and CrewAI tools together
+
+**Blockers encountered:**
+- Initial subsidiary extraction was too greedy and captured trailing sentence text; the regex was tightened before phase closure
+- Existing blocked evaluation scenarios needed new open-mandatory baselines because Phase 9 auto-satisfied additional checklist items by design
+
+**Test results:**
+- pytest: 97/97 pass (92 existing + 5 new)
+- eval suites: 13/13 pass (all 7 suites at 100%)
+- ruff: clean
+- npm lint: clean
+- npm typecheck: clean
+- check gate: `./scripts/check.ps1` passed
+- dedicated Phase 9 eval artifact: `artifacts/evaluations/phase9-legal-tax-regulatory-20260331T120607Z.json`
+- latest full-gate eval artifact: `artifacts/evaluations/all-supported-suites-20260331T121023Z.json`
+
+**Notes for next phase:**
+- Phase 10 should build the canonical Commercial / Operations / Cyber / Forensic engine from `MASTERPLAN.docx`
+- Phase 9 currently exposes a complete backend, workflow, evaluation, and CrewAI-tooling surface; dedicated analyst UI panels for legal/tax/regulatory depth remain optional future UX depth, not a blocker for canonical Phase 9 closure
 
 ---
 

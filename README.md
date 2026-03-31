@@ -46,14 +46,15 @@ docker-compose.yml
 
 ## Current Phase
 
-The repository has completed Phases 0-8 from the current master-plan execution
+The repository has completed Phases 0-9 from the current master-plan execution
 sequence. After Phase 7, the repo also received an additional CrewAI depth
 enhancement: tool-grounded evidence access for the LLM path. Phase 8 is now
-closed as the canonical Financial Quality of Earnings (QoE) engine. The current
+closed as the canonical Financial Quality of Earnings (QoE) engine, and Phase 9
+is now closed as the canonical Legal / Tax / Regulatory engine. The current
 build includes the first flagship buy-side slice, all planned motion and sector
-expansions, analyst-ready export archives, scoped CrewAI evidence tools, and a
-workflow-integrated financial analysis layer on top of the existing hardened
-platform spine:
+expansions, analyst-ready export archives, scoped CrewAI evidence tools, and
+workflow-integrated financial plus legal/compliance analysis layers on top of
+the existing hardened platform spine:
 
 - persisted case operations backed by SQLAlchemy
 - document upload, parsing, storage, and evidence extraction
@@ -68,6 +69,15 @@ platform spine:
 - automatic checklist satisfaction for relevant financial workstream items
 - CrewAI financial tools and sector benchmarks for the financial workstream and
   coordinator
+- `GET /api/v1/cases/{case_id}/legal-summary` for directors, DINs,
+  shareholding, subsidiary, charge, and contract-clause extraction
+- `GET /api/v1/cases/{case_id}/tax-summary` for GSTIN extraction, tax-area
+  statuses, and statutory flag analysis
+- `GET /api/v1/cases/{case_id}/compliance-matrix` for sector-aware compliance
+  matrix generation across MCA, licensing, and BFSI-specific RBI or SEBI regimes
+- automatic checklist satisfaction for relevant legal, tax, and regulatory
+  workstream items
+- CrewAI compliance tools for legal, tax, regulatory, and coordinator agents
 - tool-grounded CrewAI workstream analysis with scoped evidence, issue, and
   checklist review tools over pre-loaded case snapshots
 - analyst workbench dashboard, case workspace, and run viewer with live API support
@@ -174,6 +184,12 @@ To run only the Phase 8 financial QoE suite:
 
 ```powershell
 ./scripts/evaluate.ps1 -Suite phase8_financial_qoe
+```
+
+To run only the Phase 9 legal / tax / regulatory suite:
+
+```powershell
+./scripts/evaluate.ps1 -Suite phase9_legal_tax_regulatory
 ```
 
 To run a live API smoke check after the stack is up:

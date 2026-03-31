@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     minio_root_password: str = "minioadmin"
     minio_bucket_name: str = "crewai-pipeline"
     product_name: str = "CrewAI Enterprise Pipeline"
-    current_phase: str = "Phase 8 complete: Financial Quality of Earnings (QoE) Engine"
+    current_phase: str = "Phase 9 complete: Legal / Tax / Regulatory Engine"
     country: str = "India"
     enabled_motion_packs: str = "buy_side_diligence,credit_lending,vendor_onboarding"
     enabled_sector_packs: str = "tech_saas_services,manufacturing_industrials,bfsi_nbfc"
