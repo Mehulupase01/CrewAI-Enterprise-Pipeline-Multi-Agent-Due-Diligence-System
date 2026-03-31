@@ -17,6 +17,22 @@ class Settings(BaseSettings):
     default_actor_name: str = "Local Operator"
     default_actor_email: str = "local-operator@local.invalid"
     default_actor_role: str = "admin"
+    default_org_id: str = "00000000-0000-0000-0000-000000000001"
+    default_org_name: str = "Local Default Organization"
+    default_org_slug: str = "local-default"
+    default_api_client_id: str = "local-admin-client"
+    default_api_client_secret: str = "local-admin-secret"
+    default_api_client_display_name: str = "Local Admin Client"
+    default_api_client_role: str = "admin"
+    default_api_client_email: str = "platform-admin@local.invalid"
+    jwt_secret: str = "change-me-in-production"
+    jwt_algorithm: str = "HS256"
+    jwt_access_token_expires_seconds: int = 3600
+    rate_limit_enabled: bool = True
+    rate_limit_auth_per_minute: int = 10
+    rate_limit_connector_per_minute: int = 30
+    rate_limit_mutating_per_minute: int = 120
+    rate_limit_read_per_minute: int = 600
     request_id_header_name: str = "X-Request-ID"
     database_url_override: str | None = Field(default=None, alias="DATABASE_URL")
     postgres_host: str = "localhost"
@@ -92,6 +108,10 @@ class Settings(BaseSettings):
     @property
     def auth_required(self) -> bool:
         return self.enforce_auth or self.app_env not in {"development", "test"}
+
+    @property
+    def header_auth_allowed(self) -> bool:
+        return self.app_env in {"development", "test"}
 
 
 @lru_cache

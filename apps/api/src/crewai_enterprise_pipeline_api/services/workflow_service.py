@@ -107,6 +107,7 @@ class WorkflowService:
         case = await self.case_service._get_case_record(case_id)
         if case is None:
             return None
+        self.session.info.setdefault("org_id", case.org_id)
 
         run = WorkflowRunRecord(
             case_id=case_id,
@@ -144,6 +145,9 @@ class WorkflowService:
         case = await self.case_service._get_case_record(case_id)
         if case is None:
             return None
+        self.session.info.setdefault("org_id", case.org_id)
+        self.session.info.setdefault("actor_id", payload.requested_by)
+        self.session.info.setdefault("actor_email", None)
 
         run = WorkflowRunRecord(
             case_id=case_id,

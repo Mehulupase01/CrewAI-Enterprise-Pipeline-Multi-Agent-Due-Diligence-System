@@ -9,8 +9,10 @@ from __future__ import annotations
 import logging
 
 from arq.connections import RedisSettings
+from sqlalchemy import select
 
 from crewai_enterprise_pipeline_api.core.settings import get_settings
+from crewai_enterprise_pipeline_api.db.models import CaseRecord
 from crewai_enterprise_pipeline_api.db.session import get_database
 from crewai_enterprise_pipeline_api.domain.models import WorkflowRunCreate
 from crewai_enterprise_pipeline_api.services.workflow_service import WorkflowService
@@ -28,6 +30,15 @@ async def run_workflow_job(
     """Execute a workflow run inside the arq worker process."""
     database = get_database()
     async with database.session_factory() as session:
+        result = await session.execute(select(CaseRecord).where(CaseRecord.id == case_id))
+        case = result.scalar_one_or_none()
+        if case is None:
+            logger.error("Workflow job for case %s failed: case not found", case_id)
+            return f"case_not_found:{case_id}"
+
+        session.info["org_id"] = case.org_id
+        session.info["actor_id"] = requested_by
+        session.info["actor_email"] = None
         service = WorkflowService(session)
         payload = WorkflowRunCreate(
             requested_by=requested_by,
@@ -48,6 +59,8 @@ async def startup(ctx: dict) -> None:
     database = get_database()
     if settings.auto_create_schema:
         await database.create_schema()
+    else:
+        await database.ensure_runtime_defaults()
 
 
 async def shutdown(ctx: dict) -> None:

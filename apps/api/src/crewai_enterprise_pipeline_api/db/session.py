@@ -1,5 +1,6 @@
 from collections.abc import AsyncIterator
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -8,6 +9,7 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from crewai_enterprise_pipeline_api.core.settings import get_settings
+from crewai_enterprise_pipeline_api.core.security_utils import hash_client_secret
 from crewai_enterprise_pipeline_api.db.base import Base
 
 _database: "Database | None" = None
@@ -28,6 +30,59 @@ class Database:
 
         async with self.engine.begin() as connection:
             await connection.run_sync(Base.metadata.create_all)
+        await self.ensure_runtime_defaults()
+
+    async def ensure_runtime_defaults(self) -> None:
+        from crewai_enterprise_pipeline_api.db.models import ApiClientRecord, OrganizationRecord
+
+        settings = get_settings()
+        async with self.session_factory() as session:
+            session.info["skip_audit"] = True
+
+            organization = await session.get(
+                OrganizationRecord,
+                settings.default_org_id,
+                execution_options={"skip_org_scope": True},
+            )
+            if organization is None:
+                organization = OrganizationRecord(
+                    id=settings.default_org_id,
+                    name=settings.default_org_name,
+                    slug=settings.default_org_slug,
+                    status="active",
+                )
+                session.add(organization)
+            else:
+                organization.name = settings.default_org_name
+                organization.slug = settings.default_org_slug
+                organization.status = "active"
+
+            result = await session.execute(
+                select(ApiClientRecord)
+                .execution_options(skip_org_scope=True)
+                .where(ApiClientRecord.client_id == settings.default_api_client_id)
+            )
+            client = result.scalar_one_or_none()
+            if client is None:
+                client = ApiClientRecord(
+                    org_id=settings.default_org_id,
+                    client_id=settings.default_api_client_id,
+                    display_name=settings.default_api_client_display_name,
+                    client_secret_hash=hash_client_secret(settings.default_api_client_secret),
+                    role=settings.default_api_client_role,
+                    actor_email=settings.default_api_client_email,
+                    active=True,
+                )
+                session.add(client)
+            else:
+                client.org_id = settings.default_org_id
+                client.display_name = settings.default_api_client_display_name
+                client.client_secret_hash = hash_client_secret(settings.default_api_client_secret)
+                client.role = settings.default_api_client_role
+                client.actor_email = settings.default_api_client_email
+                client.active = True
+
+            await session.commit()
 
     async def dispose(self) -> None:
         await self.engine.dispose()

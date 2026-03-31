@@ -2,13 +2,53 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, ForeignKey, LargeBinary, String, Text, UniqueConstraint
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import JSON, Boolean, ForeignKey, LargeBinary, String, Text, UniqueConstraint, event, inspect
+from sqlalchemy.orm import Mapped, Session, mapped_column, relationship, with_loader_criteria
 
-from crewai_enterprise_pipeline_api.db.base import Base, TimestampedMixin
+from crewai_enterprise_pipeline_api.db.base import Base, TenantScopedMixin, TimestampedMixin
 
 
-class CaseRecord(TimestampedMixin, Base):
+class OrganizationRecord(TimestampedMixin, Base):
+    __tablename__ = "organizations"
+
+    name: Mapped[str] = mapped_column(String(255))
+    slug: Mapped[str] = mapped_column(String(120), unique=True)
+    status: Mapped[str] = mapped_column(String(40), default="active")
+
+
+class ApiClientRecord(TenantScopedMixin, TimestampedMixin, Base):
+    __tablename__ = "api_clients"
+
+    client_id: Mapped[str] = mapped_column(String(120), unique=True)
+    display_name: Mapped[str] = mapped_column(String(255))
+    client_secret_hash: Mapped[str] = mapped_column(String(128))
+    role: Mapped[str] = mapped_column(String(40), default="admin")
+    actor_email: Mapped[str] = mapped_column(String(255))
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class AuditLogRecord(TimestampedMixin, Base):
+    __tablename__ = "audit_logs"
+
+    org_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("organizations.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    actor_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    actor_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    action: Mapped[str] = mapped_column(String(40))
+    resource_type: Mapped[str] = mapped_column(String(80))
+    resource_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    before_state: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    after_state: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    ip_address: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    request_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    status_code: Mapped[int | None] = mapped_column(nullable=True)
+
+
+class CaseRecord(TenantScopedMixin, TimestampedMixin, Base):
     __tablename__ = "cases"
 
     name: Mapped[str] = mapped_column(String(255))
@@ -69,7 +109,7 @@ class CaseRecord(TimestampedMixin, Base):
     )
 
 
-class DocumentArtifactRecord(TimestampedMixin, Base):
+class DocumentArtifactRecord(TenantScopedMixin, TimestampedMixin, Base):
     __tablename__ = "document_artifacts"
 
     case_id: Mapped[str] = mapped_column(ForeignKey("cases.id", ondelete="CASCADE"))
@@ -93,7 +133,7 @@ class DocumentArtifactRecord(TimestampedMixin, Base):
     )
 
 
-class ChunkRecord(TimestampedMixin, Base):
+class ChunkRecord(TenantScopedMixin, TimestampedMixin, Base):
     __tablename__ = "chunks"
 
     artifact_id: Mapped[str] = mapped_column(
@@ -111,7 +151,7 @@ class ChunkRecord(TimestampedMixin, Base):
     artifact: Mapped[DocumentArtifactRecord] = relationship(back_populates="chunks")
 
 
-class EvidenceNodeRecord(TimestampedMixin, Base):
+class EvidenceNodeRecord(TenantScopedMixin, TimestampedMixin, Base):
     __tablename__ = "evidence_nodes"
 
     case_id: Mapped[str] = mapped_column(ForeignKey("cases.id", ondelete="CASCADE"))
@@ -129,7 +169,7 @@ class EvidenceNodeRecord(TimestampedMixin, Base):
     case: Mapped[CaseRecord] = relationship(back_populates="evidence_items")
 
 
-class RequestItemRecord(TimestampedMixin, Base):
+class RequestItemRecord(TenantScopedMixin, TimestampedMixin, Base):
     __tablename__ = "request_items"
 
     case_id: Mapped[str] = mapped_column(ForeignKey("cases.id", ondelete="CASCADE"))
@@ -141,7 +181,7 @@ class RequestItemRecord(TimestampedMixin, Base):
     case: Mapped[CaseRecord] = relationship(back_populates="request_items")
 
 
-class QaItemRecord(TimestampedMixin, Base):
+class QaItemRecord(TenantScopedMixin, TimestampedMixin, Base):
     __tablename__ = "qa_items"
 
     case_id: Mapped[str] = mapped_column(ForeignKey("cases.id", ondelete="CASCADE"))
@@ -153,7 +193,7 @@ class QaItemRecord(TimestampedMixin, Base):
     case: Mapped[CaseRecord] = relationship(back_populates="qa_items")
 
 
-class IssueRegisterItemRecord(TimestampedMixin, Base):
+class IssueRegisterItemRecord(TenantScopedMixin, TimestampedMixin, Base):
     __tablename__ = "issue_register_items"
 
     case_id: Mapped[str] = mapped_column(ForeignKey("cases.id", ondelete="CASCADE"))
@@ -174,7 +214,7 @@ class IssueRegisterItemRecord(TimestampedMixin, Base):
     case: Mapped[CaseRecord] = relationship(back_populates="issues")
 
 
-class ChecklistItemRecord(TimestampedMixin, Base):
+class ChecklistItemRecord(TenantScopedMixin, TimestampedMixin, Base):
     __tablename__ = "checklist_items"
     __table_args__ = (UniqueConstraint("case_id", "template_key"),)
 
@@ -192,7 +232,7 @@ class ChecklistItemRecord(TimestampedMixin, Base):
     case: Mapped[CaseRecord] = relationship(back_populates="checklist_items")
 
 
-class ApprovalDecisionRecord(TimestampedMixin, Base):
+class ApprovalDecisionRecord(TenantScopedMixin, TimestampedMixin, Base):
     __tablename__ = "approval_decisions"
 
     case_id: Mapped[str] = mapped_column(ForeignKey("cases.id", ondelete="CASCADE"))
@@ -207,7 +247,7 @@ class ApprovalDecisionRecord(TimestampedMixin, Base):
     case: Mapped[CaseRecord] = relationship(back_populates="approvals")
 
 
-class WorkflowRunRecord(TimestampedMixin, Base):
+class WorkflowRunRecord(TenantScopedMixin, TimestampedMixin, Base):
     __tablename__ = "workflow_runs"
 
     case_id: Mapped[str] = mapped_column(ForeignKey("cases.id", ondelete="CASCADE"))
@@ -246,7 +286,7 @@ class WorkflowRunRecord(TimestampedMixin, Base):
     )
 
 
-class RunTraceEventRecord(TimestampedMixin, Base):
+class RunTraceEventRecord(TenantScopedMixin, TimestampedMixin, Base):
     __tablename__ = "run_trace_events"
 
     run_id: Mapped[str] = mapped_column(ForeignKey("workflow_runs.id", ondelete="CASCADE"))
@@ -259,7 +299,7 @@ class RunTraceEventRecord(TimestampedMixin, Base):
     run: Mapped[WorkflowRunRecord] = relationship(back_populates="trace_events")
 
 
-class ReportBundleRecord(TimestampedMixin, Base):
+class ReportBundleRecord(TenantScopedMixin, TimestampedMixin, Base):
     __tablename__ = "report_bundles"
 
     case_id: Mapped[str] = mapped_column(ForeignKey("cases.id", ondelete="CASCADE"))
@@ -277,7 +317,7 @@ class ReportBundleRecord(TimestampedMixin, Base):
     run: Mapped[WorkflowRunRecord] = relationship(back_populates="report_bundles")
 
 
-class RunExportPackageRecord(TimestampedMixin, Base):
+class RunExportPackageRecord(TenantScopedMixin, TimestampedMixin, Base):
     __tablename__ = "run_export_packages"
 
     case_id: Mapped[str] = mapped_column(ForeignKey("cases.id", ondelete="CASCADE"))
@@ -296,7 +336,7 @@ class RunExportPackageRecord(TimestampedMixin, Base):
     run: Mapped[WorkflowRunRecord] = relationship(back_populates="export_packages")
 
 
-class WorkstreamSynthesisRecord(TimestampedMixin, Base):
+class WorkstreamSynthesisRecord(TenantScopedMixin, TimestampedMixin, Base):
     __tablename__ = "workstream_syntheses"
 
     case_id: Mapped[str] = mapped_column(ForeignKey("cases.id", ondelete="CASCADE"))
@@ -311,3 +351,165 @@ class WorkstreamSynthesisRecord(TimestampedMixin, Base):
     recommended_next_action: Mapped[str] = mapped_column(Text)
 
     run: Mapped[WorkflowRunRecord] = relationship(back_populates="workstream_syntheses")
+
+
+TENANT_SCOPED_MODELS = (
+    CaseRecord,
+    DocumentArtifactRecord,
+    ChunkRecord,
+    EvidenceNodeRecord,
+    RequestItemRecord,
+    QaItemRecord,
+    IssueRegisterItemRecord,
+    ChecklistItemRecord,
+    ApprovalDecisionRecord,
+    WorkflowRunRecord,
+    RunTraceEventRecord,
+    ReportBundleRecord,
+    RunExportPackageRecord,
+    WorkstreamSynthesisRecord,
+    ApiClientRecord,
+)
+
+
+def _serialize_value(value):
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, list):
+        return [_serialize_value(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _serialize_value(item) for key, item in value.items()}
+    return value
+
+
+def _serialize_record(record, *, changed_only: bool = False) -> dict | None:
+    state = inspect(record)
+    data: dict[str, object] = {}
+    for column in state.mapper.column_attrs:
+        history = state.attrs[column.key].history
+        if changed_only and not history.has_changes():
+            continue
+        data[column.key] = _serialize_value(getattr(record, column.key))
+    return data or None
+
+
+def _serialize_before_state(record) -> dict | None:
+    state = inspect(record)
+    data: dict[str, object] = {}
+    for column in state.mapper.column_attrs:
+        history = state.attrs[column.key].history
+        if history.deleted:
+            data[column.key] = _serialize_value(history.deleted[0])
+        elif not state.transient and not state.pending:
+            data[column.key] = _serialize_value(getattr(record, column.key))
+    return data or None
+
+
+@event.listens_for(Session, "do_orm_execute")
+def _apply_org_scope(execute_state) -> None:
+    if not execute_state.is_select:
+        return
+    if execute_state.execution_options.get("skip_org_scope", False):
+        return
+
+    org_id = execute_state.session.info.get("org_id")
+    allow_cross_org = execute_state.session.info.get("allow_cross_org", False)
+    if not org_id or allow_cross_org:
+        return
+
+    statement = execute_state.statement
+    for model in TENANT_SCOPED_MODELS:
+        statement = statement.options(
+            with_loader_criteria(
+                model,
+                lambda cls, scoped_org_id=org_id: cls.org_id == scoped_org_id,
+                include_aliases=True,
+            )
+        )
+    execute_state.statement = statement
+
+
+@event.listens_for(Session, "before_flush")
+def _record_audit_events(session: Session, flush_context, instances) -> None:
+    org_id = session.info.get("org_id")
+
+    for record in session.new:
+        if isinstance(record, TenantScopedMixin) and not getattr(record, "org_id", None) and org_id:
+            record.org_id = org_id
+
+    if session.info.get("skip_audit", False):
+        return
+
+    actor_id = session.info.get("actor_id")
+    actor_email = session.info.get("actor_email")
+    ip_address = session.info.get("ip_address")
+    request_id = session.info.get("request_id")
+    pending_logs: list[AuditLogRecord] = []
+
+    for record in session.new:
+        if isinstance(record, AuditLogRecord) or not isinstance(record, Base):
+            continue
+        pending_logs.append(
+            AuditLogRecord(
+                org_id=getattr(record, "org_id", org_id),
+                actor_id=actor_id,
+                actor_email=actor_email,
+                action="CREATE",
+                resource_type=getattr(record, "__tablename__", record.__class__.__name__),
+                resource_id=getattr(record, "id", None),
+                before_state=None,
+                after_state=_serialize_record(record),
+                ip_address=ip_address,
+                request_id=request_id,
+                status_code=None,
+            )
+        )
+
+    for record in session.dirty:
+        if (
+            isinstance(record, AuditLogRecord)
+            or not isinstance(record, Base)
+            or not session.is_modified(record, include_collections=False)
+        ):
+            continue
+        pending_logs.append(
+            AuditLogRecord(
+                org_id=getattr(record, "org_id", org_id),
+                actor_id=actor_id,
+                actor_email=actor_email,
+                action="UPDATE",
+                resource_type=getattr(record, "__tablename__", record.__class__.__name__),
+                resource_id=getattr(record, "id", None),
+                before_state=_serialize_before_state(record),
+                after_state=_serialize_record(record, changed_only=True),
+                ip_address=ip_address,
+                request_id=request_id,
+                status_code=None,
+            )
+        )
+
+    for record in session.deleted:
+        if isinstance(record, AuditLogRecord) or not isinstance(record, Base):
+            continue
+        pending_logs.append(
+            AuditLogRecord(
+                org_id=getattr(record, "org_id", org_id),
+                actor_id=actor_id,
+                actor_email=actor_email,
+                action="DELETE",
+                resource_type=getattr(record, "__tablename__", record.__class__.__name__),
+                resource_id=getattr(record, "id", None),
+                before_state=_serialize_record(record),
+                after_state=None,
+                ip_address=ip_address,
+                request_id=request_id,
+                status_code=None,
+            )
+        )
+
+    if pending_logs:
+        session.info["skip_audit"] = True
+        try:
+            session.add_all(pending_logs)
+        finally:
+            session.info["skip_audit"] = False

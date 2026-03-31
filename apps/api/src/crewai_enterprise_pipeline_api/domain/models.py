@@ -210,7 +210,45 @@ class AuthenticatedPrincipal(BaseModel):
     name: str
     email: str
     role: UserRole
+    org_id: str
     auth_required: bool
+
+
+class TokenRequest(BaseModel):
+    client_id: str = Field(min_length=3, max_length=120)
+    client_secret: str = Field(min_length=8, max_length=255)
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int
+    actor_id: str
+    actor_email: str
+    org_id: str
+    role: UserRole
+
+
+class AuditLogEntry(ORMModel):
+    id: str
+    org_id: str | None
+    actor_id: str | None
+    actor_email: str | None
+    action: str
+    resource_type: str
+    resource_id: str | None
+    before_state: dict[str, Any] | None
+    after_state: dict[str, Any] | None
+    ip_address: str | None
+    request_id: str | None
+    status_code: int | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class AuditLogListResponse(BaseModel):
+    total: int
+    items: list[AuditLogEntry] = Field(default_factory=list)
 
 
 class ReadinessComponent(BaseModel):
