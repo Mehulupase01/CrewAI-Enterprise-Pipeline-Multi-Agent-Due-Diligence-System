@@ -4,11 +4,11 @@
 > Any AI agent resuming work should read this file + CLAUDE.md first.
 > Strategic roadmap comes from `docs/MASTERPLAN.docx` (preferred) and `docs/MASTERPLAN.pdf` (companion export); execution truth comes from the actual repo state.
 
-## Status: Phase 12 Complete
+## Status: Phase 13 Complete
 
 **Last updated:** 2026-03-31
-**Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7, Phase 8, Phase 9, Phase 10, Phase 11, Phase 12
-**Next phase:** Phase 13: Rich Reporting + DOCX/PDF Export
+**Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7, Phase 8, Phase 9, Phase 10, Phase 11, Phase 12, Phase 13
+**Next phase:** Phase 14 from `docs/MASTERPLAN.docx`
 **Blocking issues:** None
 
 ---
@@ -752,6 +752,75 @@
 **Notes for next phase:**
 - Start canonical Phase 13: Rich Reporting + DOCX/PDF Export from `MASTERPLAN.docx`
 - Phase 12 now exposes a complete backend, workflow, report, evaluation, and CrewAI-tooling surface for sector-pack depth; dedicated analyst UI panels for sector-pack detail remain future UX depth rather than blockers for canonical Phase 12 closure
+
+---
+
+### Phase 13: Rich Reporting + DOCX/PDF Export (2026-03-31)
+
+**What was done:**
+- Added rich-report rendering with Jinja2 markdown templates for `standard`, `lender`, `board_memo`, and `one_pager` outputs
+- Added a dedicated financial annex renderer so Phase 8 QoE state can be exported as a structured analyst appendix
+- Added markdown-first DOCX generation with cover page, table of contents, section headings, bullet lists, and table rendering
+- Added markdown-first PDF generation with the same report structure and sectioning guarantees
+- Persisted `report_template` on workflow runs and expanded report bundles to include full-report markdown, financial-annex markdown, DOCX, and PDF artifacts
+- Added `GET /cases/{case_id}/reports/full-report` and `GET /cases/{case_id}/reports/financial-annex`
+- Added report-bundle download support and export-package inclusion for stored DOCX/PDF artifacts
+- Updated the workbench run trigger and run detail pages so analysts can choose a report template and download rich report artifacts directly
+- Added a dedicated Phase 13 evaluation suite plus five focused pytest cases for rendering, binary generation, workflow integration, and export integrity
+- Reconciled an older workflow test to the truthful post-Phase-13 bundle contract
+
+**Files created:**
+- apps/api/alembic/versions/003_phase13_rich_reporting.py -- schema migration for report-template and rich-bundle metadata
+- apps/api/src/.../services/report_markdown.py -- markdown block parsing helpers for downstream renderers
+- apps/api/src/.../services/report_renderer.py -- Jinja2 template rendering service for full reports and financial annexes
+- apps/api/src/.../services/docx_service.py -- DOCX rendering from markdown
+- apps/api/src/.../services/pdf_service.py -- PDF rendering from markdown via reportlab
+- apps/api/src/.../templates/standard.md.j2 -- standard full-report template
+- apps/api/src/.../templates/lender.md.j2 -- lender report template
+- apps/api/src/.../templates/board_memo.md.j2 -- board memo template
+- apps/api/src/.../templates/one_pager.md.j2 -- one-pager template
+- apps/api/src/.../templates/financial_annex.md.j2 -- financial annex template
+- apps/api/tests/test_phase13_rich_reporting.py -- 5 focused Phase 13 test cases
+
+**Files modified:**
+- apps/api/pyproject.toml -- added Jinja2 and reportlab dependencies plus template package data
+- apps/api/src/.../domain/models.py -- new `ReportTemplateKind`, richer report-bundle metadata, workflow run template field
+- apps/api/src/.../db/models.py -- persisted report-template field and binary bundle metadata columns
+- apps/api/src/.../services/report_service.py -- rich report context building and artifact generation
+- apps/api/src/.../services/workflow_service.py -- persisted report-template handling and rich bundle generation in sync + CrewAI paths
+- apps/api/src/.../services/export_service.py -- ZIP export inclusion for rich markdown and binary report artifacts
+- apps/api/src/.../api/routes/cases.py -- full-report, financial-annex, and report-bundle download endpoints
+- apps/api/src/.../worker.py -- async workflow job template propagation
+- apps/api/src/.../evaluation/scenarios.py -- Phase 13 scenario contract and expected export files
+- apps/api/src/.../evaluation/runner.py -- rich-reporting evaluation checks and export assertions
+- apps/api/tests/test_cases.py -- updated workflow bundle expectations for rich-reporting output
+- apps/web/src/lib/api-client.ts -- report-template-aware run and export payloads
+- apps/web/src/lib/workbench-data.ts -- template-aware run summaries and rich bundle metadata
+- apps/web/src/components/RunWorkflowButton.tsx -- report-template picker in the analyst workbench
+- apps/web/src/app/cases/[caseId]/runs/[runId]/page.tsx -- rich bundle download links and template metadata
+- apps/api/src/.../core/settings.py -- current_phase updated to Phase 13 complete
+
+**Decisions made:**
+- AD-046: rich reporting is markdown-first, with DOCX and PDF derived from the same rendered template output
+- AD-047: workflow runs persist report-template choice and store binary report artifacts for later download and export reuse
+
+**Blockers encountered:**
+- Initial template rendering failed because the new templates referenced `blocking_issue_count` on checklist coverage instead of the actual `blocker_items` field
+- The older workflow test expected only three report bundles; it was updated to assert the truthful richer Phase 13 bundle contract
+
+**Test results:**
+- pytest: 115/115 pass (110 existing + 5 new)
+- eval suites: 21/21 pass (all 11 suites at 100%)
+- ruff: clean
+- npm lint: clean
+- npm typecheck: clean
+- check gate: `./scripts/check.ps1` passed
+- dedicated Phase 13 eval artifact: `artifacts/evaluations/phase13-rich-reporting-20260331T173656Z.json`
+- latest full-gate eval artifact: `artifacts/evaluations/all-supported-suites-20260331T175355Z.json`
+
+**Notes for next phase:**
+- Start canonical Phase 14 from `MASTERPLAN.docx`
+- Phase 13 now exposes a complete backend, workflow, export, evaluation, and workbench surface for rich reporting; future report phases should extend the shared markdown-first renderer rather than creating format-specific parallel logic
 
 ---
 

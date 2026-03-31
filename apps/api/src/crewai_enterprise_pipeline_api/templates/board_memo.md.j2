@@ -1,0 +1,61 @@
+# {{ full_report_title }}
+
+Target: {{ memo.target_name }}
+Template: {{ template_label }}
+Generated: {{ generated_at.isoformat() }}
+
+## Executive Summary
+{{ memo.executive_summary }}
+
+## Board-Level Watchpoints
+{% if memo.top_issues %}
+{% for issue in memo.top_issues %}
+- [{{ issue.severity }}] {{ issue.title }}: {{ issue.business_impact }}
+{% endfor %}
+{% else %}
+- No material watchpoints have been logged.
+{% endif %}
+
+## Value Drivers and Risks
+{% for item in memo.motion_pack_highlights %}
+- {{ item }}
+{% endfor %}
+{% for item in memo.sector_pack_highlights %}
+- {{ item }}
+{% endfor %}
+
+## Readiness
+- Report status: {{ memo.report_status }}
+- Mandatory open items: {{ memo.checklist_coverage.open_mandatory_items }}
+- Blocking issues: {{ memo.checklist_coverage.blocker_items }}
+
+## Domain Highlights
+{% if financial_summary and financial_summary.flags %}
+### Financial
+{% for flag in financial_summary.flags %}
+- {{ flag }}
+{% endfor %}
+{% endif %}
+{% if compliance_summary and compliance_summary.items %}
+### Compliance
+{% for item in compliance_summary.items[:5] %}
+- {{ item.regulation }}: {{ item.status.value }}{% if item.notes %} - {{ item.notes }}{% endif %}
+{% endfor %}
+{% endif %}
+{% if commercial_summary and commercial_summary.flags %}
+### Commercial
+{% for flag in commercial_summary.flags %}
+- {{ flag }}
+{% endfor %}
+{% endif %}
+{% if operations_summary and operations_summary.flags %}
+### Operations
+{% for flag in operations_summary.flags %}
+- {{ flag }}
+{% endfor %}
+{% endif %}
+
+## Decisions and Follow-Ups
+{% for action in memo.next_actions %}
+- {{ action }}
+{% endfor %}

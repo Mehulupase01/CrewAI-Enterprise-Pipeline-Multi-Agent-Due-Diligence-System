@@ -13,7 +13,7 @@ No phase is considered complete until all of the following exist together:
 
 ## Current Checks
 
-The current gate now covers the foundation plus the implemented canonical engine layers through Phase 12:
+The current gate now covers the foundation plus the implemented canonical engine layers through Phase 13:
 
 - backend app boot and schema lifecycle
 - typed configuration loading
@@ -57,6 +57,14 @@ The current gate now covers the foundation plus the implemented canonical engine
 - automatic checklist satisfaction for sector-pack-specific Tech/SaaS, Manufacturing, and BFSI / NBFC items
 - workflow refresh, trace-event enrichment, synthesis updates, executive memo highlights, and CrewAI tool surfaces for sector-pack depth
 - dedicated Phase 12 sector-pack deepening evaluation coverage
+- Jinja2-based rich report rendering for standard, lender, board memo, and one-pager templates
+- markdown-first full-report and financial-annex generation
+- DOCX generation from rendered markdown with cover page, TOC, section headings, lists, and tables
+- PDF generation from rendered markdown with cover page, TOC, section headings, lists, and tables
+- persisted report-template selection on workflow runs and rich report-bundle storage metadata
+- report-bundle download endpoints for markdown and binary artifacts
+- ZIP export-package inclusion of rich report markdown, DOCX, and PDF files
+- dedicated Phase 13 rich-reporting evaluation coverage
 - deterministic end-to-end evaluation scenarios with saved JSON scorecards
 - repeat-scan regression checks for issue fingerprint reuse
 - enforced-auth and role-guard tests
@@ -132,6 +140,13 @@ The current gate now covers the foundation plus the implemented canonical engine
   analyst-readable sector flags.
 - Phase 12 sector-pack outputs must refresh inside workflow runs and enrich
   trace events, syntheses, reports, and CrewAI tool surfaces consistently.
+- The API can render full reports and financial annexes in markdown for
+  multiple templates, including standard, lender, board memo, and one-pager
+  outputs.
+- Workflow runs can persist the chosen report template and generate matching
+  markdown, DOCX, and PDF report bundles as durable run artifacts.
+- Report bundles can be downloaded individually through the API and included
+  in export-package ZIP archives without regeneration drift.
 - The first-slice evaluation suite passes blocked, clean-approved, and
   approved-nonblocking-risk scenarios.
 - Every quality-gate run writes a machine-readable artifact under
@@ -143,8 +158,8 @@ The current gate now covers the foundation plus the implemented canonical engine
   vendor onboarding, manufacturing / industrials, BFSI / NBFC, the dedicated
   Phase 9 legal/tax/regulatory suite, and the dedicated Phase 10
   commercial/operations/cyber/forensic suite, the dedicated Phase 11
-  motion-pack deepening suite, and the dedicated Phase 12 sector-pack
-  deepening suite.
+  motion-pack deepening suite, the dedicated Phase 12 sector-pack
+  deepening suite, and the dedicated Phase 13 rich-reporting suite.
 - The web app exposes a dashboard, case workspace, and run viewer over the shared case model.
 - The workbench reflects the actual platform surface instead of generator boilerplate.
 - The repo contains reproducible scripts for bootstrap, dev, and checks.

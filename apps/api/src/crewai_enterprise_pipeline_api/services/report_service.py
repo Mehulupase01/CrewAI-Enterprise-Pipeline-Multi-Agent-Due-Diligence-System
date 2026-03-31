@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,6 +12,7 @@ from crewai_enterprise_pipeline_api.domain.models import (
     ExecutiveMemoReport,
     FlagSeverity,
     MotionPack,
+    ReportTemplateKind,
     SectorPack,
 )
 from crewai_enterprise_pipeline_api.services.bfsi_nbfc_service import BfsiNbfcService
@@ -19,12 +22,15 @@ from crewai_enterprise_pipeline_api.services.checklist_service import ChecklistS
 from crewai_enterprise_pipeline_api.services.commercial_service import CommercialService
 from crewai_enterprise_pipeline_api.services.credit_service import CreditService
 from crewai_enterprise_pipeline_api.services.cyber_service import CyberService
+from crewai_enterprise_pipeline_api.services.docx_service import DocxService
 from crewai_enterprise_pipeline_api.services.financial_qoe_service import FinancialQoEService
 from crewai_enterprise_pipeline_api.services.forensic_service import ForensicService
 from crewai_enterprise_pipeline_api.services.legal_service import LegalService
 from crewai_enterprise_pipeline_api.services.manufacturing_service import ManufacturingService
 from crewai_enterprise_pipeline_api.services.operations_service import OperationsService
+from crewai_enterprise_pipeline_api.services.pdf_service import PdfService
 from crewai_enterprise_pipeline_api.services.regulatory_service import RegulatoryService
+from crewai_enterprise_pipeline_api.services.report_renderer import ReportRendererService
 from crewai_enterprise_pipeline_api.services.tax_service import TaxService
 from crewai_enterprise_pipeline_api.services.tech_saas_service import TechSaaSService
 from crewai_enterprise_pipeline_api.services.vendor_service import VendorService
@@ -38,6 +44,16 @@ SEVERITY_ORDER = {
 }
 
 
+@dataclass(slots=True)
+class RichReportArtifacts:
+    report_template: ReportTemplateKind
+    full_report_title: str
+    full_report_markdown: str
+    financial_annex_markdown: str
+    docx_bytes: bytes
+    pdf_bytes: bytes
+
+
 class ReportService:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
@@ -48,11 +64,14 @@ class ReportService:
         self.commercial_service = CommercialService(session)
         self.credit_service = CreditService(session)
         self.cyber_service = CyberService(session)
+        self.docx_service = DocxService()
         self.financial_qoe_service = FinancialQoEService(session)
         self.forensic_service = ForensicService(session)
         self.legal_service = LegalService(session)
         self.manufacturing_service = ManufacturingService(session)
         self.operations_service = OperationsService(session)
+        self.pdf_service = PdfService()
+        self.report_renderer = ReportRendererService()
         self.tax_service = TaxService(session)
         self.tech_saas_service = TechSaaSService(session)
         self.regulatory_service = RegulatoryService(session)
@@ -293,6 +312,200 @@ class ReportService:
                 *issue_lines,
             ]
         )
+
+    async def render_full_report_markdown(
+        self,
+        case_id: str,
+        report_template: ReportTemplateKind = ReportTemplateKind.STANDARD,
+        workstream_syntheses: list[Any] | None = None,
+    ) -> str | None:
+        context = await self._build_rich_report_context(
+            case_id,
+            report_template=report_template,
+            workstream_syntheses=workstream_syntheses,
+        )
+        if context is None:
+            return None
+        return self.report_renderer.render_full_report(report_template, context)
+
+    async def render_financial_annex_markdown(
+        self,
+        case_id: str,
+        report_template: ReportTemplateKind = ReportTemplateKind.STANDARD,
+        workstream_syntheses: list[Any] | None = None,
+    ) -> str | None:
+        context = await self._build_rich_report_context(
+            case_id,
+            report_template=report_template,
+            workstream_syntheses=workstream_syntheses,
+        )
+        if context is None:
+            return None
+        return self.report_renderer.render_financial_annex(context)
+
+    async def build_rich_report_artifacts(
+        self,
+        case_id: str,
+        report_template: ReportTemplateKind = ReportTemplateKind.STANDARD,
+        workstream_syntheses: list[Any] | None = None,
+    ) -> RichReportArtifacts | None:
+        context = await self._build_rich_report_context(
+            case_id,
+            report_template=report_template,
+            workstream_syntheses=workstream_syntheses,
+        )
+        if context is None:
+            return None
+
+        full_report_markdown = self.report_renderer.render_full_report(report_template, context)
+        financial_annex_markdown = self.report_renderer.render_financial_annex(context)
+        full_report_title = context["full_report_title"]
+        subtitle = self.report_renderer.build_cover_subtitle(context)
+        template_label = context["template_label"]
+        docx_bytes = self.docx_service.render_report(
+            title=full_report_title,
+            subtitle=subtitle,
+            template_label=template_label,
+            markdown=full_report_markdown,
+        )
+        pdf_bytes = self.pdf_service.render_report(
+            title=full_report_title,
+            subtitle=subtitle,
+            template_label=template_label,
+            markdown=full_report_markdown,
+        )
+        return RichReportArtifacts(
+            report_template=report_template,
+            full_report_title=full_report_title,
+            full_report_markdown=full_report_markdown,
+            financial_annex_markdown=financial_annex_markdown,
+            docx_bytes=docx_bytes,
+            pdf_bytes=pdf_bytes,
+        )
+
+    async def _build_rich_report_context(
+        self,
+        case_id: str,
+        *,
+        report_template: ReportTemplateKind,
+        workstream_syntheses: list[Any] | None = None,
+    ) -> dict[str, Any] | None:
+        case = await self.case_service._get_case_record(case_id)
+        memo = await self.build_executive_memo(case_id)
+        if case is None or memo is None:
+            return None
+
+        summaries = await self._collect_report_summaries(
+            case_id,
+            motion_pack=memo.motion_pack,
+            sector_pack=memo.sector_pack,
+        )
+        full_report_title = self._full_report_title(report_template, memo.report_title)
+        return {
+            "case": case,
+            "memo": memo,
+            "generated_at": memo.generated_at,
+            "report_template": report_template,
+            "template_label": self.report_renderer.template_label(report_template),
+            "full_report_title": full_report_title,
+            "workstream_syntheses": workstream_syntheses or [],
+            **summaries,
+        }
+
+    async def _collect_report_summaries(
+        self,
+        case_id: str,
+        *,
+        motion_pack: MotionPack,
+        sector_pack: SectorPack,
+    ) -> dict[str, Any]:
+        financial_summary = await self.financial_qoe_service.build_financial_summary(
+            case_id,
+            persist_checklist=False,
+        )
+        legal_summary = await self.legal_service.build_legal_summary(
+            case_id,
+            persist_checklist=False,
+        )
+        tax_summary = await self.tax_service.build_tax_summary(
+            case_id,
+            persist_checklist=False,
+        )
+        compliance_summary = await self.regulatory_service.build_compliance_matrix(
+            case_id,
+            persist_checklist=False,
+        )
+        commercial_summary = await self.commercial_service.build_commercial_summary(
+            case_id,
+            persist_checklist=False,
+        )
+        operations_summary = await self.operations_service.build_operations_summary(
+            case_id,
+            persist_checklist=False,
+        )
+        cyber_summary = await self.cyber_service.build_cyber_summary(
+            case_id,
+            persist_checklist=False,
+        )
+        forensic_summary = await self.forensic_service.build_forensic_summary(
+            case_id,
+            persist_checklist=False,
+        )
+        buy_side_analysis = None
+        borrower_scorecard = None
+        vendor_risk_tier = None
+        tech_saas_metrics = None
+        manufacturing_metrics = None
+        bfsi_nbfc_metrics = None
+
+        if motion_pack == MotionPack.BUY_SIDE_DILIGENCE:
+            buy_side_analysis = await self.buy_side_service.build_buy_side_analysis(
+                case_id,
+                persist_checklist=False,
+            )
+        elif motion_pack == MotionPack.CREDIT_LENDING:
+            borrower_scorecard = await self.credit_service.build_borrower_scorecard(
+                case_id,
+                persist_checklist=False,
+            )
+        elif motion_pack == MotionPack.VENDOR_ONBOARDING:
+            vendor_risk_tier = await self.vendor_service.build_vendor_risk_tier(
+                case_id,
+                persist_checklist=False,
+            )
+
+        if sector_pack == SectorPack.TECH_SAAS_SERVICES:
+            tech_saas_metrics = await self.tech_saas_service.build_tech_saas_metrics(
+                case_id,
+                persist_checklist=False,
+            )
+        elif sector_pack == SectorPack.MANUFACTURING_INDUSTRIALS:
+            manufacturing_metrics = await self.manufacturing_service.build_manufacturing_metrics(
+                case_id,
+                persist_checklist=False,
+            )
+        elif sector_pack == SectorPack.BFSI_NBFC:
+            bfsi_nbfc_metrics = await self.bfsi_nbfc_service.build_bfsi_nbfc_metrics(
+                case_id,
+                persist_checklist=False,
+            )
+
+        return {
+            "financial_summary": financial_summary,
+            "legal_summary": legal_summary,
+            "tax_summary": tax_summary,
+            "compliance_summary": compliance_summary,
+            "commercial_summary": commercial_summary,
+            "operations_summary": operations_summary,
+            "cyber_summary": cyber_summary,
+            "forensic_summary": forensic_summary,
+            "buy_side_analysis": buy_side_analysis,
+            "borrower_scorecard": borrower_scorecard,
+            "vendor_risk_tier": vendor_risk_tier,
+            "tech_saas_metrics": tech_saas_metrics,
+            "manufacturing_metrics": manufacturing_metrics,
+            "bfsi_nbfc_metrics": bfsi_nbfc_metrics,
+        }
 
     def _sorted_issues(self, issues):
         return sorted(
@@ -646,3 +859,16 @@ class ReportService:
         if motion_pack == MotionPack.VENDOR_ONBOARDING:
             return "Third-Party Risk Memo"
         return "Executive Memo"
+
+    def _full_report_title(
+        self,
+        report_template: ReportTemplateKind,
+        base_report_title: str,
+    ) -> str:
+        if report_template == ReportTemplateKind.LENDER:
+            return "Lender Credit Report"
+        if report_template == ReportTemplateKind.BOARD_MEMO:
+            return "Board Memo"
+        if report_template == ReportTemplateKind.ONE_PAGER:
+            return "Due Diligence One-Pager"
+        return f"Full {base_report_title}"

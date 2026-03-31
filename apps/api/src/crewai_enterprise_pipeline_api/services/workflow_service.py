@@ -16,6 +16,7 @@ from crewai_enterprise_pipeline_api.db.models import (
 )
 from crewai_enterprise_pipeline_api.domain.models import (
     ReportBundleKind,
+    ReportTemplateKind,
     RunEventLevel,
     SectorPack,
     WorkflowRunCreate,
@@ -44,6 +45,7 @@ from crewai_enterprise_pipeline_api.services.synthesis_service import SynthesisS
 from crewai_enterprise_pipeline_api.services.tax_service import TaxService
 from crewai_enterprise_pipeline_api.services.tech_saas_service import TechSaaSService
 from crewai_enterprise_pipeline_api.services.vendor_service import VendorService
+from crewai_enterprise_pipeline_api.storage.service import DocumentStorageService
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +70,7 @@ class WorkflowService:
         self.regulatory_service = RegulatoryService(session)
         self.report_service = ReportService(session)
         self.synthesis_service = SynthesisService()
+        self.storage_service = DocumentStorageService()
         self.vendor_service = VendorService(session)
 
     async def list_runs(self, case_id: str) -> list[WorkflowRunSummary]:
@@ -109,6 +112,7 @@ class WorkflowService:
             case_id=case_id,
             requested_by=payload.requested_by,
             note=payload.note,
+            report_template=payload.report_template.value,
             status=WorkflowRunStatus.QUEUED.value,
         )
         self.session.add(run)
@@ -121,6 +125,7 @@ class WorkflowService:
             case_id,
             payload.requested_by,
             payload.note,
+            payload.report_template.value,
         )
         logger.info("Enqueued workflow run %s for case %s", run.id, case_id)
 
@@ -144,6 +149,7 @@ class WorkflowService:
             case_id=case_id,
             requested_by=payload.requested_by,
             note=payload.note,
+            report_template=payload.report_template.value,
             status=WorkflowRunStatus.RUNNING.value,
             started_at=datetime.now(UTC),
         )
@@ -279,6 +285,13 @@ class WorkflowService:
             bfsi_nbfc_metrics,
         )
         synthesis_markdown = self.synthesis_service.render_markdown(case, syntheses)
+        rich_report_artifacts = await self.report_service.build_rich_report_artifacts(
+            case_id,
+            report_template=ReportTemplateKind(run.report_template),
+            workstream_syntheses=syntheses,
+        )
+        if rich_report_artifacts is None:
+            return None
 
         trace_events = self._build_trace_events(
             case,
@@ -303,9 +316,11 @@ class WorkflowService:
         report_bundles = self._build_report_bundles(
             case_id,
             run_id,
+            ReportTemplateKind(run.report_template),
             executive_memo_markdown,
             issue_register_markdown,
             synthesis_markdown,
+            rich_report_artifacts,
         )
 
         self.session.add_all(trace_events)
@@ -319,7 +334,8 @@ class WorkflowService:
             f"{len(syntheses)} workstream syntheses, with "
             f"{len(case.issues)} issues and "
             f"{coverage.open_mandatory_items} open mandatory checklist items. "
-            f"Motion pack: {case.motion_pack}. Sector pack: {case.sector_pack}."
+            f"Motion pack: {case.motion_pack}. Sector pack: {case.sector_pack}. "
+            f"Report template: {run.report_template}."
         )
 
         await self.session.commit()
@@ -680,13 +696,22 @@ class WorkflowService:
                 ]
             )
         synthesis_markdown = "\n".join(synthesis_lines)
+        rich_report_artifacts = await self.report_service.build_rich_report_artifacts(
+            case_id,
+            report_template=ReportTemplateKind(run.report_template),
+            workstream_syntheses=syntheses,
+        )
+        if rich_report_artifacts is None:
+            return None
 
         report_bundles = self._build_report_bundles(
             case_id,
             run_id,
+            ReportTemplateKind(run.report_template),
             executive_memo_markdown,
             issue_register_markdown,
             synthesis_markdown,
+            rich_report_artifacts,
         )
 
         self.session.add_all(report_bundles)
@@ -715,7 +740,7 @@ class WorkflowService:
             f"{len(report_bundles)} report bundles. "
             f"LLM: {settings.llm_provider}/{settings.llm_model}. "
             f"Tool calls: {total_tool_calls(tool_map)}. Motion pack: {case.motion_pack}. "
-            f"Sector pack: {case.sector_pack}."
+            f"Sector pack: {case.sector_pack}. Report template: {run.report_template}."
         )
 
         # Build executive memo via deterministic service for the response object
@@ -953,8 +978,8 @@ class WorkflowService:
                 step_key="report_bundle_generation",
                 title="Report bundles generated",
                 message=(
-                    "Executive memo, issue register, and workstream synthesis bundles "
-                    "were rendered."
+                    "Executive memo, issue register, workstream synthesis, "
+                    "full report, financial annex, DOCX, and PDF bundles were rendered."
                 ),
                 level=RunEventLevel.INFO.value,
             ),
@@ -964,9 +989,11 @@ class WorkflowService:
         self,
         case_id: str,
         run_id: str,
+        report_template: ReportTemplateKind,
         executive_memo_markdown: str | None,
         issue_register_markdown: str | None,
         synthesis_markdown: str | None,
+        rich_report_artifacts,
     ) -> list[ReportBundleRecord]:
         bundles: list[ReportBundleRecord] = []
         if executive_memo_markdown is not None:
@@ -979,6 +1006,7 @@ class WorkflowService:
                     format="markdown",
                     summary="Investor-style memo generated from the current case state.",
                     content=executive_memo_markdown,
+                    file_name="executive_memo.md",
                 )
             )
         if issue_register_markdown is not None:
@@ -991,6 +1019,7 @@ class WorkflowService:
                     format="markdown",
                     summary="Sorted issue register snapshot generated from the current case.",
                     content=issue_register_markdown,
+                    file_name="issue_register.md",
                 )
             )
         if synthesis_markdown is not None:
@@ -1003,6 +1032,84 @@ class WorkflowService:
                     format="markdown",
                     summary="Run-level synthesis by diligence workstream.",
                     content=synthesis_markdown,
+                    file_name="workstream_syntheses.md",
+                )
+            )
+        if rich_report_artifacts is not None:
+            bundles.append(
+                ReportBundleRecord(
+                    case_id=case_id,
+                    run_id=run_id,
+                    bundle_kind=ReportBundleKind.FULL_REPORT_MARKDOWN.value,
+                    title=rich_report_artifacts.full_report_title,
+                    format="markdown",
+                    summary=(
+                        f"{report_template.value.replace('_', ' ').title()} template full report "
+                        "rendered with Jinja2."
+                    ),
+                    content=rich_report_artifacts.full_report_markdown,
+                    file_name=f"full_report_{report_template.value}.md",
+                )
+            )
+            bundles.append(
+                ReportBundleRecord(
+                    case_id=case_id,
+                    run_id=run_id,
+                    bundle_kind=ReportBundleKind.FINANCIAL_ANNEX_MARKDOWN.value,
+                    title="Financial Annex",
+                    format="markdown",
+                    summary="Detailed financial annex rendered for export-ready reporting.",
+                    content=rich_report_artifacts.financial_annex_markdown,
+                    file_name="financial_annex.md",
+                )
+            )
+
+            docx_file_name = f"full_report_{report_template.value}.docx"
+            docx_artifact = self.storage_service.store_bytes(
+                case_id=case_id,
+                artifact_id=f"{run_id}-{ReportBundleKind.FULL_REPORT_DOCX.value}",
+                filename=docx_file_name,
+                content=rich_report_artifacts.docx_bytes,
+            )
+            bundles.append(
+                ReportBundleRecord(
+                    case_id=case_id,
+                    run_id=run_id,
+                    bundle_kind=ReportBundleKind.FULL_REPORT_DOCX.value,
+                    title=f"{rich_report_artifacts.full_report_title} DOCX",
+                    format="docx",
+                    summary="Branded DOCX report with cover page, table of contents, and tables.",
+                    content="Binary DOCX artifact generated for this workflow run.",
+                    file_name=docx_file_name,
+                    storage_path=docx_artifact.storage_path,
+                    sha256_digest=docx_artifact.sha256_digest,
+                    byte_size=docx_artifact.byte_size,
+                )
+            )
+
+            pdf_file_name = f"full_report_{report_template.value}.pdf"
+            pdf_artifact = self.storage_service.store_bytes(
+                case_id=case_id,
+                artifact_id=f"{run_id}-{ReportBundleKind.FULL_REPORT_PDF.value}",
+                filename=pdf_file_name,
+                content=rich_report_artifacts.pdf_bytes,
+            )
+            bundles.append(
+                ReportBundleRecord(
+                    case_id=case_id,
+                    run_id=run_id,
+                    bundle_kind=ReportBundleKind.FULL_REPORT_PDF.value,
+                    title=f"{rich_report_artifacts.full_report_title} PDF",
+                    format="pdf",
+                    summary=(
+                        "Readable PDF rendition of the full report for board and lender "
+                        "sharing."
+                    ),
+                    content="Binary PDF artifact generated for this workflow run.",
+                    file_name=pdf_file_name,
+                    storage_path=pdf_artifact.storage_path,
+                    sha256_digest=pdf_artifact.sha256_digest,
+                    byte_size=pdf_artifact.byte_size,
                 )
             )
         return bundles

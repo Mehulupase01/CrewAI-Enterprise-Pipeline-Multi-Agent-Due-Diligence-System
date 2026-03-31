@@ -98,8 +98,15 @@ class ExportService:
             included_files.append("manifest.json")
 
             for bundle in run_detail.report_bundles:
-                bundle_path = self._bundle_path(bundle.bundle_kind.value)
-                zip_file.writestr(bundle_path, bundle.content)
+                bundle_path = self._bundle_path(bundle.bundle_kind.value, bundle.file_name)
+                if bundle.storage_path:
+                    bundle_bytes = self.storage_service.retrieve_bytes(bundle.storage_path)
+                    if bundle_bytes is not None:
+                        zip_file.writestr(bundle_path, bundle_bytes)
+                    else:
+                        zip_file.writestr(bundle_path, bundle.content)
+                else:
+                    zip_file.writestr(bundle_path, bundle.content)
                 included_files.append(bundle_path)
 
             zip_file.writestr(
@@ -173,11 +180,17 @@ class ExportService:
         )
         return result.scalar_one_or_none()
 
-    def _bundle_path(self, bundle_kind: str) -> str:
+    def _bundle_path(self, bundle_kind: str, file_name: str | None) -> str:
+        if file_name:
+            return f"reports/{file_name}"
         mapping = {
             "executive_memo_markdown": "reports/executive_memo.md",
             "issue_register_markdown": "reports/issue_register.md",
             "workstream_synthesis_markdown": "reports/workstream_syntheses.md",
+            "full_report_markdown": "reports/full_report.md",
+            "financial_annex_markdown": "reports/financial_annex.md",
+            "full_report_docx": "reports/full_report.docx",
+            "full_report_pdf": "reports/full_report.pdf",
         }
         return mapping.get(bundle_kind, f"reports/{bundle_kind}.md")
 

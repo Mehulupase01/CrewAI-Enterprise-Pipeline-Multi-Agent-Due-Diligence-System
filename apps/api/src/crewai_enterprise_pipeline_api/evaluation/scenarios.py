@@ -186,6 +186,12 @@ class BfsiNbfcMetricsExpectation:
 
 
 @dataclass(slots=True)
+class RichReportingExpectation:
+    report_template: str
+    required_export_files: tuple[str, ...] = ()
+
+
+@dataclass(slots=True)
 class ScenarioExpectation:
     approval_decision: str
     ready_for_export: bool
@@ -248,6 +254,7 @@ class EvaluationScenario:
     tech_saas_metrics_expectation: TechSaasMetricsExpectation | None = None
     manufacturing_metrics_expectation: ManufacturingMetricsExpectation | None = None
     bfsi_nbfc_metrics_expectation: BfsiNbfcMetricsExpectation | None = None
+    rich_reporting_expectation: RichReportingExpectation | None = None
     expectation: ScenarioExpectation = field(
         default_factory=lambda: ScenarioExpectation(
             approval_decision="changes_requested",
@@ -2039,7 +2046,110 @@ PHASE12_SECTOR_PACK_DEEPENING_SCENARIOS: tuple[EvaluationScenario, ...] = (
 )
 
 
+PHASE13_RICH_REPORTING_SCENARIOS: tuple[EvaluationScenario, ...] = (
+    EvaluationScenario(
+        code="phase13_board_reporting_case",
+        name="Phase 13 board reporting case",
+        description=(
+            "Validates the rich reporting flow with a board memo template, full report bundles, "
+            "financial annex, DOCX/PDF generation, and export package inclusion."
+        ),
+        case_payload={
+            "name": "Project Phase13 Board Reporting",
+            "target_name": "Phase13 Board Reporting Private Limited",
+            "summary": "Phase 13 evaluation scenario for rich report generation.",
+            "motion_pack": "buy_side_diligence",
+            "sector_pack": "tech_saas_services",
+            "country": "India",
+        },
+        upload_documents=(
+            UploadDocumentFixture(
+                title="Financial workbook",
+                filename="financial_workbook.xlsx",
+                content="",
+                content_bytes=build_financial_workbook_bytes(),
+                mime_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                document_kind="financial_workbook",
+                source_kind="uploaded_dataroom",
+                workstream_domain="financial_qoe",
+                evidence_kind="metric",
+            ),
+            UploadDocumentFixture(
+                title="Commercial KPI review",
+                filename="commercial_kpi_review.txt",
+                content=(
+                    "Beginning ARR 90.0. New ARR 25.0. Expansion ARR 18.0. Contraction ARR 6.0. "
+                    "Churned ARR 7.0. Ending ARR 120.0. MRR 10.0. Net revenue retention 118%. "
+                    "Gross churn 4%. CAC 1.8. LTV 9.0. CAC payback 7 months."
+                ),
+                mime_type="text/plain",
+                document_kind="commercial_kpi_review",
+                source_kind="uploaded_dataroom",
+                workstream_domain="commercial",
+                evidence_kind="metric",
+            ),
+        ),
+        satisfy_all_checklist_items=True,
+        financial_summary_expectation=FinancialSummaryExpectation(
+            min_periods=4,
+            min_checklist_updates=0,
+        ),
+        tech_saas_metrics_expectation=TechSaasMetricsExpectation(
+            expected_arr=120.0,
+            expected_mrr=10.0,
+            expected_nrr=1.18,
+            expected_churn=0.04,
+            expected_payback_months=7.0,
+            min_arr_waterfall_items=5,
+            min_checklist_updates=0,
+        ),
+        rich_reporting_expectation=RichReportingExpectation(
+            report_template="board_memo",
+            required_export_files=(
+                "reports/full_report_board_memo.md",
+                "reports/full_report_board_memo.docx",
+                "reports/full_report_board_memo.pdf",
+                "reports/financial_annex.md",
+            ),
+        ),
+        run_payload={
+            "requested_by": "Evaluation Runner",
+            "note": "Automated run for rich reporting evaluation.",
+            "report_template": "board_memo",
+        },
+        expectation=ScenarioExpectation(
+            approval_decision="approved",
+            ready_for_export=True,
+            report_status="ready_for_export",
+            report_title="Executive Memo",
+            open_mandatory_items=0,
+            min_blocking_issue_count=0,
+            max_blocking_issue_count=0,
+            min_issue_count=0,
+            min_open_request_count=0,
+            min_evidence_count=2,
+            min_report_bundles=7,
+            expected_bundle_kinds=(
+                "executive_memo_markdown",
+                "issue_register_markdown",
+                "workstream_synthesis_markdown",
+                "full_report_markdown",
+                "financial_annex_markdown",
+                "full_report_docx",
+                "full_report_pdf",
+            ),
+        ),
+    ),
+)
+
+
 EVALUATION_SUITES: dict[str, EvaluationSuiteDefinition] = {
+    "phase13_rich_reporting": EvaluationSuiteDefinition(
+        key="phase13_rich_reporting",
+        title="Phase 13 Rich Reporting Evaluation",
+        artifact_prefix="phase13-rich-reporting",
+        scenarios=PHASE13_RICH_REPORTING_SCENARIOS,
+    ),
     "phase12_sector_pack_deepening": EvaluationSuiteDefinition(
         key="phase12_sector_pack_deepening",
         title="Phase 12 Sector Pack Deepening Evaluation",

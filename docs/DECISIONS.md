@@ -512,6 +512,26 @@ name-based).
 
 ---
 
+## AD-046: Rich reporting is markdown-first, with DOCX and PDF derived from the same rendered template output (2026-03-31)
+
+**Decision:** Phase 13 report generation uses Jinja2-rendered markdown as the canonical report body for every template. DOCX and PDF artifacts are derived from that same rendered markdown rather than maintaining separate template systems per format.
+
+**Why:** The platform already had deterministic markdown memo generation and export packaging. Keeping one canonical rendered body avoids format drift, reduces template duplication, and makes tests able to validate section presence once while still producing richer analyst deliverables.
+
+**Impact:** `report_renderer.py`, `report_markdown.py`, `docx_service.py`, and `pdf_service.py` form one reporting pipeline. New report templates should be added as markdown Jinja templates first, then rendered into DOCX/PDF through the shared pipeline rather than introducing parallel format-specific business logic.
+
+---
+
+## AD-047: Workflow runs persist report-template choice and store binary report artifacts for later download and export reuse (2026-03-31)
+
+**Decision:** A workflow run now persists the selected `report_template`, stores DOCX/PDF bundles as first-class report artifacts, and reuses those stored binaries when building ZIP export packages and download responses.
+
+**Why:** Rich reporting is only trustworthy if the exact artifacts reviewed during the run are the same ones later downloaded or exported. Regenerating binaries opportunistically at download time would risk drift, increase latency, and weaken auditability.
+
+**Impact:** `workflow_service.py`, `export_service.py`, `cases.py`, and the `workflow_runs` / `report_bundles` schema now treat report-template choice and binary artifact metadata as part of the persisted run contract. Future report/export phases should extend this stored-artifact pattern rather than recalculating deliverables on demand.
+
+---
+
 <!--
 Template for future decisions:
 

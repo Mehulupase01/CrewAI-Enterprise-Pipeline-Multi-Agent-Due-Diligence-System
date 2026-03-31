@@ -9,6 +9,7 @@ from crewai_enterprise_pipeline_api.evaluation.scenarios import (
     PHASE10_COMMERCIAL_OPERATIONS_CYBER_FORENSIC_SCENARIOS,
     PHASE11_MOTION_PACK_DEEPENING_SCENARIOS,
     PHASE12_SECTOR_PACK_DEEPENING_SCENARIOS,
+    PHASE13_RICH_REPORTING_SCENARIOS,
     VENDOR_ONBOARDING_EXPANSION_SCENARIOS,
 )
 
@@ -17,6 +18,7 @@ def test_evaluation_scenarios_are_unique_and_well_formed() -> None:
     scenario_codes: set[str] = set()
 
     for suite_key, scenarios in (
+        ("phase13_rich_reporting", PHASE13_RICH_REPORTING_SCENARIOS),
         ("phase5_first_slice", PHASE5_FIRST_SLICE_SCENARIOS),
         ("phase8_financial_qoe", PHASE8_FINANCIAL_QOE_SCENARIOS),
         ("phase9_legal_tax_regulatory", PHASE9_LEGAL_TAX_REGULATORY_SCENARIOS),
@@ -72,6 +74,9 @@ def test_evaluation_scenarios_are_unique_and_well_formed() -> None:
                     or scenario.manufacturing_metrics_expectation is not None
                     or scenario.bfsi_nbfc_metrics_expectation is not None
                 )
+            if suite_key == "phase13_rich_reporting":
+                assert scenario.rich_reporting_expectation is not None
+                assert scenario.run_payload["report_template"] == "board_memo"
             if suite_key == "credit_lending_expansion":
                 assert scenario.case_payload["motion_pack"] == "credit_lending"
             if suite_key == "vendor_onboarding_expansion":

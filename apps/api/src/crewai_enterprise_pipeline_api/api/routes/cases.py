@@ -65,6 +65,7 @@ from crewai_enterprise_pipeline_api.domain.models import (
     QaItemCreate,
     QaItemSummary,
     QaItemUpdate,
+    ReportTemplateKind,
     RequestItemCreate,
     RequestItemSummary,
     RequestItemUpdate,
@@ -889,6 +890,36 @@ async def get_executive_memo(
     return report
 
 
+@router.get("/{case_id}/reports/full-report")
+async def get_full_report_markdown(
+    case_id: str,
+    session: DbSession,
+    report_template: ReportTemplateKind = ReportTemplateKind.STANDARD,
+) -> Response:
+    report = await ReportService(session).render_full_report_markdown(
+        case_id,
+        report_template=report_template,
+    )
+    if report is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
+    return Response(content=report, media_type="text/markdown")
+
+
+@router.get("/{case_id}/reports/financial-annex")
+async def get_financial_annex_markdown(
+    case_id: str,
+    session: DbSession,
+    report_template: ReportTemplateKind = ReportTemplateKind.STANDARD,
+) -> Response:
+    report = await ReportService(session).render_financial_annex_markdown(
+        case_id,
+        report_template=report_template,
+    )
+    if report is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
+    return Response(content=report, media_type="text/markdown")
+
+
 # ---------------------------------------------------------------------------
 # Requests
 # ---------------------------------------------------------------------------
@@ -1011,6 +1042,62 @@ async def execute_run(
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
     return result
+
+
+@router.get(
+    "/{case_id}/runs/{run_id}/report-bundles/{bundle_id}/download",
+)
+async def download_report_bundle(
+    case_id: str,
+    run_id: str,
+    bundle_id: str,
+    session: DbSession,
+) -> Response:
+    from sqlalchemy import select
+
+    from crewai_enterprise_pipeline_api.db.models import ReportBundleRecord
+
+    result = await session.execute(
+        select(ReportBundleRecord).where(
+            ReportBundleRecord.case_id == case_id,
+            ReportBundleRecord.run_id == run_id,
+            ReportBundleRecord.id == bundle_id,
+        )
+    )
+    bundle = result.scalar_one_or_none()
+    if bundle is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report bundle not found")
+
+    content_type = {
+        "markdown": "text/markdown; charset=utf-8",
+        "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "pdf": "application/pdf",
+    }.get(bundle.format, "application/octet-stream")
+
+    if bundle.storage_path:
+        data = DocumentStorageService().retrieve_bytes(bundle.storage_path)
+        if data is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Stored report bundle bytes not found",
+            )
+        return Response(
+            content=data,
+            media_type=content_type,
+            headers={
+                "Content-Disposition": (
+                    f'attachment; filename="{bundle.file_name or bundle.title}"'
+                )
+            },
+        )
+
+    return Response(
+        content=bundle.content,
+        media_type=content_type,
+        headers={
+            "Content-Disposition": f'attachment; filename="{bundle.file_name or bundle.title}"'
+        },
+    )
 
 
 @router.get("/{case_id}/runs/{run_id}", response_model=WorkflowRunDetail)

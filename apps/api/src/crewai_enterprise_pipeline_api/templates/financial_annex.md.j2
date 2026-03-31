@@ -1,0 +1,53 @@
+# Financial Annex
+
+Target: {{ memo.target_name }}
+Generated: {{ generated_at.isoformat() }}
+
+## Period Summary
+{% if financial_summary and financial_summary.periods %}
+| Period | Revenue | Gross Profit | Operating Profit | EBITDA | PAT | OCF | Net Debt |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+{% for period in financial_summary.periods %}
+| {{ period.label }} | {{ period.revenue|money }} | {{ period.gross_profit|money }} | {{ period.operating_profit|money }} | {{ period.ebitda|money }} | {{ period.pat|money }} | {{ period.operating_cash_flow|money }} | {{ period.net_debt|money }} |
+{% endfor %}
+{% else %}
+- No structured financial periods were extracted.
+{% endif %}
+
+## Ratio Snapshot
+{% if financial_summary and financial_summary.ratios %}
+| Ratio | Value |
+| --- | --- |
+{% for key, value in financial_summary.ratios.items() %}
+| {{ key|heading_label }} | {{ value }} |
+{% endfor %}
+{% else %}
+- No ratios were computed.
+{% endif %}
+
+## QoE Adjustments
+{% if financial_summary and financial_summary.qoe_adjustments %}
+| Label | Amount |
+| --- | --- |
+{% for adjustment in financial_summary.qoe_adjustments %}
+| {{ adjustment.label }} | {{ adjustment.amount|money }} |
+{% endfor %}
+{% else %}
+- No QoE adjustments were extracted.
+{% endif %}
+
+## Normalized EBITDA
+{% if financial_summary and financial_summary.normalized_ebitda is not none %}
+- Normalized EBITDA: {{ financial_summary.normalized_ebitda|money }}
+{% else %}
+- Normalized EBITDA is not available.
+{% endif %}
+
+## Financial Flags
+{% if financial_summary and financial_summary.flags %}
+{% for flag in financial_summary.flags %}
+- {{ flag }}
+{% endfor %}
+{% else %}
+- No financial flags were generated.
+{% endif %}

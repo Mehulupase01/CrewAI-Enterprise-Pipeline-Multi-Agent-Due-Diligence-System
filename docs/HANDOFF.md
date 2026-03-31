@@ -4,20 +4,20 @@
 
 ## Current State
 
-**Active phase:** None (Phase 12 complete, ready to start canonical Phase 13)
+**Active phase:** None (Phase 13 complete, ready to start canonical Phase 14)
 **Last session:** 2026-03-31
-**Completed phases:** 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12
-**Test counts:** 110 pytest, 20 eval scenarios (10 suites)
+**Completed phases:** 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13
+**Test counts:** 115 pytest, 21 eval scenarios (11 suites)
 **Execution mode:** roadmap from `MASTERPLAN.docx` (preferred) / `MASTERPLAN.pdf` (companion), execution truth from repo code/tests/commands
 
 ## What to Do Next
 
-Start canonical **Phase 13: Rich Reporting + DOCX/PDF Export** from `MASTERPLAN.docx`.
-Treat Phase 12 as complete: the repo now has deterministic Tech/SaaS, Manufacturing, and BFSI/NBFC sector engines; sector-specific API endpoints; workflow/report/synthesis refresh integration; CrewAI Phase 12 tools and prompt snapshots; and dedicated Phase 12 pytest plus evaluation coverage.
+Start canonical **Phase 14** from `MASTERPLAN.docx`.
+Treat Phase 13 as complete: the repo now has Jinja2-based report templates, markdown-first full-report and financial-annex rendering, DOCX/PDF generation, persisted `report_template` state on workflow runs, binary report-bundle download endpoints, export-package inclusion of rich artifacts, workbench template selection, and dedicated Phase 13 pytest plus evaluation coverage.
 
 ## Blockers
 
-None. Latest full-gate artifact: `artifacts/evaluations/all-supported-suites-20260331T164647Z.json`.
+None. Latest full-gate artifact: `artifacts/evaluations/all-supported-suites-20260331T175355Z.json`.
 
 ## Phase Completion Checklist
 

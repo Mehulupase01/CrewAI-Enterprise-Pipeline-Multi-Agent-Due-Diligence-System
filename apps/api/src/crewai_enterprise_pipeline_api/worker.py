@@ -18,12 +18,22 @@ from crewai_enterprise_pipeline_api.services.workflow_service import WorkflowSer
 logger = logging.getLogger(__name__)
 
 
-async def run_workflow_job(ctx: dict, case_id: str, requested_by: str, note: str | None) -> str:
+async def run_workflow_job(
+    ctx: dict,
+    case_id: str,
+    requested_by: str,
+    note: str | None,
+    report_template: str = "standard",
+) -> str:
     """Execute a workflow run inside the arq worker process."""
     database = get_database()
     async with database.session_factory() as session:
         service = WorkflowService(session)
-        payload = WorkflowRunCreate(requested_by=requested_by, note=note)
+        payload = WorkflowRunCreate(
+            requested_by=requested_by,
+            note=note,
+            report_template=report_template,
+        )
         result = await service.execute_run(case_id, payload)
         if result is None:
             logger.error("Workflow job for case %s failed: case not found", case_id)

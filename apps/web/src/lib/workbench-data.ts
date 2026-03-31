@@ -139,6 +139,10 @@ export type ReportBundleSummary = {
   format: string;
   summary: string | null;
   content: string;
+  file_name?: string | null;
+  storage_path?: string | null;
+  sha256_digest?: string | null;
+  byte_size?: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -181,6 +185,7 @@ export type WorkflowRunSummary = {
   case_id: string;
   requested_by: string;
   note: string | null;
+  report_template: string;
   status: string;
   summary: string | null;
   started_at: string | null;
@@ -240,7 +245,7 @@ async function fetchJson<T>(path: string): Promise<T | null> {
 
 const demoOverview: PlatformOverview = {
   product_name: "CrewAI Enterprise Pipeline",
-  current_phase: "Post-roadmap enhancement 1: run export packages",
+  current_phase: "Phase 12 complete: Sector Pack Deepening",
   country: "India",
   motion_packs: ["buy_side_diligence", "credit_lending", "vendor_onboarding"],
   sector_packs: ["tech_saas_services", "manufacturing_industrials", "bfsi_nbfc"],
@@ -504,6 +509,7 @@ const demoRun: WorkflowRunDetail = {
   case_id: demoCase.id,
   requested_by: "Diligence Operator",
   note: "Generate current state memo and issue pack.",
+  report_template: "standard",
   status: "completed",
   summary: "Generated 3 report bundles and 4 workstream syntheses with visible blockers.",
   started_at: "2026-03-26T09:10:00Z",

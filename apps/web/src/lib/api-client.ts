@@ -10,6 +10,7 @@ import type {
   ChecklistItemSummary,
   IssueRegisterItemSummary,
   QaItemSummary,
+  RunExportPackageSummary,
   RequestItemSummary,
   WorkflowRunDetail,
   WorkflowRunSummary,
@@ -234,6 +235,7 @@ export async function reviewCase(
 export type RunCreatePayload = {
   requested_by: string;
   note?: string;
+  report_template?: "standard" | "lender" | "board_memo" | "one_pager";
 };
 
 export async function createRun(
@@ -248,6 +250,15 @@ export async function createRun(
 export async function createExportPackage(
   caseId: string,
   runId: string,
-): Promise<{ id: string }> {
-  return mutateJson(`/cases/${caseId}/runs/${runId}/export-package`, "POST");
+  data?: {
+    requested_by?: string;
+    title?: string;
+    include_json_snapshot?: boolean;
+  },
+): Promise<RunExportPackageSummary> {
+  return mutateJson(`/cases/${caseId}/runs/${runId}/export-package`, "POST", {
+    requested_by: data?.requested_by ?? "Workbench Analyst",
+    title: data?.title,
+    include_json_snapshot: data?.include_json_snapshot ?? true,
+  });
 }

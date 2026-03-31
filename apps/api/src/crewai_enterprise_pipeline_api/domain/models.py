@@ -121,6 +121,17 @@ class ReportBundleKind(StrEnum):
     EXECUTIVE_MEMO_MARKDOWN = "executive_memo_markdown"
     ISSUE_REGISTER_MARKDOWN = "issue_register_markdown"
     WORKSTREAM_SYNTHESIS_MARKDOWN = "workstream_synthesis_markdown"
+    FULL_REPORT_MARKDOWN = "full_report_markdown"
+    FINANCIAL_ANNEX_MARKDOWN = "financial_annex_markdown"
+    FULL_REPORT_DOCX = "full_report_docx"
+    FULL_REPORT_PDF = "full_report_pdf"
+
+
+class ReportTemplateKind(StrEnum):
+    STANDARD = "standard"
+    LENDER = "lender"
+    BOARD_MEMO = "board_memo"
+    ONE_PAGER = "one_pager"
 
 
 class RunExportPackageKind(StrEnum):
@@ -325,6 +336,7 @@ class ApprovalDecisionCreate(BaseModel):
 class WorkflowRunCreate(BaseModel):
     requested_by: str = Field(default="Operator", min_length=2, max_length=255)
     note: str | None = Field(default=None, max_length=4000)
+    report_template: ReportTemplateKind = ReportTemplateKind.STANDARD
 
 
 class RunExportPackageCreate(BaseModel):
@@ -457,6 +469,10 @@ class ReportBundleSummary(ORMModel):
     format: str
     summary: str | None
     content: str
+    file_name: str | None = None
+    storage_path: str | None = None
+    sha256_digest: str | None = None
+    byte_size: int | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -496,6 +512,7 @@ class WorkflowRunSummary(ORMModel):
     case_id: str
     requested_by: str
     note: str | None
+    report_template: ReportTemplateKind
     status: WorkflowRunStatus
     summary: str | None
     started_at: datetime | None

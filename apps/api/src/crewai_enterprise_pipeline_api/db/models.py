@@ -213,6 +213,7 @@ class WorkflowRunRecord(TimestampedMixin, Base):
     case_id: Mapped[str] = mapped_column(ForeignKey("cases.id", ondelete="CASCADE"))
     requested_by: Mapped[str] = mapped_column(String(255))
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    report_template: Mapped[str] = mapped_column(String(80), default="standard")
     status: Mapped[str] = mapped_column(String(40), default="queued")
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     started_at: Mapped[datetime | None] = mapped_column(nullable=True)
@@ -268,6 +269,10 @@ class ReportBundleRecord(TimestampedMixin, Base):
     format: Mapped[str] = mapped_column(String(40), default="markdown")
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     content: Mapped[str] = mapped_column(Text)
+    file_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    storage_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    sha256_digest: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    byte_size: Mapped[int | None] = mapped_column(nullable=True)
 
     run: Mapped[WorkflowRunRecord] = relationship(back_populates="report_bundles")
 

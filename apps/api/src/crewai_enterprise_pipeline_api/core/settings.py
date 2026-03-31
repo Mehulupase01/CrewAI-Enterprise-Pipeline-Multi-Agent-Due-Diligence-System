@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     minio_root_password: str = "minioadmin"
     minio_bucket_name: str = "crewai-pipeline"
     product_name: str = "CrewAI Enterprise Pipeline"
-    current_phase: str = "Phase 12 complete: Sector Pack Deepening"
+    current_phase: str = "Phase 13 complete: Rich Reporting + DOCX/PDF Export"
     country: str = "India"
     enabled_motion_packs: str = "buy_side_diligence,credit_lending,vendor_onboarding"
     enabled_sector_packs: str = "tech_saas_services,manufacturing_industrials,bfsi_nbfc"

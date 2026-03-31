@@ -1,6 +1,6 @@
 # Architecture Overview
 
-> **Last updated:** 2026-03-31 (Phase 12 complete)
+> **Last updated:** 2026-03-31 (Phase 13 complete)
 > **Update rule:** This file is updated after every masterplan phase to reflect actual system state.
 
 ## System Summary
@@ -23,9 +23,9 @@ See `docs/MASTERPLAN.docx` (preferred) or `docs/MASTERPLAN.pdf` for the roadmap 
 
 ### What is REAL and WORKING
 - 14 SQLAlchemy ORM models with proper relationships, cascades, timestamps
-- 113 domain models and enums with consistent naming conventions across API, workflow, and evaluation surfaces
-- 29 service and engine classes + CrewAI multi-agent orchestration (activates with LLM config)
-- 61 REST endpoints (full CRUD + SSE streaming + chunks + search + conflicts + financial/legal/tax/compliance plus Phase 10 summaries, Phase 11 motion-pack endpoints, and Phase 12 sector-pack endpoints)
+- 114 domain models and enums with consistent naming conventions across API, workflow, and evaluation surfaces
+- 28 service and engine classes + CrewAI multi-agent orchestration (activates with LLM config)
+- 64 REST endpoints (full CRUD + SSE streaming + chunks + search + conflicts + financial/legal/tax/compliance plus Phase 10 summaries, Phase 11 motion-pack endpoints, Phase 12 sector-pack endpoints, rich-report previews, and report-bundle downloads)
 - Document parsing for 6 formats (PDF with tables, DOCX with headings+tables, XLSX multi-sheet, CSV, JSON, TXT)
 - Structured financial workbook parsing for annual periods, QoE adjustments, normalized EBITDA, ratios, and financial flags
 - Structured legal, tax, and regulatory parsing for directors, DINs, shareholding, contract clauses, GST posture, and compliance-matrix generation
@@ -33,9 +33,9 @@ See `docs/MASTERPLAN.docx` (preferred) or `docs/MASTERPLAN.pdf` for the roadmap 
 - Rule-based entity extraction (financial, legal, regulatory, India identifiers)
 - SHA256 document dedup (same content returns existing artifact)
 - Header-based RBAC with 4 roles (VIEWER, ANALYST, REVIEWER, ADMIN)
-- Evaluation harness with 10 suites, 20 scenarios
-- 110 pytest unit tests
-- Export ZIP packages (markdown + JSON metadata / snapshots)
+- Evaluation harness with 11 suites, 21 scenarios
+- 115 pytest unit tests
+- Export ZIP packages (markdown, DOCX, PDF, plus JSON metadata / snapshots)
 - Docker Compose stack (PostgreSQL 17, Redis 7.4, MinIO)
 
 ### What was ADDED after Phase 7
@@ -92,6 +92,18 @@ See `docs/MASTERPLAN.docx` (preferred) or `docs/MASTERPLAN.pdf` for the roadmap 
 - Workflow-integrated Phase 12 refresh so syntheses, reports, trace events, and CrewAI prompts consume the same structured sector-pack state
 - `agents/phase12_tools.py` plus phase-aware prompt context so the coordinator and relevant workstreams can inspect structured sector outputs directly
 - Dedicated Phase 12 evaluation coverage and five focused pytest cases for summary extraction, checklist updates, workflow integration, and CrewAI tool attachment
+
+### What was ADDED in Phase 13
+- `services/report_markdown.py` as the markdown block-parser layer for headings, lists, paragraphs, and tables
+- `services/report_renderer.py` for Jinja2-based rich full-report and financial-annex rendering across `standard`, `lender`, `board_memo`, and `one_pager` templates
+- `services/docx_service.py` for DOCX rendering with cover page, table of contents, section headings, lists, and markdown tables
+- `services/pdf_service.py` for PDF rendering with the same markdown-first report structure
+- `templates/*.md.j2` for standard, lender, board memo, one-pager, and financial-annex templates
+- `GET /cases/{id}/reports/full-report` and `GET /cases/{id}/reports/financial-annex`
+- report-bundle download support plus workflow-level persistence of report-template choice and binary artifact metadata
+- export-package inclusion for full-report markdown, financial-annex markdown, DOCX, and PDF report artifacts
+- workbench template selection and artifact download links on the run detail page
+- Dedicated Phase 13 evaluation coverage and five focused pytest cases for rendering, artifact generation, workflow integration, and export integrity
 
 ### What was ADDED in Phase 7
 - CrewAI multi-agent orchestration (`agents/` package) — 9 workstream agents + 1 coordinator
@@ -167,6 +179,7 @@ See `docs/MASTERPLAN.docx` (preferred) or `docs/MASTERPLAN.pdf` for the roadmap 
 - No dedicated commercial/operations/cyber/forensic analyst panels in the Next.js workspace yet; Phase 10 is currently exposed through APIs, workflow outputs, and evaluation surfaces rather than bespoke UI views
 - No dedicated motion-pack analyst panels yet for valuation bridges, borrower scorecards, or vendor tiering; Phase 11 is currently exposed through APIs, workflow outputs, reports, and evaluation surfaces rather than bespoke UI views
 - No dedicated sector-pack analyst panels yet for Tech/SaaS, Manufacturing, or BFSI/NBFC detail; Phase 12 is currently exposed through APIs, workflow outputs, reports, and evaluation surfaces rather than bespoke UI views
+- No WYSIWYG report editor or brand-theming system yet; Phase 13 currently provides deterministic template-based reporting and download flows rather than analyst-authored document composition
 
 ## Layers
 
@@ -210,7 +223,11 @@ apps/api/src/crewai_enterprise_pipeline_api/
     approval_service.py    # Review decision logic
     workflow_service.py    # Orchestrates runs (CrewAI when LLM configured, deterministic fallback)
     synthesis_service.py   # Workstream synthesis (deterministic template fill)
-    report_service.py      # Executive memo generation
+    report_service.py      # Executive memo + rich report context generation
+    report_renderer.py     # Jinja2 rich-report rendering service
+    report_markdown.py     # Markdown block parsing helpers for DOCX/PDF renderers
+    docx_service.py        # DOCX rendering from markdown
+    pdf_service.py         # PDF rendering from markdown
     document_signal_utils.py  # Shared artifact text snapshots for Phase 9 signal extraction
     financial_qoe_service.py  # Phase 8 QoE summary, ratios, flags, checklist automation
     legal_service.py          # Phase 9 legal structure and contract-clause analysis
@@ -317,9 +334,8 @@ See `docs/MASTERPLAN.docx` for the 18-phase plan to reach full production state:
 - pgvector hybrid search for evidence intelligence
 - Interactive frontend with full CRUD + live SSE streaming
 - Deep domain engines (Financial QoE, Legal/Tax/Regulatory, Commercial/Forensic)
-- Rich DOCX/PDF reporting and document exports beyond the current Phase 12 depth
+- Additional Phase 14+ roadmap depth from `MASTERPLAN.docx` beyond the now-complete Phase 13 reporting tranche
 - India data connectors (MCA21, GSTIN, SEBI, CIBIL, sanctions)
 - JWT auth, multi-tenancy, audit logging
-- Rich DOCX/PDF reporting
 - OpenTelemetry + Prometheus observability
 - Production Docker images with deployment runbook

@@ -1,0 +1,90 @@
+# {{ full_report_title }}
+
+Borrower: {{ memo.target_name }}
+Template: {{ template_label }}
+Generated: {{ generated_at.isoformat() }}
+Motion Pack: {{ memo.motion_pack.value }}
+Sector Pack: {{ memo.sector_pack.value }}
+
+## Credit View
+{{ memo.executive_summary }}
+
+## Borrower Scorecard
+{% if borrower_scorecard %}
+| Section | Score | Rating | Rationale |
+| --- | --- | --- | --- |
+| Financial health | {{ borrower_scorecard.financial_health.score }} | {{ borrower_scorecard.financial_health.rating }} | {{ borrower_scorecard.financial_health.rationale }} |
+| Collateral | {{ borrower_scorecard.collateral.score }} | {{ borrower_scorecard.collateral.rating }} | {{ borrower_scorecard.collateral.rationale }} |
+| Covenants | {{ borrower_scorecard.covenants.score }} | {{ borrower_scorecard.covenants.rating }} | {{ borrower_scorecard.covenants.rationale }} |
+
+- Overall score: {{ borrower_scorecard.overall_score }}
+- Overall rating: {{ borrower_scorecard.overall_rating }}
+{% else %}
+- Borrower scorecard is not available.
+{% endif %}
+
+## Covenant Tracking
+{% if borrower_scorecard and borrower_scorecard.covenant_tracking %}
+| Covenant | Status | Threshold | Current Value | Note |
+| --- | --- | --- | --- | --- |
+{% for covenant in borrower_scorecard.covenant_tracking %}
+| {{ covenant.name }} | {{ covenant.status }} | {{ covenant.threshold or "n/a" }} | {{ covenant.current_value or "n/a" }} | {{ covenant.note }} |
+{% endfor %}
+{% else %}
+- No covenant-tracking items were generated.
+{% endif %}
+
+## Financial Quality of Earnings
+{% if financial_summary %}
+{% if financial_summary.normalized_ebitda is not none %}
+- Normalized EBITDA: {{ financial_summary.normalized_ebitda|money }}
+{% endif %}
+{% for flag in financial_summary.flags %}
+- {{ flag }}
+{% endfor %}
+{% else %}
+- Financial summary is not available.
+{% endif %}
+
+## Regulatory / Tax Watchpoints
+{% if tax_summary and tax_summary.flags %}
+{% for flag in tax_summary.flags %}
+- {{ flag }}
+{% endfor %}
+{% endif %}
+{% if compliance_summary and compliance_summary.items %}
+| Regulation | Status | Notes |
+| --- | --- | --- |
+{% for item in compliance_summary.items %}
+| {{ item.regulation }} | {{ item.status.value }} | {{ item.notes }} |
+{% endfor %}
+{% else %}
+- No structured compliance items were generated.
+{% endif %}
+
+## Operational and Forensic Risks
+{% if operations_summary and operations_summary.flags %}
+{% for flag in operations_summary.flags %}
+- {{ flag }}
+{% endfor %}
+{% endif %}
+{% if cyber_summary and cyber_summary.flags %}
+{% for flag in cyber_summary.flags %}
+- {{ flag }}
+{% endfor %}
+{% endif %}
+{% if forensic_summary and forensic_summary.flags %}
+{% for flag in forensic_summary.flags %}
+- {{ flag }}
+{% endfor %}
+{% endif %}
+
+## Approval Readiness
+- Mandatory open items: {{ memo.checklist_coverage.open_mandatory_items }}
+- Blocking issues: {{ memo.checklist_coverage.blocker_items }}
+- Ready for export: {{ memo.checklist_coverage.completion_ready }}
+
+## Next Actions
+{% for action in memo.next_actions %}
+- {{ action }}
+{% endfor %}

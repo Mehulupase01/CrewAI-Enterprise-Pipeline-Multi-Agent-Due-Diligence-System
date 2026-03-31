@@ -75,6 +75,10 @@ export default async function RunPage({ params }: PageProps) {
               <span className={styles.metaLabel}>Export packages</span>
               <strong>{runSummary.exportCount}</strong>
             </div>
+            <div className={styles.metaCard}>
+              <span className={styles.metaLabel}>Template</span>
+              <strong>{labelize(run.report_template)}</strong>
+            </div>
           </div>
         </section>
 
@@ -163,9 +167,32 @@ export default async function RunPage({ params }: PageProps) {
                         {labelize(bundle.bundle_kind)}
                       </span>
                     </header>
-                    <pre className={styles.codePreview}>
-                      {bundle.content}
-                    </pre>
+                    {bundle.format === "markdown" ? (
+                      <pre className={styles.codePreview}>{bundle.content}</pre>
+                    ) : (
+                      <>
+                        <p className={styles.caption}>
+                          File: {bundle.file_name ?? "artifact"} | Format: {bundle.format} | Size:{" "}
+                          {bundle.byte_size ?? 0} bytes
+                        </p>
+                        <p className={styles.caption}>
+                          Stored as a binary artifact for download and export packaging.
+                        </p>
+                      </>
+                    )}
+                    <a
+                      className={styles.rowLink}
+                      href={`/api/v1/cases/${caseId}/runs/${runId}/report-bundles/${bundle.id}/download`}
+                    >
+                      <div>
+                        <strong>Download {bundle.format.toUpperCase()} bundle</strong>
+                        <p>
+                          Fetch the stored report artifact directly from the API using the
+                          authenticated workbench session.
+                        </p>
+                      </div>
+                      <span className={styles.note}>Download</span>
+                    </a>
                   </article>
                 ))}
               </div>
@@ -196,6 +223,19 @@ export default async function RunPage({ params }: PageProps) {
                         {exportPackage.byte_size} bytes
                       </p>
                       <p className={styles.caption}>Storage: {exportPackage.storage_path}</p>
+                      <a
+                        className={styles.rowLink}
+                        href={`/api/v1/cases/${caseId}/runs/${runId}/export-packages/${exportPackage.id}/download`}
+                      >
+                        <div>
+                          <strong>Download export package</strong>
+                          <p>
+                            Retrieve the durable archive containing markdown, DOCX, PDF, trace,
+                            and snapshot artifacts for this run.
+                          </p>
+                        </div>
+                        <span className={styles.note}>Download ZIP</span>
+                      </a>
                       <pre className={styles.codePreview}>
                         {exportPackage.included_files.join("\n")}
                       </pre>

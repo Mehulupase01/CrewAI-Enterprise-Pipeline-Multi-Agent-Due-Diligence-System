@@ -46,16 +46,17 @@ docker-compose.yml
 
 ## Current Phase
 
-The repository has completed Phases 0-12 from the current master-plan execution
+The repository has completed Phases 0-13 from the current master-plan execution
 sequence. After Phase 7, the repo also received an additional CrewAI depth
 enhancement: tool-grounded evidence access for the LLM path. Phase 8 is closed
 as the canonical Financial Quality of Earnings (QoE) engine, Phase 9 is closed
 as the canonical Legal / Tax / Regulatory engine, Phase 10 is closed as the
 canonical Commercial / Operations / Cyber / Forensic engine, Phase 11 is
 closed as the canonical Motion Pack Deepening layer, and Phase 12 is closed as
-the canonical Sector Pack Deepening layer. The current build includes the first
-flagship buy-side slice, all planned motion and sector expansions, analyst-ready
-export archives, scoped CrewAI evidence tools, and workflow-integrated
+the canonical Sector Pack Deepening layer. Phase 13 is closed as the
+canonical Rich Reporting + DOCX/PDF Export layer. The current build includes
+the first flagship buy-side slice, all planned motion and sector expansions,
+analyst-ready export archives, scoped CrewAI evidence tools, and workflow-integrated
 financial, legal/compliance, Phase 10 domain-analysis, Phase 11 motion-pack
 analysis, and Phase 12 sector-pack analysis layers on top of the existing
 hardened platform spine:
@@ -129,6 +130,17 @@ hardened platform spine:
   approved-nonblocking-risk diligence runs
 - run-level export-package generation that writes zip archives with markdown
   reports, manifest metadata, execution trace data, and JSON case snapshots
+- report-template-aware workflow runs with `standard`, `lender`,
+  `board_memo`, and `one_pager` rich reporting modes
+- `GET /api/v1/cases/{case_id}/reports/full-report` for full markdown reports
+  and `GET /api/v1/cases/{case_id}/reports/financial-annex` for markdown
+  financial annex rendering
+- binary DOCX and PDF report-bundle generation with stored artifact metadata
+  and API download support
+- export packages that now include full-report markdown, DOCX, PDF, and
+  financial-annex markdown artifacts without regeneration drift
+- workbench template selection for workflow runs and download links for rich
+  report bundles and ZIP exports
 - role-based internal auth that can be enforced outside local dev and test
 - request ID propagation plus a readiness endpoint for operations checks
 - deployment, runbook, release-checklist, and smoke-check assets
@@ -249,6 +261,12 @@ To run only the Phase 12 sector-pack deepening suite:
 
 ```powershell
 ./scripts/evaluate.ps1 -Suite phase12_sector_pack_deepening
+```
+
+To run only the Phase 13 rich-reporting suite:
+
+```powershell
+./scripts/evaluate.ps1 -Suite phase13_rich_reporting
 ```
 
 To run a live API smoke check after the stack is up:

@@ -350,6 +350,20 @@ def _evaluate_scenario(scenario: EvaluationScenario) -> dict[str, Any]:
                 client.get(f"/api/v1/cases/{case_id}/runs/{run['id']}"),
                 200,
             )
+            export_package: dict[str, Any] | None = None
+            if scenario.rich_reporting_expectation is not None:
+                export_package = _ensure_success(
+                    "create export package",
+                    client.post(
+                        f"/api/v1/cases/{case_id}/runs/{run['id']}/export-package",
+                        json={
+                            "requested_by": "Evaluation Runner",
+                            "title": "Evaluation Rich Reporting Export",
+                            "include_json_snapshot": True,
+                        },
+                    ),
+                    201,
+                )
             coverage = _ensure_success(
                 "coverage summary",
                 client.get(f"/api/v1/cases/{case_id}/coverage"),
@@ -380,6 +394,9 @@ def _evaluate_scenario(scenario: EvaluationScenario) -> dict[str, Any]:
         "workstream_synthesis_count": len(run_detail["workstream_syntheses"]),
         "bundle_kinds": bundle_kinds,
     }
+    if export_package is not None:
+        metrics["export_included_files"] = export_package["included_files"]
+        metrics["export_byte_size"] = export_package["byte_size"]
     if financial_summary is not None:
         metrics["financial_period_count"] = len(financial_summary["periods"])
         metrics["financial_flag_count"] = len(financial_summary["flags"])
@@ -544,6 +561,29 @@ def _evaluate_scenario(scenario: EvaluationScenario) -> dict[str, Any]:
         expected=list(expectation.expected_bundle_kinds),
         detail="Core markdown bundle types should always be present.",
     )
+    if scenario.rich_reporting_expectation is not None:
+        rich_expectation = scenario.rich_reporting_expectation
+        _append_check(
+            checks,
+            name="report_template",
+            passed=run_detail["report_template"] == rich_expectation.report_template,
+            actual=run_detail["report_template"],
+            expected=rich_expectation.report_template,
+            detail="Rich reporting scenarios should persist the requested template on the run.",
+        )
+        _append_check(
+            checks,
+            name="export_files",
+            passed=set(rich_expectation.required_export_files).issubset(
+                set(metrics.get("export_included_files", []))
+            ),
+            actual=metrics.get("export_included_files", []),
+            expected=list(rich_expectation.required_export_files),
+            detail=(
+                "Export packages should include the rich reporting markdown, DOCX, "
+                "and PDF artifacts."
+            ),
+        )
 
     if expectation.report_title is not None:
         _append_check(

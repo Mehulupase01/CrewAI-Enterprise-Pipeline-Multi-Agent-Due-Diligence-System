@@ -1,0 +1,30 @@
+# {{ full_report_title }}
+
+Target: {{ memo.target_name }}
+Generated: {{ generated_at.isoformat() }}
+Template: {{ template_label }}
+
+## Executive Summary
+{{ memo.executive_summary }}
+
+## Top Red Flags
+{% if memo.top_issues %}
+{% for issue in memo.top_issues[:3] %}
+- [{{ issue.severity }}] {{ issue.title }}
+{% endfor %}
+{% else %}
+- No material red flags were recorded.
+{% endif %}
+
+## Highlights
+{% for item in memo.motion_pack_highlights[:3] %}
+- {{ item }}
+{% endfor %}
+{% for item in memo.sector_pack_highlights[:3] %}
+- {{ item }}
+{% endfor %}
+
+## Immediate Actions
+{% for action in memo.next_actions[:3] %}
+- {{ action }}
+{% endfor %}

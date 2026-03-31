@@ -1,0 +1,154 @@
+# {{ full_report_title }}
+
+Target: {{ memo.target_name }}
+Template: {{ template_label }}
+Generated: {{ generated_at.isoformat() }}
+Motion Pack: {{ memo.motion_pack.value }}
+Sector Pack: {{ memo.sector_pack.value }}
+Status: {{ memo.report_status }}
+
+## Executive Summary
+{{ memo.executive_summary }}
+
+## Coverage Snapshot
+| Metric | Value |
+| --- | --- |
+| Mandatory open items | {{ memo.checklist_coverage.open_mandatory_items }} |
+| Blocking issues | {{ memo.checklist_coverage.blocker_items }} |
+| Completion ready | {{ memo.checklist_coverage.completion_ready }} |
+
+## Top Issues
+{% if memo.top_issues %}
+{% for issue in memo.top_issues %}
+- [{{ issue.severity }}] {{ issue.title }}: {{ issue.business_impact }}
+{% endfor %}
+{% else %}
+- No material issues are currently recorded.
+{% endif %}
+
+## Motion Pack Highlights
+{% if memo.motion_pack_highlights %}
+{% for item in memo.motion_pack_highlights %}
+- {{ item }}
+{% endfor %}
+{% else %}
+- No motion-pack highlights were generated.
+{% endif %}
+
+## Sector Pack Highlights
+{% if memo.sector_pack_highlights %}
+{% for item in memo.sector_pack_highlights %}
+- {{ item }}
+{% endfor %}
+{% else %}
+- No sector-pack highlights were generated.
+{% endif %}
+
+## Financial Quality of Earnings
+{% if financial_summary %}
+{% if financial_summary.periods %}
+| Period | Revenue | EBITDA | Operating Cash Flow | Net Debt |
+| --- | --- | --- | --- | --- |
+{% for period in financial_summary.periods %}
+| {{ period.label }} | {{ period.revenue|money }} | {{ period.ebitda|money }} | {{ period.operating_cash_flow|money }} | {{ period.net_debt|money }} |
+{% endfor %}
+{% endif %}
+{% if financial_summary.normalized_ebitda is not none %}
+- Normalized EBITDA: {{ financial_summary.normalized_ebitda|money }}
+{% endif %}
+{% for key, value in financial_summary.ratios.items() %}
+{% if "margin" in key or "growth" in key or "coverage" in key %}
+- {{ key|heading_label }}: {{ value|pct }}
+{% else %}
+- {{ key|heading_label }}: {{ value|money }}
+{% endif %}
+{% endfor %}
+{% if financial_summary.flags %}
+{% for flag in financial_summary.flags %}
+- {{ flag }}
+{% endfor %}
+{% endif %}
+{% else %}
+- Financial summary is not available.
+{% endif %}
+
+## Legal / Tax / Regulatory
+{% if legal_summary and legal_summary.flags %}
+### Legal Flags
+{% for flag in legal_summary.flags %}
+- {{ flag }}
+{% endfor %}
+{% endif %}
+{% if tax_summary and tax_summary.flags %}
+### Tax Flags
+{% for flag in tax_summary.flags %}
+- {{ flag }}
+{% endfor %}
+{% endif %}
+{% if compliance_summary and compliance_summary.items %}
+### Compliance Matrix
+| Regulation | Regulator | Status | Notes |
+| --- | --- | --- | --- |
+{% for item in compliance_summary.items %}
+| {{ item.regulation }} | {{ item.regulator }} | {{ item.status.value }} | {{ item.notes }} |
+{% endfor %}
+{% else %}
+- Compliance matrix is not available.
+{% endif %}
+
+## Commercial / Operations / Cyber / Forensic
+{% if commercial_summary and commercial_summary.flags %}
+### Commercial
+{% for flag in commercial_summary.flags %}
+- {{ flag }}
+{% endfor %}
+{% endif %}
+{% if operations_summary and operations_summary.flags %}
+### Operations
+{% for flag in operations_summary.flags %}
+- {{ flag }}
+{% endfor %}
+{% endif %}
+{% if cyber_summary and cyber_summary.flags %}
+### Cyber / Privacy
+{% for flag in cyber_summary.flags %}
+- {{ flag }}
+{% endfor %}
+{% endif %}
+{% if forensic_summary and forensic_summary.flags %}
+### Forensic / Compliance
+{% for flag in forensic_summary.flags %}
+- {{ flag }}
+{% endfor %}
+{% endif %}
+
+## Workstream Syntheses
+{% if workstream_syntheses %}
+{% for synthesis in workstream_syntheses %}
+### {{ synthesis.workstream_domain.value if synthesis.workstream_domain.value is defined else synthesis.workstream_domain }}
+- Status: {{ synthesis.status.value if synthesis.status.value is defined else synthesis.status }}
+- Headline: {{ synthesis.headline }}
+- Narrative: {{ synthesis.narrative }}
+- Next Action: {{ synthesis.recommended_next_action }}
+{% endfor %}
+{% else %}
+- No workstream syntheses were supplied.
+{% endif %}
+
+## Open Requests
+{% if memo.open_requests %}
+{% for request in memo.open_requests %}
+- {{ request.title }} ({{ request.status.value if request.status.value is defined else request.status }}): {{ request.detail }}
+{% endfor %}
+{% else %}
+- No open requests remain.
+{% endif %}
+
+## Next Actions
+{% if memo.next_actions %}
+{% for action in memo.next_actions %}
+- {{ action }}
+{% endfor %}
+{% else %}
+- No next actions are currently recorded.
+{% endif %}
