@@ -2,12 +2,13 @@
 
 > This file is the single source of truth for what has been implemented.
 > Any AI agent resuming work should read this file + CLAUDE.md first.
+> Strategic roadmap comes from `docs/MASTERPLAN.pdf`; execution truth comes from the actual repo state.
 
-## Status: Phase 7 Complete
+## Status: Phase 7 Complete + Post-Phase-7 Enhancement Landed
 
 **Last updated:** 2026-03-31
 **Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7
-**Next phase:** Phase 8
+**Next phase:** Phase 8 (Financial Quality of Earnings (QoE) Engine)
 **Blocking issues:** None
 
 ---
@@ -407,6 +408,49 @@
 - Trace events include crew_initialized, agent_{workstream}, coordinator_synthesis when CrewAI is active
 - Agent prompts are India-focused and motion_pack/sector_pack-aware
 - No custom CrewAI tools yet — agents receive all context in task descriptions
+
+---
+
+### Post-Phase-7 Enhancement: Tool-Grounded CrewAI Evidence Access (2026-03-31)
+
+**What was done:**
+- Added scoped read-only CrewAI tools for evidence search, issue review, and checklist-gap review
+- Shifted the CrewAI path from large prompt stuffing to compact snapshots plus tool-based drill-down
+- Extended case context building to preload document chunks and link them back to evidence-bearing workstreams
+- Added post-run trace summaries for tool usage at the workstream and coordinator levels
+- Preserved the deterministic fallback path unchanged and fully covered by the existing test/eval safety net
+- Added 4 new pytest tests covering tool behavior and traced CrewAI runs
+
+**Files created:**
+- apps/api/src/.../agents/tools.py -- scoped read-only CrewAI tools with usage logging
+- apps/api/tests/test_phase8_crewai_tools.py -- Phase 8 unit/integration tests
+
+**Files modified:**
+- apps/api/src/.../agents/crew.py -- chunk-aware case context, compact prompts, scoped tool attachment
+- apps/api/src/.../services/workflow_service.py -- tool-usage trace summaries and richer CrewAI run metadata
+- apps/api/src/.../services/case_service.py -- eager-load document chunks for CrewAI case context
+- apps/api/src/.../core/settings.py -- current_phase updated, added crew_tool_top_k and crew_tool_max_usage
+- apps/api/tests/test_phase7_crewai_orchestration.py -- updated for chunk-aware context and tool-bearing crew builds
+
+**Decisions made:**
+- AD-030: CrewAI tools operate on pre-loaded case snapshots rather than live async DB queries
+- AD-031: Tool usage is summarized in persisted run traces after crew completion
+
+**Blockers encountered:**
+- `MASTERPLAN.pdf` is image-based in the local environment, so the exact Phase 8 wording could not be extracted mechanically; implementation target was reconciled from repo truth plus the recorded roadmap direction
+
+**Test results:**
+- pytest: 87/87 pass (83 existing + 4 new)
+- eval suites: 11/11 pass (all 5 suites at 100%)
+- ruff: clean
+- npm lint: clean
+- npm typecheck: clean
+- check gate: `./scripts/check.ps1` passed
+- latest evaluation artifact: `artifacts/evaluations/all-supported-suites-20260331T102831Z.json`
+
+**Notes for next canonical phase:**
+- CrewAI now has scoped evidence/issue/checklist tools, but trace events are still persisted after completion rather than streamed mid-run
+- The next master-plan phase remains Phase 8: Financial Quality of Earnings (QoE) Engine
 
 ---
 

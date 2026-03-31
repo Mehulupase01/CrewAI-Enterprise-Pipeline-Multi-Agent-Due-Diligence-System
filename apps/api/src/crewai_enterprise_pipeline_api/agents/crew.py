@@ -1,13 +1,8 @@
-"""CrewAI crew factory for due diligence workflow runs.
-
-Builds a crew with one agent per active workstream + a coordinator,
-then kicks off analysis and returns structured output.
-"""
+"""CrewAI crew factory for due diligence workflow runs."""
 
 from __future__ import annotations
 
 import asyncio
-import logging
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -23,14 +18,25 @@ from crewai_enterprise_pipeline_api.agents.models import (
     ExecutiveSummaryOutput,
     WorkstreamAnalysisOutput,
 )
+from crewai_enterprise_pipeline_api.agents.tools import (
+    build_case_tools,
+    build_workstream_tools,
+)
 from crewai_enterprise_pipeline_api.domain.models import WorkstreamDomain
 
-logger = logging.getLogger(__name__)
 
+@dataclass
+class ChunkContext:
+    """Pre-loaded chunk metadata for case-aware evidence tools."""
 
-# ---------------------------------------------------------------------------
-# Case context builder — formats case data into text for agent prompts
-# ---------------------------------------------------------------------------
+    chunk_id: str
+    artifact_id: str
+    document_title: str
+    document_kind: str
+    source_kind: str
+    section_title: str | None
+    page_number: int | None
+    text: str
 
 
 @dataclass
@@ -41,6 +47,7 @@ class WorkstreamContext:
     evidence_items: list[Any] = field(default_factory=list)
     issues: list[Any] = field(default_factory=list)
     checklist_items: list[Any] = field(default_factory=list)
+    chunks: list[ChunkContext] = field(default_factory=list)
 
 
 @dataclass
@@ -54,11 +61,13 @@ class CaseContext:
     motion_pack: str
     sector_pack: str
     document_count: int
+    chunk_count: int = 0
+    chunks: list[ChunkContext] = field(default_factory=list)
     workstreams: dict[str, WorkstreamContext] = field(default_factory=dict)
 
 
 def build_case_context(case) -> CaseContext:
-    """Build CaseContext from a loaded CaseRecord (with eager-loaded relations)."""
+    """Build CaseContext from a loaded CaseRecord with eager-loaded relations."""
     ctx = CaseContext(
         case_id=case.id,
         case_name=case.name,
@@ -69,62 +78,113 @@ def build_case_context(case) -> CaseContext:
         document_count=len(case.documents),
     )
 
+    chunks_by_artifact: dict[str, list[ChunkContext]] = {}
+    for document in case.documents:
+        document_chunks: list[ChunkContext] = []
+        for chunk in getattr(document, "chunks", []):
+            chunk_ctx = ChunkContext(
+                chunk_id=chunk.id,
+                artifact_id=document.id,
+                document_title=document.title,
+                document_kind=document.document_kind,
+                source_kind=document.source_kind,
+                section_title=chunk.section_title,
+                page_number=chunk.page_number,
+                text=chunk.text,
+            )
+            document_chunks.append(chunk_ctx)
+            ctx.chunks.append(chunk_ctx)
+        chunks_by_artifact[document.id] = document_chunks
+    ctx.chunk_count = len(ctx.chunks)
+
     for ws in WorkstreamDomain:
         ws_ctx = WorkstreamContext(domain=ws.value)
         ws_ctx.evidence_items = [
-            e for e in case.evidence_items if e.workstream_domain == ws.value
+            item for item in case.evidence_items if item.workstream_domain == ws.value
         ]
-        ws_ctx.issues = [
-            i for i in case.issues if i.workstream_domain == ws.value
-        ]
+        ws_ctx.issues = [item for item in case.issues if item.workstream_domain == ws.value]
         ws_ctx.checklist_items = [
-            c for c in case.checklist_items if c.workstream_domain == ws.value
+            item for item in case.checklist_items if item.workstream_domain == ws.value
         ]
-        if ws_ctx.evidence_items or ws_ctx.issues or ws_ctx.checklist_items:
+        artifact_ids = {
+            item.artifact_id for item in ws_ctx.evidence_items if getattr(item, "artifact_id", None)
+        }
+        ws_ctx.chunks = [
+            chunk
+            for artifact_id in artifact_ids
+            for chunk in chunks_by_artifact.get(artifact_id, [])
+        ]
+        if ws_ctx.evidence_items or ws_ctx.issues or ws_ctx.checklist_items or ws_ctx.chunks:
             ctx.workstreams[ws.value] = ws_ctx
 
     return ctx
 
 
-def _format_evidence(items: list[Any]) -> str:
+def _format_titles(items: list[Any], *, limit: int = 3) -> str:
     if not items:
-        return "No evidence items in this workstream."
+        return "None"
+    return ", ".join(getattr(item, "title", "Untitled") for item in items[:limit])
+
+
+def _format_issue_snapshot(items: list[Any], *, limit: int = 3) -> str:
+    if not items:
+        return "None"
+    severity_order = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
+    ranked = sorted(
+        items,
+        key=lambda item: severity_order.get(getattr(item, "severity", "info"), 5),
+    )
     lines = []
-    for e in items:
+    for item in ranked[:limit]:
+        lines.append(f"- [{item.severity}/{item.status}] {item.title}")
+    return "\n".join(lines)
+
+
+def _format_checklist_snapshot(items: list[Any], *, limit: int = 3) -> str:
+    if not items:
+        return "None"
+    ordered = sorted(
+        items,
+        key=lambda item: (
+            0 if getattr(item, "mandatory", False) else 1,
+            0 if getattr(item, "status", "") != "done" else 1,
+        ),
+    )
+    lines = []
+    for item in ordered[:limit]:
+        mandatory = "mandatory" if item.mandatory else "optional"
+        lines.append(f"- [{item.status}] {item.title} ({mandatory})")
+    return "\n".join(lines)
+
+
+def _format_workstream_snapshot(ws_ctx: WorkstreamContext) -> str:
+    linked_documents = len({chunk.artifact_id for chunk in ws_ctx.chunks})
+    return "\n".join(
+        [
+            f"- Evidence items: {len(ws_ctx.evidence_items)}",
+            f"- Linked document chunks: {len(ws_ctx.chunks)} across {linked_documents} documents",
+            f"- Flagged issues: {len(ws_ctx.issues)}",
+            f"- Checklist items: {len(ws_ctx.checklist_items)}",
+            f"- Evidence preview: {_format_titles(ws_ctx.evidence_items)}",
+            f"- Highest-priority issues:\n{_format_issue_snapshot(ws_ctx.issues)}",
+            f"- Checklist focus:\n{_format_checklist_snapshot(ws_ctx.checklist_items)}",
+        ]
+    )
+
+
+def _format_case_snapshot(case_ctx: CaseContext) -> str:
+    lines = [
+        f"- Documents uploaded: {case_ctx.document_count}",
+        f"- Document chunks available to tools: {case_ctx.chunk_count}",
+        f"- Active workstreams: {len(case_ctx.workstreams)}",
+    ]
+    for ws_domain, ws_ctx in case_ctx.workstreams.items():
         lines.append(
-            f"- [{e.evidence_kind}] {e.title} (confidence: {e.confidence:.2f})\n"
-            f"  Citation: {e.citation}\n"
-            f"  Excerpt: {e.excerpt[:300]}"
+            f"- {ws_domain}: evidence={len(ws_ctx.evidence_items)}, "
+            f"issues={len(ws_ctx.issues)}, checklist={len(ws_ctx.checklist_items)}, "
+            f"chunks={len(ws_ctx.chunks)}"
         )
     return "\n".join(lines)
-
-
-def _format_issues(items: list[Any]) -> str:
-    if not items:
-        return "No issues flagged in this workstream."
-    lines = []
-    for i in items:
-        lines.append(
-            f"- [{i.severity}] {i.title} ({i.status})\n"
-            f"  Impact: {i.business_impact}\n"
-            f"  Action: {i.recommended_action or 'Triage pending'}"
-        )
-    return "\n".join(lines)
-
-
-def _format_checklist(items: list[Any]) -> str:
-    if not items:
-        return "No checklist items in this workstream."
-    lines = []
-    for c in items:
-        mandatory = "MANDATORY" if c.mandatory else "optional"
-        lines.append(f"- [{c.status}] {c.title} ({mandatory}): {c.detail[:200]}")
-    return "\n".join(lines)
-
-
-# ---------------------------------------------------------------------------
-# Crew builder
-# ---------------------------------------------------------------------------
 
 
 def _build_llm(settings) -> LLM:
@@ -144,12 +204,8 @@ def _build_llm(settings) -> LLM:
 def build_due_diligence_crew(
     case_ctx: CaseContext,
     settings,
-) -> tuple[Crew, dict[str, str]]:
-    """Build a CrewAI crew for the given case context.
-
-    Returns (crew, task_map) where task_map maps workstream_domain → task.name
-    so callers can correlate outputs.
-    """
+) -> tuple[Crew, dict[str, str], dict[str, list[Any]]]:
+    """Build a CrewAI crew for the given case context."""
     llm = _build_llm(settings)
     motion_ctx = motion_pack_context(case_ctx.motion_pack)
     sector_ctx = sector_pack_context(case_ctx.sector_pack)
@@ -167,13 +223,22 @@ def build_due_diligence_crew(
     agents: list[Agent] = []
     tasks: list[Task] = []
     task_map: dict[str, str] = {}
+    tool_map: dict[str, list[Any]] = {}
 
-    # One agent + task per active workstream
     for ws_domain, ws_ctx in case_ctx.workstreams.items():
         agent_cfg = WORKSTREAM_AGENT_CONFIGS.get(ws_domain)
         if agent_cfg is None:
             continue
 
+        tools = build_workstream_tools(
+            workstream_domain=ws_domain,
+            evidence_items=ws_ctx.evidence_items,
+            issues=ws_ctx.issues,
+            checklist_items=ws_ctx.checklist_items,
+            chunk_items=ws_ctx.chunks,
+            default_top_k=settings.crew_tool_top_k,
+            max_usage_count=settings.crew_tool_max_usage,
+        )
         agent = Agent(
             role=agent_cfg["role"],
             goal=agent_cfg["goal"],
@@ -183,6 +248,8 @@ def build_due_diligence_crew(
             allow_delegation=False,
             max_iter=3,
             max_rpm=settings.crew_max_rpm,
+            tools=tools,
+            respect_context_window=True,
         )
         agents.append(agent)
 
@@ -191,16 +258,19 @@ def build_due_diligence_crew(
             name=task_name,
             description=(
                 f"{preamble}\n\n"
-                f"You are analyzing the **{ws_domain.replace('_', ' ').title()}** "
-                f"workstream.\n\n"
-                f"## Evidence Items ({len(ws_ctx.evidence_items)})\n"
-                f"{_format_evidence(ws_ctx.evidence_items)}\n\n"
-                f"## Flagged Issues ({len(ws_ctx.issues)})\n"
-                f"{_format_issues(ws_ctx.issues)}\n\n"
-                f"## Checklist Items ({len(ws_ctx.checklist_items)})\n"
-                f"{_format_checklist(ws_ctx.checklist_items)}\n\n"
-                f"Analyze all evidence, issues, and checklist items above. "
-                f"Provide a structured assessment of this workstream."
+                f"You own the {ws_domain.replace('_', ' ').title()} workstream.\n\n"
+                "You are intentionally receiving a compact snapshot so you can stay "
+                "within the context window. Use your read-only tools before you make "
+                "material assertions.\n\n"
+                "## Workstream Snapshot\n"
+                f"{_format_workstream_snapshot(ws_ctx)}\n\n"
+                "## Available Tools\n"
+                f"{', '.join(tool.name for tool in tools)}\n\n"
+                "Requirements:\n"
+                "1. Ground material claims in the snapshot or tool results only.\n"
+                "2. Use the evidence search tool when you need cited support.\n"
+                "3. Use the issue and checklist tools to confirm blockers and open gaps.\n"
+                "4. Do not invent facts that are absent from the case data."
             ),
             expected_output=(
                 "A JSON object with: status (ready_for_review/needs_follow_up/blocked), "
@@ -212,8 +282,22 @@ def build_due_diligence_crew(
         )
         tasks.append(task)
         task_map[ws_domain] = task_name
+        tool_map[ws_domain] = tools
 
-    # Coordinator agent synthesizes all workstream findings
+    coordinator_tools = build_case_tools(
+        evidence_items=[
+            evidence_item
+            for ws_ctx in case_ctx.workstreams.values()
+            for evidence_item in ws_ctx.evidence_items
+        ],
+        issues=[issue for ws_ctx in case_ctx.workstreams.values() for issue in ws_ctx.issues],
+        checklist_items=[
+            item for ws_ctx in case_ctx.workstreams.values() for item in ws_ctx.checklist_items
+        ],
+        chunk_items=case_ctx.chunks,
+        default_top_k=settings.crew_tool_top_k,
+        max_usage_count=settings.crew_tool_max_usage,
+    )
     coordinator = Agent(
         role=COORDINATOR_CONFIG["role"],
         goal=COORDINATOR_CONFIG["goal"],
@@ -223,8 +307,11 @@ def build_due_diligence_crew(
         allow_delegation=False,
         max_iter=3,
         max_rpm=settings.crew_max_rpm,
+        tools=coordinator_tools,
+        respect_context_window=True,
     )
     agents.append(coordinator)
+    tool_map["coordinator"] = coordinator_tools
 
     summary_task = Task(
         name="executive_synthesis",
@@ -232,16 +319,20 @@ def build_due_diligence_crew(
             f"{preamble}\n\n"
             f"You have received analyses from {len(tasks)} workstream specialists. "
             f"Workstreams covered: {', '.join(case_ctx.workstreams.keys())}.\n\n"
-            f"Synthesize all workstream findings into a cohesive executive summary. "
-            f"Identify the top risks across all workstreams, assess overall deal "
-            f"readiness, and recommend concrete next steps."
+            "## Case Snapshot\n"
+            f"{_format_case_snapshot(case_ctx)}\n\n"
+            "## Available Tools\n"
+            f"{', '.join(tool.name for tool in coordinator_tools)}\n\n"
+            "Synthesize the workstream findings into a cohesive executive summary. "
+            "Use the case-wide tools if you need to validate the top risks or inspect "
+            "underlying evidence before finalizing the recommendation."
         ),
         expected_output=(
             "A JSON object with: executive_summary, overall_risk_assessment "
             "(low/medium/high/critical), top_risks (list), recommended_next_steps (list)."
         ),
         agent=coordinator,
-        context=tasks,  # receives all workstream task outputs
+        context=tasks,
         output_pydantic=ExecutiveSummaryOutput,
     )
     tasks.append(summary_task)
@@ -254,7 +345,7 @@ def build_due_diligence_crew(
         max_rpm=settings.crew_max_rpm,
     )
 
-    return crew, task_map
+    return crew, task_map, tool_map
 
 
 async def run_crew(crew: Crew) -> Any:

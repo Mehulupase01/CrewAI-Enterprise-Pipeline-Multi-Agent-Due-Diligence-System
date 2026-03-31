@@ -118,11 +118,23 @@ def test_case_context_builder() -> None:
     mock_case.country = "India"
     mock_case.motion_pack = "buy_side_diligence"
     mock_case.sector_pack = "tech_saas_services"
-    mock_case.documents = [MagicMock()]
+    document = MagicMock()
+    document.id = "doc-1"
+    document.title = "Financial statements FY24"
+    document.document_kind = "financial_statement"
+    document.source_kind = "uploaded_dataroom"
+    chunk = MagicMock()
+    chunk.id = "chunk-1"
+    chunk.section_title = "Revenue"
+    chunk.page_number = 3
+    chunk.text = "Revenue increased 24 percent year on year."
+    document.chunks = [chunk]
+    mock_case.documents = [document]
 
     # One evidence item in financial_qoe, one issue in legal_corporate
     ev = MagicMock()
     ev.workstream_domain = "financial_qoe"
+    ev.artifact_id = "doc-1"
     issue = MagicMock()
     issue.workstream_domain = "legal_corporate"
     cl = MagicMock()
@@ -141,6 +153,8 @@ def test_case_context_builder() -> None:
     assert "hr" not in ctx.workstreams
     assert len(ctx.workstreams["financial_qoe"].evidence_items) == 1
     assert len(ctx.workstreams["legal_corporate"].issues) == 1
+    assert ctx.chunk_count == 1
+    assert len(ctx.workstreams["financial_qoe"].chunks) == 1
 
 
 # ---------------------------------------------------------------------------
@@ -228,14 +242,18 @@ def test_crew_build_structure() -> None:
     settings.llm_model = "gpt-4o-mini"
     settings.crew_verbose = False
     settings.crew_max_rpm = 10
+    settings.crew_tool_top_k = 5
+    settings.crew_tool_max_usage = 6
 
-    crew, task_map = build_due_diligence_crew(ctx, settings)
+    crew, task_map, tool_map = build_due_diligence_crew(ctx, settings)
     # 2 workstream agents + 1 coordinator = 3 agents
     assert len(crew.agents) == 3
     # 2 workstream tasks + 1 summary task = 3 tasks
     assert len(crew.tasks) == 3
     assert "financial_qoe" in task_map
     assert "legal_corporate" in task_map
+    assert len(tool_map["financial_qoe"]) == 3
+    assert len(tool_map["coordinator"]) == 3
 
 
 # ---------------------------------------------------------------------------
@@ -255,6 +273,8 @@ def test_llm_settings_defaults() -> None:
         assert s.llm_provider == "none"
         assert s.llm_api_key is None
         assert s.crew_verbose is False
+        assert s.crew_tool_top_k == 5
+        assert s.crew_tool_max_usage == 6
 
 
 # ---------------------------------------------------------------------------

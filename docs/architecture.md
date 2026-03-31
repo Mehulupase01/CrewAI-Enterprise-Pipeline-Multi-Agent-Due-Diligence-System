@@ -1,6 +1,6 @@
 # Architecture Overview
 
-> **Last updated:** 2026-03-31 (Phase 7 -- CrewAI Multi-Agent Orchestration)
+> **Last updated:** 2026-03-31 (Phase 7 complete + post-Phase-7 enhancement)
 > **Update rule:** This file is updated after every masterplan phase to reflect actual system state.
 
 ## System Summary
@@ -32,9 +32,16 @@ See `docs/MASTERPLAN.pdf` pages 3-8 for full diagrams including:
 - SHA256 document dedup (same content returns existing artifact)
 - Header-based RBAC with 4 roles (VIEWER, ANALYST, REVIEWER, ADMIN)
 - Evaluation harness with 5 suites, 11 scenarios
-- 83 pytest unit tests
+- 87 pytest unit tests
 - Export ZIP packages (markdown only)
 - Docker Compose stack (PostgreSQL 17, Redis 7.4, MinIO)
+
+### What was ADDED after Phase 7
+- Scoped read-only CrewAI tools (`agents/tools.py`) for evidence search, issue review, and checklist-gap review
+- Chunk-aware case context loading so tools can inspect document excerpts without live DB access
+- Compact workstream and coordinator prompts that rely on tool usage instead of prompt-stuffing the full case state
+- Persisted tool-usage summaries in run trace events plus total tool-call counts in CrewAI run summaries
+- 4 new pytest tests covering tool behavior and traced CrewAI runs
 
 ### What was ADDED in Phase 7
 - CrewAI multi-agent orchestration (`agents/` package) — 9 workstream agents + 1 coordinator
@@ -103,7 +110,8 @@ See `docs/MASTERPLAN.pdf` pages 3-8 for full diagrams including:
 - No structured logging, tracing, or metrics
 - No JWT authentication
 - No multi-tenancy
-- CrewAI agents wired but require LLM_PROVIDER + LLM_API_KEY to activate
+- CrewAI agents wired with scoped read-only tools, but they still require LLM_PROVIDER + LLM_API_KEY to activate
+- Real-time tool and step streaming is still not implemented; trace events are persisted after crew completion
 
 ## Layers
 
@@ -118,7 +126,8 @@ apps/api/src/crewai_enterprise_pipeline_api/
     __init__.py
     config.py          # 9 workstream agent configs + coordinator + pack context helpers
     models.py          # WorkstreamAnalysisOutput, ExecutiveSummaryOutput
-    crew.py            # CaseContext, crew factory, run_crew async wrapper
+    crew.py            # CaseContext, compact prompt snapshots, crew factory, run_crew async wrapper
+    tools.py           # Scoped read-only CrewAI tools over pre-loaded evidence, issues, checklist, and chunks
   api/
     router.py          # Mounts /system, /source-adapters, /cases under /api/v1/
     security.py        # Header-based RBAC (X-CEP-User-{Id,Name,Email,Role})

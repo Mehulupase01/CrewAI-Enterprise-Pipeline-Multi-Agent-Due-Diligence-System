@@ -25,6 +25,8 @@ The current gate now covers both the foundation and the first operations layer:
 - workflow run execution with trace events and generated report bundles
 - durable run export-package generation with stored zip artifacts
 - persisted workstream synthesis outputs per run
+- tool-grounded CrewAI workstream analysis over pre-loaded evidence, issue, checklist, and chunk snapshots
+- persisted tool-usage trace summaries for CrewAI workstream and coordinator runs
 - deterministic end-to-end evaluation scenarios with saved JSON scorecards
 - repeat-scan regression checks for issue fingerprint reuse
 - enforced-auth and role-guard tests
@@ -55,6 +57,8 @@ The current gate now covers both the foundation and the first operations layer:
 - A workflow run can be exported into a durable archive package with manifest,
   markdown bundles, and JSON snapshots.
 - A run produces durable workstream syntheses for the first diligence domains.
+- When CrewAI is active, agent runs can drill into scoped evidence, issue, and
+  checklist tools without breaking the deterministic fallback path.
 - The first-slice evaluation suite passes blocked, clean-approved, and
   approved-nonblocking-risk scenarios.
 - Every quality-gate run writes a machine-readable artifact under

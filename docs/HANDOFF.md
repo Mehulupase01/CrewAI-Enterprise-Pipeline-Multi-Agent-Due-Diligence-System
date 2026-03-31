@@ -4,14 +4,16 @@
 
 ## Current State
 
-**Active phase:** None (Phase 7 complete, ready to start Phase 8)
+**Active phase:** None (Phase 7 complete + post-Phase-7 enhancement landed, ready to start canonical Phase 8)
 **Last session:** 2026-03-31
 **Completed phases:** 0, 1, 2, 3, 4, 5, 6, 7
-**Test counts:** 83 pytest, 11 eval scenarios (5 suites)
+**Test counts:** 87 pytest, 11 eval scenarios (5 suites)
+**Execution mode:** roadmap from `MASTERPLAN.pdf`, execution truth from repo code/tests/commands
 
 ## What to Do Next
 
-Start Phase 8. See MASTERPLAN.pdf for next phase details.
+Start canonical Phase 8: Financial Quality of Earnings (QoE) Engine, and close it fully before moving beyond it.
+Treat the recent CrewAI tool work as a post-Phase-7 enhancement, not as fulfillment of the master-plan Phase 8.
 
 ## Blockers
 
@@ -26,3 +28,4 @@ After finishing any phase:
 4. Add any new decisions to DECISIONS.md
 5. Update architecture.md counts/sections
 6. Update CLAUDE.md if commands or conventions changed
+7. Ensure the completed phase is fully closed before starting the next one

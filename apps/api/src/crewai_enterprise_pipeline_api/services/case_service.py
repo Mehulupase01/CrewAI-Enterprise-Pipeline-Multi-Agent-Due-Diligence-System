@@ -520,7 +520,7 @@ class CaseService:
             .options(
                 selectinload(CaseRecord.approvals),
                 selectinload(CaseRecord.checklist_items),
-                selectinload(CaseRecord.documents),
+                selectinload(CaseRecord.documents).selectinload(DocumentArtifactRecord.chunks),
                 selectinload(CaseRecord.evidence_items),
                 selectinload(CaseRecord.issues),
                 selectinload(CaseRecord.request_items),

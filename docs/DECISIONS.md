@@ -332,6 +332,46 @@ name-based).
 
 ---
 
+## AD-028: Roadmap documents guide direction, but repo state is execution truth (2026-03-31)
+
+**Decision:** `docs/MASTERPLAN.pdf` and related planning docs define the intended roadmap, but implementation decisions during execution must be grounded in actual code, tests, runnable commands, and verified outputs.
+
+**Why:** Long-running flagship projects often accumulate drift between strategy documents and repo reality. Without an explicit rule, future sessions can optimize against stale planning text and misreport progress.
+
+**Impact:** Every resumed session should read the roadmap, then verify the live repo before deciding the next phase. If docs are stale, they must be repaired after the relevant phase is completed.
+
+---
+
+## AD-029: One phase must be fully closed before the next phase is claimed (2026-03-31)
+
+**Decision:** For this repo, phases are completed one at a time. A phase is only closed when code, tests, docs, and continuity artifacts (`CLAUDE.md`, `HANDOFF.md`, `PROGRESS.md`, `DECISIONS.md`, `architecture.md`) agree.
+
+**Why:** This project is large enough that "mostly done" creates false confidence and destroys session continuity. Explicit phase closure keeps the roadmap, repo state, and handoff artifacts aligned.
+
+**Impact:** Future sessions should avoid batching multiple phases together unless the user explicitly asks for it. Work that does not fully close the current phase should be reported as in progress, not complete.
+
+---
+
+## AD-030: CrewAI tools operate on pre-loaded case snapshots, not live async queries (2026-03-31)
+
+**Decision:** A post-Phase-7 enhancement replaces prompt-only deep context with scoped read-only CrewAI tools for evidence search, issue review, and checklist-gap review. These tools operate on a case snapshot built before kickoff, including eagerly loaded document chunks.
+
+**Why:** This keeps the CrewAI path context-efficient without reintroducing the async-to-sync bridging risk called out in AD-025. Agents can drill down into the evidence they need without stuffing the full case state into every task description.
+
+**Impact:** `build_case_context()` must preload chunk metadata, `case_service._get_case_record()` must eagerly load document chunks, and the deterministic fallback remains untouched. Tool builders are pure in-memory adapters over the preloaded snapshot.
+
+---
+
+## AD-031: Tool usage is summarized in persisted run traces after crew completion (2026-03-31)
+
+**Decision:** Tool instances record lightweight usage logs locally during the CrewAI run. After kickoff completes, workflow trace events include per-workstream and coordinator tool usage summaries plus a total tool-call count in the report-generation step.
+
+**Why:** This adds auditability for the LLM path without introducing thread-safe live database writes or a mid-run event queue. It improves reviewability while keeping the execution model aligned with AD-026.
+
+**Impact:** The SSE viewer still observes events after completion rather than true live tool streaming. A future phase can add step-level callbacks and a queue-backed streaming bridge if the roadmap requires real-time agent telemetry.
+
+---
+
 <!--
 Template for future decisions:
 

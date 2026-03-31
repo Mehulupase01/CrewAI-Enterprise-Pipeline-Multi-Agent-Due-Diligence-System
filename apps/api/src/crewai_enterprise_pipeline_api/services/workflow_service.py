@@ -209,12 +209,18 @@ class WorkflowService:
             build_due_diligence_crew,
             run_crew,
         )
+        from crewai_enterprise_pipeline_api.agents.tools import (
+            summarize_tool_usage,
+            total_tool_calls,
+        )
 
         settings = get_settings()
         seq = 1
 
         # 1. Build case context
         case_ctx = build_case_context(case)
+        crew, task_map, tool_map = build_due_diligence_crew(case_ctx, settings)
+        total_tools = sum(len(tools) for tools in tool_map.values())
         self.session.add(
             RunTraceEventRecord(
                 run_id=run_id,
@@ -223,7 +229,8 @@ class WorkflowService:
                 title="CrewAI crew initialized",
                 message=(
                     f"Built crew with {len(case_ctx.workstreams)} workstream agents "
-                    f"and 1 coordinator. LLM: {settings.llm_provider}/{settings.llm_model}."
+                    f"and 1 coordinator. LLM: {settings.llm_provider}/{settings.llm_model}. "
+                    f"Scoped tools attached: {total_tools}."
                 ),
                 level=RunEventLevel.INFO.value,
             )
@@ -232,7 +239,6 @@ class WorkflowService:
         await self.session.commit()
 
         # 2. Build and run the crew
-        crew, task_map = build_due_diligence_crew(case_ctx, settings)
         logger.info(
             "Starting CrewAI kickoff for case %s with %d workstream agents",
             case_id,
@@ -274,6 +280,7 @@ class WorkflowService:
                     recommended_next_action="Review raw agent output manually.",
                 )
             syntheses.append(synthesis)
+            tool_summary = summarize_tool_usage(tool_map.get(ws_domain, []))
 
             self.session.add(
                 RunTraceEventRecord(
@@ -281,7 +288,7 @@ class WorkflowService:
                     sequence_number=seq,
                     step_key=f"agent_{ws_domain}",
                     title=f"{ws_domain.replace('_', ' ').title()} analysis complete",
-                    message=synthesis.headline,
+                    message=f"{synthesis.headline} Tools: {tool_summary}",
                     level=RunEventLevel.INFO.value,
                 )
             )
@@ -305,13 +312,14 @@ class WorkflowService:
             coordinator_narrative = raw[:4000]
             exec_summary = coordinator_narrative[:500]
 
+        coordinator_tool_summary = summarize_tool_usage(tool_map.get("coordinator", []))
         self.session.add(
             RunTraceEventRecord(
                 run_id=run_id,
                 sequence_number=seq,
                 step_key="coordinator_synthesis",
                 title="Lead coordinator synthesis complete",
-                message=exec_summary[:300],
+                message=f"{exec_summary[:240]} Tools: {coordinator_tool_summary}",
                 level=RunEventLevel.INFO.value,
             )
         )
@@ -363,7 +371,8 @@ class WorkflowService:
                 title="Report bundles generated",
                 message=(
                     f"Generated {len(report_bundles)} report bundles and "
-                    f"{len(syntheses)} workstream syntheses via CrewAI agents."
+                    f"{len(syntheses)} workstream syntheses via CrewAI agents. "
+                    f"Tool calls recorded: {total_tool_calls(tool_map)}."
                 ),
                 level=RunEventLevel.INFO.value,
             )
@@ -375,7 +384,8 @@ class WorkflowService:
         run.summary = (
             f"CrewAI run: {len(syntheses)} workstream analyses, "
             f"{len(report_bundles)} report bundles. "
-            f"LLM: {settings.llm_provider}/{settings.llm_model}."
+            f"LLM: {settings.llm_provider}/{settings.llm_model}. "
+            f"Tool calls: {total_tool_calls(tool_map)}."
         )
 
         # Build executive memo via deterministic service for the response object

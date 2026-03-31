@@ -46,11 +46,12 @@ docker-compose.yml
 
 ## Current Phase
 
-The repository has completed the planned roadmap phases and is now in its
-first post-roadmap enhancement slice: durable run export packages. The current
-build includes the first flagship buy-side slice, all planned motion and
-sector expansions, and analyst-ready export archives on top of the existing
-hardened platform spine:
+The repository has completed Phases 0-7 from the current master-plan execution
+sequence. After Phase 7, the repo also received an additional CrewAI depth
+enhancement: tool-grounded evidence access for the LLM path. The current build
+includes the first flagship buy-side slice, all planned motion and sector
+expansions, analyst-ready export archives, and scoped CrewAI evidence tools on
+top of the existing hardened platform spine:
 
 - persisted case operations backed by SQLAlchemy
 - document upload, parsing, storage, and evidence extraction
@@ -59,6 +60,8 @@ hardened platform spine:
 - approval review gate plus executive memo report preview endpoint
 - persisted workflow runs with trace events and generated report bundles
 - workstream synthesis for the first diligence slice
+- tool-grounded CrewAI workstream analysis with scoped evidence, issue, and
+  checklist review tools over pre-loaded case snapshots
 - analyst workbench dashboard, case workspace, and run viewer with live API support
 - document, evidence, request-list, and Q&A tracker endpoints
 - source-adapter catalog for uploaded, public, and vendor-backed evidence

@@ -31,7 +31,9 @@ class Settings(BaseSettings):
     minio_root_password: str = "minioadmin"
     minio_bucket_name: str = "crewai-pipeline"
     product_name: str = "CrewAI Enterprise Pipeline"
-    current_phase: str = "Phase 7: CrewAI Multi-Agent Orchestration"
+    current_phase: str = (
+        "Phase 7 complete + post-Phase-7 enhancement: Tool-Grounded CrewAI Evidence Access"
+    )
     country: str = "India"
     enabled_motion_packs: str = "buy_side_diligence,credit_lending,vendor_onboarding"
     enabled_sector_packs: str = "tech_saas_services,manufacturing_industrials,bfsi_nbfc"
@@ -47,6 +49,8 @@ class Settings(BaseSettings):
     llm_model: str = "gpt-4o-mini"
     crew_verbose: bool = False
     crew_max_rpm: int = 10
+    crew_tool_top_k: int = 5
+    crew_tool_max_usage: int = 6
     storage_backend: str = "auto"
     local_storage_root: str = Field(
         default_factory=lambda: str((Path(__file__).resolve().parents[5] / "storage").resolve())
