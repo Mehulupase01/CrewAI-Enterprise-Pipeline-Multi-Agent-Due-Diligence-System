@@ -14,6 +14,52 @@ export type PlatformOverview = {
   severity_scale: string[];
 };
 
+export type DependencyStatusEntry = {
+  name: string;
+  category: string;
+  mode: string;
+  status: string;
+  detail: string;
+  latency_ms: number;
+  last_checked_at: string;
+  last_success_at: string | null;
+  failure_reason: string | null;
+};
+
+export type DependencyStatusReport = {
+  status: string;
+  environment: string;
+  timestamp: string;
+  auth_required: boolean;
+  dependencies: DependencyStatusEntry[];
+};
+
+export type LlmModelOption = {
+  model_id: string;
+  label: string;
+  provider: string;
+  tool_calling_supported: boolean;
+  text_output_supported: boolean;
+  context_length: number | null;
+  pricing_summary: string | null;
+};
+
+export type LlmProviderSummary = {
+  provider: string;
+  label: string;
+  configured: boolean;
+  available: boolean;
+  detail: string;
+  models: LlmModelOption[];
+};
+
+export type OrgLlmRuntimeConfig = {
+  org_id: string;
+  llm_provider: string | null;
+  llm_model: string | null;
+  updated_at: string | null;
+};
+
 export type CaseSummary = {
   id: string;
   name: string;
@@ -186,6 +232,8 @@ export type WorkflowRunSummary = {
   requested_by: string;
   note: string | null;
   report_template: string;
+  effective_llm_provider: string | null;
+  effective_llm_model: string | null;
   status: string;
   summary: string | null;
   started_at: string | null;
@@ -231,6 +279,14 @@ type RunWorkspaceData = {
   isFallback: boolean;
 };
 
+type StatusWorkspaceData = {
+  overview: PlatformOverview;
+  dependencyReport: DependencyStatusReport;
+  llmProviders: LlmProviderSummary[];
+  llmDefault: OrgLlmRuntimeConfig;
+  isFallback: boolean;
+};
+
 async function fetchJson<T>(path: string): Promise<T | null> {
   try {
     const response = await fetch(`${API_BASE_URL}${path}`, { cache: "no-store" });
@@ -245,7 +301,7 @@ async function fetchJson<T>(path: string): Promise<T | null> {
 
 const demoOverview: PlatformOverview = {
   product_name: "CrewAI Enterprise Pipeline",
-  current_phase: "Phase 12 complete: Sector Pack Deepening",
+  current_phase: "Phase 17 complete: Evaluation Deepening + Red-Teaming",
   country: "India",
   motion_packs: ["buy_side_diligence", "credit_lending", "vendor_onboarding"],
   sector_packs: ["tech_saas_services", "manufacturing_industrials", "bfsi_nbfc"],
@@ -510,6 +566,8 @@ const demoRun: WorkflowRunDetail = {
   requested_by: "Diligence Operator",
   note: "Generate current state memo and issue pack.",
   report_template: "standard",
+  effective_llm_provider: "deterministic",
+  effective_llm_model: null,
   status: "completed",
   summary: "Generated 3 report bundles and 4 workstream syntheses with visible blockers.",
   started_at: "2026-03-26T09:10:00Z",
@@ -725,6 +783,96 @@ const demoRun: WorkflowRunDetail = {
   ],
 };
 
+const demoDependencyReport: DependencyStatusReport = {
+  status: "degraded",
+  environment: "development",
+  timestamp: "2026-04-01T02:46:44Z",
+  auth_required: false,
+  dependencies: [
+    {
+      name: "database",
+      category: "infra",
+      mode: "live",
+      status: "ok",
+      detail: "Database connection succeeded via pooled runtime session.",
+      latency_ms: 12.4,
+      last_checked_at: "2026-04-01T02:46:44Z",
+      last_success_at: "2026-04-01T02:46:44Z",
+      failure_reason: null,
+    },
+    {
+      name: "redis",
+      category: "infra",
+      mode: "disabled",
+      status: "ok",
+      detail: "Redis unavailable; runtime will fall back to in-memory rate limiting.",
+      latency_ms: 2.1,
+      last_checked_at: "2026-04-01T02:46:44Z",
+      last_success_at: "2026-04-01T02:46:44Z",
+      failure_reason: null,
+    },
+    {
+      name: "storage",
+      category: "infra",
+      mode: "live",
+      status: "ok",
+      detail: "Local storage available at D:/Mehul-Projects/storage.",
+      latency_ms: 3.8,
+      last_checked_at: "2026-04-01T02:46:44Z",
+      last_success_at: "2026-04-01T02:46:44Z",
+      failure_reason: null,
+    },
+    {
+      name: "openrouter",
+      category: "llm",
+      mode: "disabled",
+      status: "ok",
+      detail: "LLM mode is disabled; deterministic workflow fallback remains active.",
+      latency_ms: 0,
+      last_checked_at: "2026-04-01T02:46:44Z",
+      last_success_at: "2026-04-01T02:46:44Z",
+      failure_reason: null,
+    },
+    {
+      name: "mca21",
+      category: "registry",
+      mode: "stub",
+      status: "ok",
+      detail: "MCA21 is operating in stub mode for development.",
+      latency_ms: 0,
+      last_checked_at: "2026-04-01T02:46:44Z",
+      last_success_at: "2026-04-01T02:46:44Z",
+      failure_reason: null,
+    },
+  ],
+};
+
+const demoLlmProviders: LlmProviderSummary[] = [
+  {
+    provider: "none",
+    label: "Deterministic Fallback",
+    configured: true,
+    available: true,
+    detail: "Run the deterministic pipeline without a live LLM provider.",
+    models: [],
+  },
+  {
+    provider: "openrouter",
+    label: "OpenRouter",
+    configured: false,
+    available: false,
+    detail: "OpenRouter is not configured because LLM_API_KEY is missing.",
+    models: [],
+  },
+];
+
+const demoLlmDefault: OrgLlmRuntimeConfig = {
+  org_id: "00000000-0000-0000-0000-000000000001",
+  llm_provider: null,
+  llm_model: null,
+  updated_at: "2026-04-01T02:46:44Z",
+};
+
 function formatStatusLabel(value: string) {
   return value
     .replace(/_/g, " ")
@@ -819,6 +967,38 @@ export async function getRunWorkspace(
   }
 
   return null;
+}
+
+export async function getStatusWorkspace(): Promise<StatusWorkspaceData> {
+  const [overview, dependencyReport, llmProviders, llmDefault] = await Promise.all([
+    fetchJson<PlatformOverview>("/system/overview"),
+    fetchJson<DependencyStatusReport>("/system/dependencies"),
+    fetchJson<LlmProviderSummary[]>("/system/llm/providers"),
+    fetchJson<OrgLlmRuntimeConfig>("/system/llm/default"),
+  ]);
+
+  if (
+    overview !== null &&
+    dependencyReport !== null &&
+    llmProviders !== null &&
+    llmDefault !== null
+  ) {
+    return {
+      overview,
+      dependencyReport,
+      llmProviders,
+      llmDefault,
+      isFallback: false,
+    };
+  }
+
+  return {
+    overview: demoOverview,
+    dependencyReport: demoDependencyReport,
+    llmProviders: demoLlmProviders,
+    llmDefault: demoLlmDefault,
+    isFallback: true,
+  };
 }
 
 export function summarizeCase(caseDetail: CaseDetail) {

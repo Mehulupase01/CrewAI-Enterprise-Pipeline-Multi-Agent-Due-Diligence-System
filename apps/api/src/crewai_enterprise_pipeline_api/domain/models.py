@@ -169,6 +169,34 @@ class UserRole(StrEnum):
     ADMIN = "admin"
 
 
+class LlmProviderKind(StrEnum):
+    NONE = "none"
+    OPENROUTER = "openrouter"
+    OPENAI = "openai"
+    ANTHROPIC = "anthropic"
+
+
+class DependencyCategory(StrEnum):
+    INFRA = "infra"
+    LLM = "llm"
+    REGISTRY = "registry"
+    VENDOR = "vendor"
+    FEED = "feed"
+
+
+class DependencyMode(StrEnum):
+    LIVE = "live"
+    STUB = "stub"
+    UNCONFIGURED = "unconfigured"
+    DISABLED = "disabled"
+
+
+class DependencyState(StrEnum):
+    OK = "ok"
+    DEGRADED = "degraded"
+    FAILED = "failed"
+
+
 class ComplianceStatus(StrEnum):
     COMPLIANT = "compliant"
     NON_COMPLIANT = "non_compliant"
@@ -190,6 +218,12 @@ class AppHealth(ORMModel):
     request_id_header_name: str
     enabled_motion_packs: list[MotionPack]
     enabled_sector_packs: list[SectorPack]
+
+
+class LivenessReport(BaseModel):
+    status: str
+    environment: str
+    timestamp: datetime
 
 
 class PlatformOverview(ORMModel):
@@ -255,6 +289,65 @@ class ReadinessComponent(BaseModel):
     name: str
     status: str
     detail: str
+
+
+class DependencyStatusEntry(BaseModel):
+    name: str
+    category: DependencyCategory
+    mode: DependencyMode
+    status: DependencyState
+    detail: str
+    latency_ms: float = Field(ge=0.0)
+    last_checked_at: datetime
+    last_success_at: datetime | None = None
+    failure_reason: str | None = None
+
+
+class DependencyStatusReport(BaseModel):
+    status: str
+    environment: str
+    timestamp: datetime
+    auth_required: bool
+    dependencies: list[DependencyStatusEntry]
+
+
+class LlmModelOption(BaseModel):
+    model_id: str
+    label: str
+    provider: str
+    tool_calling_supported: bool = True
+    text_output_supported: bool = True
+    context_length: int | None = None
+    pricing_summary: str | None = None
+
+
+class LlmProviderSummary(BaseModel):
+    provider: str
+    label: str
+    configured: bool
+    available: bool
+    detail: str
+    models: list[LlmModelOption] = Field(default_factory=list)
+
+
+class OrgLlmRuntimeConfig(ORMModel):
+    org_id: str
+    llm_provider: str | None = None
+    llm_model: str | None = None
+    updated_at: datetime | None = None
+
+
+class OrgLlmRuntimeConfigUpdate(BaseModel):
+    llm_provider: str | None = None
+    llm_model: str | None = None
+
+
+class QualityScorecard(BaseModel):
+    completeness: float = Field(ge=0.0, le=1.0)
+    accuracy: float = Field(ge=0.0, le=1.0)
+    hallucination_rate: float = Field(ge=0.0, le=1.0)
+    citation_coverage: float = Field(ge=0.0, le=1.0)
+    overall_score: float = Field(ge=0.0, le=1.0)
 
 
 class ReadinessReport(BaseModel):
@@ -382,6 +475,8 @@ class WorkflowRunCreate(BaseModel):
     requested_by: str = Field(default="Operator", min_length=2, max_length=255)
     note: str | None = Field(default=None, max_length=4000)
     report_template: ReportTemplateKind = ReportTemplateKind.STANDARD
+    llm_provider_override: str | None = Field(default=None, max_length=80)
+    llm_model_override: str | None = Field(default=None, max_length=255)
 
 
 class SourceAdapterFetchRequest(BaseModel):
@@ -563,6 +658,8 @@ class WorkflowRunSummary(ORMModel):
     requested_by: str
     note: str | None
     report_template: ReportTemplateKind
+    effective_llm_provider: str | None = None
+    effective_llm_model: str | None = None
     status: WorkflowRunStatus
     summary: str | None
     started_at: datetime | None

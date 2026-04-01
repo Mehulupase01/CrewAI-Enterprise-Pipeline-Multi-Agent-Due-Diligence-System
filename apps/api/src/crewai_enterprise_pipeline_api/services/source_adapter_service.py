@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from crewai_enterprise_pipeline_api.core.telemetry import observe_connector_fetch
 from crewai_enterprise_pipeline_api.domain.models import (
     DocumentIngestionResult,
     SourceAdapterFetchRequest,
@@ -30,9 +31,10 @@ class SourceAdapterService:
         adapter = resolve_source_adapter(adapter_key)
         if adapter is None:
             return None
-        return await adapter.ingest(
-            case_id=case_id,
-            identifier=payload.identifier,
-            session=self.session,
-            params=payload.params,
-        )
+        with observe_connector_fetch(adapter_key=adapter.adapter_id):
+            return await adapter.ingest(
+                case_id=case_id,
+                identifier=payload.identifier,
+                session=self.session,
+                params=payload.params,
+            )

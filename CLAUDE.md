@@ -2,8 +2,8 @@
 
 ## Current State
 
-**Completed phases:** 0-14 | **Next:** Phase 15
-**Tests:** 120 pytest, 22 eval scenarios (12 suites) | **Blockers:** None
+**Completed phases:** 0-17, 19 | **Active:** Phase 18 final release validation
+**Tests:** 145 pytest, 30 eval scenarios (13 suites) | **Blockers:** live production-stack validation is blocked by an unavailable Docker Desktop daemon in this shell, and live OpenRouter / connector validation remains environment-dependent until real credentials and identifiers are configured
 
 ## Project Overview
 
@@ -16,6 +16,7 @@ Canonical Phase 11 is now complete with Motion Pack Deepening: centralized motio
 Canonical Phase 12 is now complete with Sector Pack Deepening: deterministic Tech/SaaS ARR-waterfall and unit-economics metrics, Manufacturing capacity and asset-register analysis, BFSI/NBFC asset-quality and ALM analysis, sector-pack checklist auto-satisfaction, workflow/report/synthesis integration, CrewAI Phase 12 tools and snapshots, and a dedicated Phase 12 evaluation suite (AD-044 to AD-045).
 Canonical Phase 13 is now complete with Rich Reporting + DOCX/PDF Export: Jinja2-driven report templates for standard, lender, board memo, and one-pager outputs; markdown-first full-report and financial-annex rendering; binary DOCX and PDF generation; workflow-level report-template persistence; bundle download endpoints; export-package inclusion of DOCX/PDF artifacts; updated workbench template selection; and a dedicated Phase 13 evaluation suite (AD-046 to AD-047).
 Canonical Phase 14 is now complete with India Data Connectors: a registered connector framework for MCA21, GSTIN, SEBI SCORES, RoC filings, CIBIL stub, and sanctions/watchlist screening; shared connector-to-artifact ingestion through the same storage, chunking, and evidence pipeline used by uploads; source-adapter fetch endpoints with availability/stub metadata; and a dedicated Phase 14 evaluation suite (AD-048 to AD-049).
+Canonical Phase 15 is now complete with Enterprise Security: JWT bearer auth for non-dev environments, dev/test header-auth compatibility, seeded organization and API-client bootstrap, session-level org isolation, admin audit-log access, auth-failure auditing, Redis-backed rate limiting with memory fallback, and a dedicated Phase 15 pytest tranche. Canonical Phase 16 is now complete with Platform Observability: structured logging via `structlog`, OpenTelemetry bootstrapping for FastAPI/SQLAlchemy/HTTPX, Prometheus metrics exposure, dependency readiness probes for database/Redis/storage/OpenRouter/source adapters, and an observability dev stack shape for Prometheus, Grafana, and Tempo. Custom Phase 19 is now complete with a Runtime Status + LLM Control Center: persisted dependency snapshots, admin/manual dependency refresh, OpenRouter-backed live model catalog with cache, org-scoped default LLM runtime settings, per-run provider/model overrides, worker-scheduled dependency probes, and a dedicated `/status` workbench screen. Canonical Phase 17 is now complete with Evaluation Deepening + Red-Teaming: a 30-scenario evaluation corpus across 13 suites, per-scenario quality scorecards, regression-baseline enforcement, a repeatable load benchmark, and optional live OpenRouter/connector validation suites. Phase 18 is now implemented from the repo side with multi-stage production Dockerfiles, a production compose stack with migrations and observability services, generated API-reference docs, backup/restore automation, and release-oriented smoke and validation scripts. The final release designation is still gated on live Docker stack validation plus strict live OpenRouter and connector validation in an environment with real runtime access.
 
 ## Execution Contract For This Repo
 
@@ -56,10 +57,13 @@ cd apps/api && python -m crewai_enterprise_pipeline_api.evaluation.runner
 cd apps/api && python -m crewai_enterprise_pipeline_api.evaluation.runner --suite <name>
 
 # Dev servers
-./scripts/dev-stack.ps1    # Docker: Postgres, Redis, MinIO
+./scripts/dev-stack.ps1    # Docker: Postgres, Redis, MinIO, Prometheus, Grafana, Tempo
 ./scripts/dev-api.ps1      # FastAPI :8000
 ./scripts/dev-web.ps1      # Next.js :3000
 ./scripts/dev-worker.ps1   # arq worker
+./scripts/generate-api-reference.ps1
+./scripts/backup-db.ps1 -DryRun
+./scripts/validate-prod-stack.ps1   # skips cleanly when Docker daemon is unavailable
 ```
 
 ## Do Not Rename
@@ -84,8 +88,17 @@ cd apps/api && python -m crewai_enterprise_pipeline_api.evaluation.runner --suit
 - `docs/PROGRESS.md` - completion history per phase
 - `docs/DECISIONS.md` - architecture rationale (AD-001 onward)
 - `docs/architecture.md` - file layout, component inventory, honest current-state assessment
+- `docs/api-reference.md` - generated API contract from the live FastAPI OpenAPI schema
 - `docs/MASTERPLAN.docx` - canonical machine-readable 18-phase blueprint
 - `docs/MASTERPLAN.pdf` - visual/export companion to the master plan
+
+## Phase 18 Validation Note
+
+- `./scripts/check.ps1` is green on the current Phase 18 validation state.
+- Phase 18 added multi-stage production Dockerfiles, `docker-compose.prod.yml`, backup/restore scripts, generated API-reference docs, and a production-aware smoke/validation path without regressing earlier phases.
+- `docker compose -f docker-compose.prod.yml config` is valid.
+- `./scripts/validate-prod-stack.ps1` now skips cleanly when Docker Desktop is unavailable and becomes the live release validator once the daemon is reachable.
+- Optional live OpenRouter and connector validation remains environment-dependent and still needs a strict run with real credentials / identifiers before the project can be called fully production-ready.
 
 ## After Every Phase
 

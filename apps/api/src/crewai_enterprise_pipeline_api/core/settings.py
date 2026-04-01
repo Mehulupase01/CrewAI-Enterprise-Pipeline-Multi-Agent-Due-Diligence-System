@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     default_api_client_display_name: str = "Local Admin Client"
     default_api_client_role: str = "admin"
     default_api_client_email: str = "platform-admin@local.invalid"
-    jwt_secret: str = "change-me-in-production"
+    jwt_secret: str = "change-me-in-production-with-32-plus-bytes"
     jwt_algorithm: str = "HS256"
     jwt_access_token_expires_seconds: int = 3600
     rate_limit_enabled: bool = True
@@ -34,6 +34,12 @@ class Settings(BaseSettings):
     rate_limit_mutating_per_minute: int = 120
     rate_limit_read_per_minute: int = 600
     request_id_header_name: str = "X-Request-ID"
+    observability_enabled: bool = True
+    metrics_enabled: bool = True
+    otel_service_name: str = "crewai-enterprise-pipeline-api"
+    otel_exporter_otlp_endpoint: str | None = None
+    otel_exporter_otlp_insecure: bool = True
+    dependency_probe_timeout_seconds: float = 5.0
     database_url_override: str | None = Field(default=None, alias="DATABASE_URL")
     postgres_host: str = "localhost"
     postgres_port: int = 5432
@@ -47,7 +53,7 @@ class Settings(BaseSettings):
     minio_root_password: str = "minioadmin"
     minio_bucket_name: str = "crewai-pipeline"
     product_name: str = "CrewAI Enterprise Pipeline"
-    current_phase: str = "Phase 14 complete: India Data Connectors"
+    current_phase: str = "Phase 17 complete: Evaluation Deepening + Red-Teaming"
     country: str = "India"
     enabled_motion_packs: str = "buy_side_diligence,credit_lending,vendor_onboarding"
     enabled_sector_packs: str = "tech_saas_services,manufacturing_industrials,bfsi_nbfc"
@@ -61,6 +67,8 @@ class Settings(BaseSettings):
     llm_provider: str = "none"  # "none", "openai", "anthropic"
     llm_api_key: str | None = None
     llm_model: str = "gpt-4o-mini"
+    llm_base_url: str | None = None
+    llm_model_catalog_cache_seconds: int = 600
     crew_verbose: bool = False
     crew_max_rpm: int = 10
     crew_tool_top_k: int = 5

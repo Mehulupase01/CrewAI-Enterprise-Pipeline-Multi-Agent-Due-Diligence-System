@@ -4,12 +4,12 @@
 > Any AI agent resuming work should read this file + CLAUDE.md first.
 > Strategic roadmap comes from `docs/MASTERPLAN.docx` (preferred) and `docs/MASTERPLAN.pdf` (companion export); execution truth comes from the actual repo state.
 
-## Status: Phase 14 Complete
+## Status: Phase 18 In Validation
 
-**Last updated:** 2026-03-31
-**Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7, Phase 8, Phase 9, Phase 10, Phase 11, Phase 12, Phase 13, Phase 14
-**Next phase:** Phase 15 from `docs/MASTERPLAN.docx`
-**Blocking issues:** None
+**Last updated:** 2026-04-01
+**Completed phases:** Phase 0, Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7, Phase 8, Phase 9, Phase 10, Phase 11, Phase 12, Phase 13, Phase 14, Phase 15, Phase 16, Phase 19, Phase 17
+**Next phase:** None in code; final live release validation remains
+**Blocking issues:** Docker Desktop daemon unavailable for live prod-stack validation; live OpenRouter and connector validation still needs real credentials / identifiers
 
 ---
 
@@ -877,6 +877,325 @@
 **Notes for next phase:**
 - Start canonical Phase 15: Enterprise Security (JWT + Multi-tenancy + Audit) from `MASTERPLAN.docx`
 - Future connector work should extend the shared adapter registry and ingestion contract rather than adding one-off API clients
+
+---
+
+### Phase 15: Enterprise Security (JWT + Multi-tenancy + Audit) (2026-04-01)
+
+**What was done:**
+- Added first-class organization, API-client, and audit-log persistence to the schema plus a new Alembic migration for tenant-aware upgrades
+- Added automatic runtime bootstrap of the default organization and default API client so auth works on fresh databases and migrated databases alike
+- Replaced production auth with JWT bearer tokens while preserving header-based auth in `development` and `test`
+- Added `POST /api/v1/auth/token` for client-credential token issuance backed by DB-stored API clients
+- Added session-scoped org isolation across tenant-scoped ORM models with central query filtering and automatic org stamping on new records
+- Added `GET /api/v1/admin/audit-log` for admin-only audit-log access with filters and pagination
+- Added audit logging for successful mutations, token issuance, and `401/403` auth failures
+- Added rate limiting with Redis-first behavior and automatic in-memory fallback when Redis is unavailable
+- Updated worker/runtime paths so seeded defaults and org-aware execution remain valid outside direct request flows
+- Added a dedicated Phase 15 pytest tranche for JWT issuance, invalid token rejection, cross-org isolation, audit-log visibility, and rate limiting
+
+**Files created:**
+- apps/api/src/.../core/security_utils.py -- client-secret hashing plus JWT encode/decode helpers
+- apps/api/src/.../core/rate_limit.py -- Redis-backed rate limiting with in-memory fallback
+- apps/api/src/.../services/auth_service.py -- client-credential token issuance and auth audit writes
+- apps/api/src/.../services/admin_service.py -- admin audit-log listing service
+- apps/api/src/.../services/audit_service.py -- shared manual audit-event writer
+- apps/api/src/.../api/routes/auth.py -- `/auth/token`
+- apps/api/src/.../api/routes/admin.py -- `/admin/audit-log`
+- apps/api/alembic/versions/004_phase15_enterprise_security.py -- tenant/audit schema migration
+- apps/api/tests/test_phase15_enterprise_security.py -- 5 focused Phase 15 test cases
+
+**Files modified:**
+- apps/api/pyproject.toml -- added `PyJWT`
+- .env.example -- expanded runtime contract for org defaults, JWT, and rate limits
+- apps/api/src/.../core/settings.py -- added org/bootstrap, JWT, and rate-limit settings; updated current_phase
+- apps/api/src/.../domain/models.py -- added org-aware principal plus token and audit DTOs
+- apps/api/src/.../api/security.py -- JWT/header-auth dual-mode security and role guards with auth-failure context
+- apps/api/src/.../api/dependencies.py -- request/session principal context wiring plus raw DB session dependency
+- apps/api/src/.../api/router.py -- mounted auth and admin route families
+- apps/api/src/.../db/base.py -- tenant-scoped mixin
+- apps/api/src/.../db/models.py -- organization/api-client/audit models plus session-level org filtering and audit hooks
+- apps/api/src/.../db/session.py -- runtime default seeding for organization and API client
+- apps/api/src/.../main.py -- request ID, rate limiting, auth-failure auditing, and default-seeding startup flow
+- apps/api/src/.../services/workflow_service.py -- org-aware run creation when session context is absent
+- apps/api/src/.../worker.py -- seeded startup and org-aware background execution
+- CLAUDE.md, docs/HANDOFF.md, docs/DECISIONS.md, docs/architecture.md, docs/verification.md, README.md -- Phase 15 continuity updates
+
+**Decisions made:**
+- AD-050: Production auth uses JWT; header auth remains available only in `development` and `test`
+- AD-051: Org isolation is enforced centrally at the ORM/session layer, not by scattering ad hoc per-route checks
+- AD-052: Rate limiting is Redis-first but must degrade to in-memory mode automatically when Redis is unavailable, so tests and local dev remain fast and deterministic
+
+**Blockers encountered:**
+- The first tenant-filter implementation scoped relationship loads but not all top-level ORM selects; direct entity where-clauses were added centrally before phase closure
+- The initial rate limiter retried Redis on every request when Redis was absent, causing huge test slowdowns; the implementation now switches to memory-only mode after the first Redis failure
+
+**Test results:**
+- pytest: 125/125 pass (120 existing + 5 new)
+- eval suites: 22/22 pass (all 12 suites at 100%)
+- ruff: clean
+- npm lint: clean
+- npm typecheck: clean
+- check gate: `./scripts/check.ps1` passed
+- latest full-gate eval artifact: `artifacts/evaluations/all-supported-suites-20260401T011918Z.json`
+
+**Notes for next phase:**
+- Start custom Phase 19: Runtime Status + LLM Control Center from the remaining no-loose-ends plan
+- Phase 16 is now the live observability baseline; future work should build the status UI, persisted dependency snapshots, and LLM runtime controls on top of the shared probe and telemetry surfaces rather than creating parallel health logic
+
+---
+
+### Phase 16: Platform Observability (structlog + OpenTelemetry + Prometheus) (2026-04-01)
+
+**What was done:**
+- Replaced the minimal logging setup with `structlog`, using console-friendly logs in `development` and `test` and JSON logs in `production`
+- Added shared telemetry primitives for HTTP requests, workflows, document parsing, document ingestion, connector fetches, dependency probes, exports, and CrewAI-backed LLM runs
+- Added OpenTelemetry bootstrapping for FastAPI, SQLAlchemy, and HTTPX with optional OTLP export configuration
+- Added root observability endpoints: `GET /api/v1/health/liveness`, `GET /api/v1/health/readiness`, and `GET /api/v1/metrics`
+- Reworked readiness reporting to probe the database, Redis, storage, OpenRouter/LLM provider state, and every registered source adapter
+- Added non-production-aware readiness semantics so Redis memory fallback and stub connector modes report honestly without failing local development unnecessarily
+- Expanded the local Docker stack shape to include Prometheus, Grafana, and Tempo plus provisioning/config files under `ops/observability/`
+- Added a dedicated Phase 16 pytest tranche for liveness/readiness/metrics, structured logging behavior, tracing initialization, and production readiness degradation when a required LLM dependency is missing
+
+**Files created:**
+- apps/api/src/.../core/telemetry.py -- shared Prometheus metrics and OpenTelemetry initialization helpers
+- apps/api/src/.../services/dependency_probe_service.py -- dependency probe and readiness orchestration
+- apps/api/tests/test_phase16_observability.py -- 6 focused Phase 16 test cases
+- ops/observability/prometheus/prometheus.yml -- Prometheus scrape configuration
+- ops/observability/tempo/tempo.yml -- Tempo tracing configuration
+- ops/observability/grafana/provisioning/datasources/datasources.yml -- Grafana datasource provisioning
+- ops/observability/grafana/provisioning/dashboards/dashboards.yml -- Grafana dashboard provisioning
+- ops/observability/grafana/dashboards/.gitkeep -- dashboard placeholder
+
+**Files modified:**
+- apps/api/pyproject.toml -- added `structlog`, `prometheus-client`, and OpenTelemetry dependencies compatible with the existing CrewAI stack
+- .env.example -- expanded runtime contract for observability, OTLP, Grafana, and OpenRouter dependency probing
+- apps/api/src/.../core/settings.py -- added observability settings and updated current phase
+- apps/api/src/.../core/logging.py -- structured logging configuration and context binding helpers
+- apps/api/src/.../main.py -- request/response instrumentation, structured request logs, telemetry setup, and rate-limit logging
+- apps/api/src/.../api/router.py -- mounted the root health router
+- apps/api/src/.../api/routes/health.py -- added liveness/readiness/metrics endpoints and preserved `/system/*` compatibility
+- apps/api/src/.../domain/models.py -- added dependency/readiness DTOs and enums
+- apps/api/src/.../services/ingestion_service.py -- document parse and ingestion metrics
+- apps/api/src/.../services/source_adapter_service.py -- connector fetch metrics
+- apps/api/src/.../services/export_service.py -- export generation metrics
+- apps/api/src/.../services/workflow_service.py -- workflow duration metrics and LLM execution-mode labeling
+- apps/api/src/.../agents/crew.py -- LLM-run metrics and OpenRouter-compatible base URL support
+- apps/api/tests/test_health.py -- readiness assertions updated for dependency reporting
+- docker-compose.yml -- added Prometheus, Grafana, and Tempo services
+- scripts/dev-stack.ps1 -- brings up observability services alongside Postgres, Redis, and MinIO
+- CLAUDE.md, docs/HANDOFF.md, docs/DECISIONS.md, docs/architecture.md, docs/verification.md, README.md -- Phase 16 continuity updates
+
+**Decisions made:**
+- AD-053: Structured logging is environment-shaped, with JSON in production and readable console logs elsewhere
+- AD-054: Readiness uses `ok / degraded / failed` plus `live / stub / unconfigured / disabled` modes instead of naive up/down health
+- AD-055: Dependency probing is centralized so health endpoints, future status UI, and later operational phases share the same truth
+
+**Blockers encountered:**
+- Live startup of the new observability containers could not be verified in-session because Docker Desktop was not running locally and the current shell could not start the Windows service
+- The observability dependency install initially conflicted with CrewAI's OpenTelemetry pin range; the dependencies were repinned to a CrewAI-compatible OpenTelemetry family before closure
+
+**Test results:**
+- pytest: 131/131 pass (125 existing + 6 new)
+- eval suites: 22/22 pass (all 12 suites at 100%)
+- ruff: clean
+- npm lint: clean
+- npm typecheck: clean
+- check gate: `./scripts/check.ps1` passed
+- `docker compose config`: passed for the expanded observability stack
+- latest full-gate eval artifact: `artifacts/evaluations/all-supported-suites-20260401T024644Z.json`
+
+**Notes for next phase:**
+- Start custom Phase 19: Runtime Status + LLM Control Center using the new shared dependency-probe and telemetry surfaces
+- Keep the Phase 16 readiness model as the single dependency truth; do not build a second ad hoc status implementation for the UI
+
+---
+
+### Phase 19: Runtime Status + LLM Control Center (2026-04-01)
+
+**What was done:**
+- Added persisted dependency snapshots so runtime status survives beyond a single readiness request and can power operator-facing UI
+- Added admin/runtime APIs for dependency refresh, dependency listing, provider catalog listing, and org-scoped default LLM configuration
+- Added OpenRouter model discovery with live fetch, filtering for tool-capable text models, memory + Redis cache, and graceful fallback when unavailable
+- Added per-run LLM provider/model overrides and persisted the effective provider/model on workflow runs so queued and completed runs record the actual runtime used
+- Updated the worker path so queued runs reuse the original run record and keep the resolved runtime contract instead of implicitly re-resolving inside the worker
+- Added a recurring worker cron job that refreshes dependency snapshots every 5 minutes through the shared dependency-probe service
+- Added a dedicated `/status` workbench screen with dependency status cards, manual refresh, org-level LLM default controls, and analyst-visible runtime state
+- Extended the existing run trigger and run viewer so analysts can set runtime overrides per run and later see the effective provider/model used
+- Restored backward compatibility for earlier CrewAI phases by keeping legacy `_crew_available()`-based execution tests valid while preserving the Phase 19 runtime-resolution order
+
+**Files created:**
+- apps/api/src/.../services/runtime_control_service.py -- org default LLM config, OpenRouter catalog discovery, runtime resolution, and fail-fast live-runtime checks
+- apps/api/alembic/versions/005_phase19_runtime_status_and_llm_control.py -- schema changes for dependency snapshots, org runtime config, and workflow runtime persistence
+- apps/api/tests/test_phase19_runtime_control.py -- 6 focused Phase 19 test cases
+- apps/web/src/components/StatusControlCenter.tsx -- interactive runtime status and LLM control surface
+- apps/web/src/app/status/page.tsx -- workbench `/status` screen
+
+**Files modified:**
+- apps/api/src/.../domain/models.py -- added dependency/LLM runtime DTOs and workflow override fields
+- apps/api/src/.../db/models.py -- added `DependencyStatusRecord`, `OrgRuntimeConfigRecord`, and workflow runtime columns
+- apps/api/src/.../db/session.py -- bootstraps org runtime config alongside seeded org/auth defaults
+- apps/api/src/.../services/dependency_probe_service.py -- refresh-and-persist path plus latest snapshot retrieval
+- apps/api/src/.../services/workflow_service.py -- effective runtime persistence, queue compatibility, legacy CrewAI fallback bridge
+- apps/api/src/.../agents/crew.py -- explicit provider/model runtime injection with backward-compatible defaults
+- apps/api/src/.../api/routes/health.py -- read surfaces for dependency status and LLM provider/default state
+- apps/api/src/.../api/routes/admin.py -- admin refresh, provider catalog, and org-default runtime controls
+- apps/api/src/.../api/routes/cases.py -- fail-fast `503` on explicitly requested unavailable live runtime
+- apps/api/src/.../worker.py -- 5-minute dependency refresh cron and queued-run execution over persisted runtime metadata
+- apps/api/src/.../core/settings.py -- current phase and model-catalog cache setting
+- .env.example -- Phase 19 runtime-control settings
+- apps/web/src/lib/api-client.ts -- protected client functions for dependency/LLM admin surfaces and run overrides
+- apps/web/src/lib/workbench-data.ts -- status workspace loader and updated demo/runtime fallbacks
+- apps/web/src/components/RunWorkflowButton.tsx -- per-run provider/model override UI
+- apps/web/src/app/cases/[caseId]/runs/[runId]/page.tsx -- effective runtime display on run detail
+- apps/web/src/app/page.tsx -- linked `/status` entry point
+- apps/web/src/components/interactive.module.css -- supporting styles for runtime controls
+- CLAUDE.md, docs/HANDOFF.md, docs/DECISIONS.md, docs/architecture.md, docs/verification.md, README.md -- Phase 19 continuity updates
+
+**Decisions made:**
+- AD-056: Runtime dependency status is persisted as the latest snapshot only; historical uptime charts remain out of scope for Phase 19
+- AD-057: LLM runtime resolution order is per-run override -> org default -> environment fallback -> deterministic fallback
+- AD-058: OpenRouter is exposed as the first live model-catalog provider and must be filtered to tool-capable text models before reaching the UI
+- AD-059: Queued workflow runs persist the effective provider/model so worker execution cannot drift from the run created at enqueue time
+
+**Blockers encountered:**
+- The first Phase 19 test pass exposed queue-argument drift and earlier CrewAI test regressions; both were fixed by aligning the test contract and restoring backward-compatible runtime behavior in code instead of weakening the new Phase 19 runtime model
+- OpenRouter live behavior is wired and test-covered through mocked HTTP/catalog paths, but full live-provider validation remains intentionally deferred to canonical Phase 17
+
+**Test results:**
+- pytest: 137/137 pass (131 existing + 6 new)
+- eval suites: 22/22 pass (all 12 suites at 100%)
+- ruff: clean
+- npm lint: clean
+- npm typecheck: clean
+- check gate: `./scripts/check.ps1` passed
+- latest full-gate eval artifact: `artifacts/evaluations/all-supported-suites-20260401T040707Z.json`
+
+**Notes for next phase:**
+- Start canonical Phase 17: Evaluation Deepening + Red-Teaming
+- Use the new dependency snapshot store, provider catalog APIs, and persisted run runtime metadata as the baseline for live OpenRouter benchmarking and live connector validation
+
+---
+
+### Phase 17: Evaluation Deepening + Red-Teaming (2026-04-01)
+
+**What was done:**
+- Expanded the evaluation corpus from 22 to 30 scenarios, covering all active `motion_pack x sector_pack` combinations plus adversarial uploaded-content cases
+- Added per-scenario quality scorecards with completeness, accuracy, hallucination-rate, citation-coverage, and overall-score fields
+- Added suite-level and combined-report quality summaries so evaluation output is no longer only pass/fail
+- Added optional live validation suites for OpenRouter benchmarking and live connector fetch validation, with explicit skip behavior when credentials or identifiers are not configured
+- Added a repeatable load benchmark over the real ASGI app for `GET /system/health`, `POST /issues/scan`, and `POST /search`
+- Added regression-baseline generation and comparison logic with a committed baseline file under `artifacts/baselines/`
+- Updated the repo gate so `./scripts/check.ps1` now runs pytest, the expanded evaluation suite, the load benchmark, and the regression comparison automatically
+
+**Files created:**
+- apps/api/src/.../evaluation/live_validation.py -- optional live OpenRouter benchmark and live connector validation suites
+- apps/api/src/.../evaluation/performance.py -- repeatable in-process ASGI load benchmark
+- apps/api/src/.../evaluation/regression.py -- baseline generation and regression comparison
+- apps/api/tests/test_phase17_evaluation_deepening.py -- focused Phase 17 tests
+- artifacts/baselines/all-supported-suites-baseline.json -- committed evaluation regression baseline
+
+**Files modified:**
+- apps/api/src/.../domain/models.py -- added `QualityScorecard`
+- apps/api/src/.../evaluation/runner.py -- scenario scorecards, aggregate quality summaries, scenario duration metrics
+- apps/api/src/.../evaluation/scenarios.py -- added Phase 17 matrix + red-team scenarios, bringing total scenario count to 30
+- apps/api/tests/test_evaluation.py -- expanded suite coverage assertions
+- scripts/check.ps1 -- added performance benchmark and regression baseline gate; optional live validation hook
+- .env.example, CLAUDE.md, docs/HANDOFF.md, docs/DECISIONS.md, docs/architecture.md, docs/verification.md, README.md -- Phase 17 continuity updates
+
+**Decisions made:**
+- AD-060: Phase 17 quality evaluation uses scorecards plus regression baselines, not only pass/fail scenario counts
+- AD-061: Live OpenRouter and connector validation are optional in the default gate and become hard failures only when explicitly required
+- AD-062: The Phase 17 performance gate uses repeatable in-process ASGI benchmarks as the regression guardrail for this repo
+
+**Blockers encountered:**
+- None in code. The optional live validation suites ran in skip mode because no live OpenRouter credentials or connector identifiers were configured in the environment
+
+**Test results:**
+- pytest: 142/142 pass (137 existing + 5 new)
+- eval suites: 30/30 pass (all 13 suites at 100%)
+- load benchmark: passed (`system_health_p95=22.54ms`, `issues_scan_p95=165.09ms`, `search_p95=30.04ms`)
+- regression baseline: passed against `artifacts/baselines/all-supported-suites-baseline.json`
+- optional live validation: executed in skip mode with `0 failed`, `7 skipped`
+- ruff: clean
+- npm lint: clean
+- npm typecheck: clean
+- check gate: `./scripts/check.ps1` passed
+- latest full-gate eval artifact: `artifacts/evaluations/all-supported-suites-20260401T045136Z.json`
+- latest load artifact: `artifacts/evaluations/phase17-load-benchmark-20260401T045153Z.json`
+- latest live-validation artifacts: `artifacts/evaluations/phase17-live-connectors-20260401T043440Z.json`, `artifacts/evaluations/phase17-openrouter-benchmark-20260401T043440Z.json`
+
+**Notes for next phase:**
+- Start canonical Phase 18: Hardening + Release Packaging
+- Keep the Phase 17 baseline file current when the evaluation corpus changes materially, and use `PHASE17_REQUIRE_LIVE_VALIDATION=true` when moving toward production-ready live-provider validation
+
+---
+
+### Phase 18: Hardening + Release Packaging (2026-04-01)
+
+**What was done:**
+- Added multi-stage production Dockerfiles for the FastAPI API and the Next.js workbench, plus production-image builds for Prometheus, Grafana, and Tempo
+- Added `docker-compose.prod.yml` with named volumes only, a dedicated migration service, resource limits, health checks, and production-shaped API, worker, web, storage, and observability wiring
+- Added generated API-reference documentation from the live FastAPI OpenAPI schema
+- Added backup and restore automation with dry-run support, retention handling, and optional S3/MinIO upload parameters
+- Added production-aware smoke and validation scripts, including JWT-based smoke support and a clean skip path when the Docker daemon is unavailable
+- Strengthened the repo gate so it now also validates the production compose config, regenerates the API reference, runs backup dry-run, and performs a full Next.js production build
+
+**Files created:**
+- .dockerignore -- shared production build exclusions for root-context Docker builds
+- apps/api/Dockerfile -- multi-stage non-root API image
+- apps/web/Dockerfile -- standalone Next.js production image
+- ops/observability/prometheus/Dockerfile -- production Prometheus image with baked config
+- ops/observability/grafana/Dockerfile -- production Grafana image with baked provisioning
+- ops/observability/tempo/Dockerfile -- production Tempo image with baked config
+- docker-compose.prod.yml -- production compose stack with migrate/api/worker/web/observability services
+- scripts/generate_api_reference.py -- OpenAPI-to-Markdown generator
+- scripts/generate-api-reference.ps1 -- PowerShell wrapper for API-reference generation
+- scripts/backup-db.ps1 -- production backup automation with dry-run and optional upload support
+- scripts/restore-db.ps1 -- restore automation with dry-run support
+- scripts/validate-prod-stack.ps1 -- live production-stack validator with honest skip/fail behavior
+- apps/api/tests/test_phase18_release_packaging.py -- focused Phase 18 packaging tests
+- docs/api-reference.md -- generated API contract
+
+**Files modified:**
+- scripts/check.ps1 -- production packaging checks and Next.js build
+- scripts/smoke.ps1 -- JWT mode for production-shaped smoke testing
+- apps/web/next.config.ts -- standalone output for production container builds
+- .env.example -- expanded production environment contract
+- apps/api/src/.../core/settings.py -- Phase 18 runtime phase string
+- apps/web/src/lib/workbench-data.ts -- Phase 18 fallback phase string
+- CLAUDE.md, docs/HANDOFF.md, docs/DECISIONS.md, docs/architecture.md, docs/verification.md, docs/deployment.md, docs/runbook.md, docs/release-checklist.md, README.md -- Phase 18 continuity and release-doc updates
+
+**Decisions made:**
+- AD-063: Production packaging uses multi-stage non-root images and a dedicated migration service rather than schema auto-create at runtime
+- AD-064: API-reference documentation is generated from the live OpenAPI schema and refreshed by the standard repo gate
+- AD-065: Production-stack boot validation is optional by default and becomes strict only when explicitly required in a live environment
+- AD-066: Backup and restore automation prefer direct `pg_dump` / `psql` when available and fall back to Docker-based execution only when needed
+
+**Blockers encountered:**
+- No code blockers. Live production-stack boot validation could not be completed because the Docker Desktop daemon was unavailable from the current shell
+- Strict OpenRouter and connector live validation is still environment-dependent and needs real credentials / identifiers to move from skip mode to required mode
+
+**Test results:**
+- pytest: 145/145 pass
+- eval suites: 30/30 pass (all 13 suites at 100%)
+- load benchmark: passed (`system_health_p95=20.71ms`, `issues_scan_p95=198.75ms`, `search_p95=27.43ms`)
+- regression baseline: passed against `artifacts/baselines/all-supported-suites-baseline.json`
+- npm lint: clean
+- npm typecheck: clean
+- npm build: clean
+- prod compose config: `docker compose -f docker-compose.prod.yml config` passed
+- API reference generation: `./scripts/generate-api-reference.ps1` passed
+- backup dry-run: `./scripts/backup-db.ps1 -DryRun` passed
+- live prod-stack validation: `./scripts/validate-prod-stack.ps1` skipped cleanly because Docker Desktop was unavailable
+- check gate: `./scripts/check.ps1` passed
+- latest full-gate eval artifact: `artifacts/evaluations/all-supported-suites-20260401T054350Z.json`
+- latest load artifact: `artifacts/evaluations/phase17-load-benchmark-20260401T054408Z.json`
+
+**Notes for next phase:**
+- No canonical implementation phases remain
+- To call the whole project fully production-ready, run `PHASE17_REQUIRE_LIVE_VALIDATION=true ./scripts/check.ps1` with real OpenRouter and connector credentials configured
+- Then run `./scripts/validate-prod-stack.ps1 -RequireLive` in an environment where the Docker daemon is reachable
 
 ---
 

@@ -9,12 +9,13 @@ from __future__ import annotations
 import logging
 
 from arq.connections import RedisSettings
+from arq.cron import cron
 from sqlalchemy import select
 
 from crewai_enterprise_pipeline_api.core.settings import get_settings
 from crewai_enterprise_pipeline_api.db.models import CaseRecord
 from crewai_enterprise_pipeline_api.db.session import get_database
-from crewai_enterprise_pipeline_api.domain.models import WorkflowRunCreate
+from crewai_enterprise_pipeline_api.services.dependency_probe_service import DependencyProbeService
 from crewai_enterprise_pipeline_api.services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
@@ -23,9 +24,12 @@ logger = logging.getLogger(__name__)
 async def run_workflow_job(
     ctx: dict,
     case_id: str,
+    run_id: str,
     requested_by: str,
     note: str | None,
     report_template: str = "standard",
+    live_provider: str | None = None,
+    live_model: str | None = None,
 ) -> str:
     """Execute a workflow run inside the arq worker process."""
     database = get_database()
@@ -40,16 +44,25 @@ async def run_workflow_job(
         session.info["actor_id"] = requested_by
         session.info["actor_email"] = None
         service = WorkflowService(session)
-        payload = WorkflowRunCreate(
-            requested_by=requested_by,
-            note=note,
-            report_template=report_template,
+        result = await service.execute_enqueued_run(
+            case_id=case_id,
+            run_id=run_id,
+            live_provider=live_provider,
+            live_model=live_model,
         )
-        result = await service.execute_run(case_id, payload)
         if result is None:
             logger.error("Workflow job for case %s failed: case not found", case_id)
             return f"case_not_found:{case_id}"
         return f"completed:{result.run.id}"
+
+
+async def refresh_dependency_statuses_job(ctx: dict) -> str:
+    """Refresh and persist dependency snapshots for the runtime status center."""
+    database = get_database()
+    async with database.session_factory() as session:
+        session.info["skip_audit"] = True
+        report = await DependencyProbeService(session).refresh_and_persist()
+    return f"dependencies:{report.status}:{len(report.dependencies)}"
 
 
 async def startup(ctx: dict) -> None:
@@ -79,8 +92,9 @@ def _redis_settings() -> RedisSettings:
 class WorkerSettings:
     """arq WorkerSettings — run with: arq crewai_enterprise_pipeline_api.worker.WorkerSettings"""
 
-    functions = [run_workflow_job]
+    functions = [run_workflow_job, refresh_dependency_statuses_job]
     on_startup = startup
     on_shutdown = shutdown
     redis_settings = _redis_settings()
     max_jobs = get_settings().worker_concurrency
+    cron_jobs = [cron(refresh_dependency_statuses_job, minute=set(range(0, 60, 5)))]

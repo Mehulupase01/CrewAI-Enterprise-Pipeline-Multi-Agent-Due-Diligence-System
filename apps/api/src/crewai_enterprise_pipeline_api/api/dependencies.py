@@ -19,7 +19,7 @@ async def get_raw_db_session(request: Request) -> AsyncGenerator[AsyncSession, N
 
 async def get_db_session(
     request: Request,
-    principal: AuthenticatedPrincipal = Depends(get_current_principal),
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
 ) -> AsyncGenerator[AsyncSession, None]:
     database = get_database()
     async with database.session() as session:

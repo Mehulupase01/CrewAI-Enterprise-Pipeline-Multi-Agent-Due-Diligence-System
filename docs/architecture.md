@@ -1,6 +1,6 @@
 # Architecture Overview
 
-> **Last updated:** 2026-03-31 (Phase 14 complete)
+> **Last updated:** 2026-04-01 (Phase 18 in validation)
 > **Update rule:** This file is updated after every masterplan phase to reflect actual system state.
 
 ## System Summary
@@ -22,22 +22,29 @@ See `docs/MASTERPLAN.docx` (preferred) or `docs/MASTERPLAN.pdf` for the roadmap 
 ## Current State (Honest Assessment)
 
 ### What is REAL and WORKING
-- 14 SQLAlchemy ORM models with proper relationships, cascades, timestamps
-- 116 domain models and enums with consistent naming conventions across API, workflow, and evaluation surfaces
-- 29 service and engine classes + 6 concrete source adapters + CrewAI multi-agent orchestration (activates with LLM config)
-- 65 REST endpoints (full CRUD + SSE streaming + chunks + search + conflicts + financial/legal/tax/compliance plus Phase 10 summaries, Phase 11 motion-pack endpoints, Phase 12 sector-pack endpoints, rich-report previews, report-bundle downloads, and Phase 14 connector fetches)
+- 19 SQLAlchemy ORM models with proper relationships, cascades, timestamps, org scoping, audit persistence, and Phase 19 runtime-control state
+- 132 domain models and enums with consistent naming conventions across API, workflow, evaluation, security, readiness, and runtime-control surfaces
+- 39 service modules and engines + 6 concrete source adapters + CrewAI multi-agent orchestration (activates with LLM config)
+- 69 REST endpoints (full CRUD + SSE streaming + chunks + search + conflicts + financial/legal/tax/compliance plus Phase 10 summaries, Phase 11 motion-pack endpoints, Phase 12 sector-pack endpoints, rich-report previews, report-bundle downloads, Phase 14 connector fetches, Phase 15 auth/admin routes, Phase 16 health/metrics routes, and Phase 19 runtime-control routes)
 - Document parsing for 6 formats (PDF with tables, DOCX with headings+tables, XLSX multi-sheet, CSV, JSON, TXT)
 - Structured financial workbook parsing for annual periods, QoE adjustments, normalized EBITDA, ratios, and financial flags
 - Structured legal, tax, and regulatory parsing for directors, DINs, shareholding, contract clauses, GST posture, and compliance-matrix generation
 - Registered India source adapters for MCA21, GSTIN, SEBI SCORES, RoC filings, CIBIL stub, and sanctions screening
+- Structured logging via `structlog` with request, org, and actor context binding
+- OpenTelemetry setup for FastAPI, SQLAlchemy, and HTTPX with optional OTLP export
+- Prometheus metrics exposure for HTTP traffic, workflows, ingestion, connector fetches, exports, dependency probes, and CrewAI-backed LLM runs
+- Dependency readiness probes for database, Redis, storage, OpenRouter/provider state, and all registered source adapters
 - Semantic chunking engine (heading > paragraph > sentence splitting, 1200 char max)
 - Rule-based entity extraction (financial, legal, regulatory, India identifiers)
 - SHA256 document dedup (same content returns existing artifact)
-- Header-based RBAC with 4 roles (VIEWER, ANALYST, REVIEWER, ADMIN)
-- Evaluation harness with 12 suites, 22 scenarios
-- 120 pytest unit tests
+- JWT bearer auth for non-dev environments plus dev/test header-auth compatibility, 4 roles, org isolation, audit logging, and rate limiting
+- Evaluation harness with 13 suites, 30 scenarios, quality scorecards, and a committed regression baseline
+- 145 pytest unit tests
 - Export ZIP packages (markdown, DOCX, PDF, plus JSON metadata / snapshots)
-- Docker Compose stack (PostgreSQL 17, Redis 7.4, MinIO)
+- Docker Compose stack (PostgreSQL 17, Redis 7.4, MinIO, Prometheus, Grafana, Tempo)
+- Multi-stage production Dockerfiles for API, web, Prometheus, Grafana, and Tempo plus a production compose stack with named volumes, migration service, health checks, and resource limits
+- Generated API-reference docs from the live FastAPI OpenAPI schema
+- Backup and restore automation with dry-run support, retention handling, optional S3/MinIO upload, and production-aware smoke/validation scripts
 
 ### What was ADDED after Phase 7
 - Scoped read-only CrewAI tools (`agents/tools.py`) for evidence search, issue review, and checklist-gap review
@@ -114,6 +121,59 @@ See `docs/MASTERPLAN.docx` (preferred) or `docs/MASTERPLAN.pdf` for the roadmap 
 - shared connector ingestion through the same dedup, storage, chunking, evidence extraction, and entity extraction path used by uploaded documents
 - Dedicated Phase 14 evaluation coverage and five focused pytest cases for catalog exposure, fetch behavior, and downstream domain-engine consumption
 
+### What was ADDED in Phase 15
+- `core/security_utils.py` for client-secret hashing plus JWT encode/decode helpers
+- `api/routes/auth.py` and `services/auth_service.py` for DB-backed client-credential token issuance
+- `api/routes/admin.py` and `services/admin_service.py` for admin audit-log access
+- `services/audit_service.py` for explicit audit events such as token issuance and auth failures
+- `OrganizationRecord`, `ApiClientRecord`, and `AuditLogRecord` plus `004_phase15_enterprise_security.py`
+- session-scoped org context propagation, central tenant filtering, and automatic org stamping on new tenant-scoped records
+- request-time rate limiting with Redis-first behavior and deterministic memory fallback when Redis is unavailable
+- worker/runtime bootstrapping of default organization and default API client so auth remains available on fresh or migrated databases
+- Dedicated Phase 15 evaluation coverage and five focused pytest cases for JWT issuance, invalid-token rejection, cross-org isolation, audit-log visibility, and rate limiting
+
+### What was ADDED in Phase 16
+- `core/telemetry.py` for shared Prometheus metrics and OpenTelemetry initialization
+- `services/dependency_probe_service.py` for centralized dependency/readiness evaluation
+- `GET /api/v1/health/liveness`, `GET /api/v1/health/readiness`, and `GET /api/v1/metrics`
+- `structlog`-based request logging with bound `request_id`, `org_id`, `actor_id`, route, status code, and latency
+- OpenTelemetry instrumentation for FastAPI, SQLAlchemy, and HTTPX with optional OTLP export
+- Shared telemetry hooks for workflows, document parsing, document ingestion, connector fetches, export generation, dependency probes, and CrewAI-backed LLM runs
+- Observability stack configuration for Prometheus, Grafana, and Tempo under `ops/observability/`
+- Dedicated Phase 16 evaluation coverage and six focused pytest cases for liveness/readiness/metrics, logging mode, and tracing initialization
+
+### What was ADDED in Phase 19
+- `services/runtime_control_service.py` for org-scoped default LLM config, OpenRouter model discovery, memory/Redis model-catalog cache, and strict runtime-resolution order
+- `DependencyStatusRecord` and `OrgRuntimeConfigRecord` plus `005_phase19_runtime_status_and_llm_control.py`
+- persisted latest dependency snapshots backed by the shared Phase 16 dependency-probe service
+- admin/runtime APIs for dependency refresh, dependency listing, provider catalog inspection, and org-default LLM controls
+- per-run LLM provider/model overrides on workflow runs plus persisted effective provider/model metadata for sync and queued runs
+- worker-level dependency refresh cron every 5 minutes and queued-run execution that reuses the existing persisted run record
+- `/status` workbench screen with runtime dependency cards, admin refresh action, org-default OpenRouter model selection, and run-level effective-runtime display
+- OpenRouter-compatible model selection surfaces in the run trigger, with tool-capable text models filtered before reaching the UI
+- Dedicated Phase 19 pytest coverage for dependency persistence, runtime config, model-catalog caching, and explicit unavailable-runtime failure behavior
+
+### What was ADDED in Phase 17
+- `domain/models.py` now includes `QualityScorecard` for evaluation and regression reporting
+- `evaluation/runner.py` now emits per-scenario quality scorecards plus suite-level and combined quality summaries
+- `evaluation/scenarios.py` now includes the Phase 17 deepening suite, bringing the evaluation corpus to 30 scenarios across all active motion/sector combinations plus adversarial uploaded-content cases
+- `evaluation/performance.py` adds a repeatable in-process ASGI benchmark for core GET, issue scanning, and search latency/error thresholds
+- `evaluation/regression.py` adds committed-baseline generation and comparison against `artifacts/baselines/all-supported-suites-baseline.json`
+- `evaluation/live_validation.py` adds optional live OpenRouter benchmarking and live connector fetch validation with explicit skip-vs-fail behavior
+- `scripts/check.ps1` now runs pytest, the expanded evaluation corpus, the load benchmark, and the regression baseline comparison automatically, with optional live validation hooks
+- Dedicated Phase 17 pytest coverage for quality scorecards, live-validation skip behavior, the performance benchmark, and regression comparison
+
+### What was ADDED in Phase 18
+- `apps/api/Dockerfile` as a multi-stage non-root API image with packaged runtime dependencies and Alembic config
+- `apps/web/Dockerfile` as a standalone Next.js production image plus `output: "standalone"` in `next.config.ts`
+- `ops/observability/*/Dockerfile` so Prometheus, Grafana, and Tempo configs are baked into production images instead of bind-mounted from the repo
+- `docker-compose.prod.yml` with named volumes only, dedicated `migrate` service, production-shaped API/worker/web wiring, and observability services
+- `scripts/generate_api_reference.py` and `scripts/generate-api-reference.ps1` for generated API contract docs
+- `scripts/backup-db.ps1` and `scripts/restore-db.ps1` for backup/restore automation with dry-run support
+- `scripts/validate-prod-stack.ps1` plus upgraded `scripts/smoke.ps1` for JWT-aware production smoke validation
+- `scripts/check.ps1` now validates production compose config, regenerates the API reference, runs backup dry-run, and performs a full Next.js production build
+- Dedicated Phase 18 pytest coverage for API-reference generation, backup/restore dry-run behavior, prod compose config validation, and validator skip behavior
+
 ### What was ADDED in Phase 7
 - CrewAI multi-agent orchestration (`agents/` package) — 9 workstream agents + 1 coordinator
 - Agent configs: India-focused domain experts with motion_pack/sector_pack context awareness
@@ -175,9 +235,6 @@ See `docs/MASTERPLAN.docx` (preferred) or `docs/MASTERPLAN.pdf` for the roadmap 
 - ~~No download endpoint~~ -- GET .../export-packages/{id}/download streams ZIP
 
 ### What is MISSING
-- No structured logging, tracing, or metrics
-- No JWT authentication
-- No multi-tenancy
 - CrewAI agents wired with scoped read-only tools, but they still require LLM_PROVIDER + LLM_API_KEY to activate
 - Real-time tool and step streaming is still not implemented; trace events are persisted after crew completion
 - No dedicated financial summary panel in the Next.js case workspace yet; Phase 8 is currently exposed through the API, workflow output, and reports rather than a bespoke UI view
@@ -187,6 +244,8 @@ See `docs/MASTERPLAN.docx` (preferred) or `docs/MASTERPLAN.pdf` for the roadmap 
 - No dedicated sector-pack analyst panels yet for Tech/SaaS, Manufacturing, or BFSI/NBFC detail; Phase 12 is currently exposed through APIs, workflow outputs, reports, and evaluation surfaces rather than bespoke UI views
 - No WYSIWYG report editor or brand-theming system yet; Phase 13 currently provides deterministic template-based reporting and download flows rather than analyst-authored document composition
 - No live premium connector credentials are wired by default; Phase 14 ships stub-capable production-structured adapters, but real provider access still depends on environment-specific base URLs, API keys, and feed permissions
+- Optional live OpenRouter and connector validation now exist, but they still require real credentials/identifiers to run in strict mode and were not live-validated in this environment
+- Live production-stack boot and smoke validation still depends on a reachable Docker daemon; this environment currently skips that strict check honestly instead of pretending it passed
 
 ## Layers
 
@@ -210,18 +269,23 @@ apps/api/src/crewai_enterprise_pipeline_api/
     packs/             # Motion-pack specialist prompts/configs for buy-side, credit, and vendor flows
     tools.py           # Scoped read-only CrewAI tools over pre-loaded evidence, issues, checklist, chunks, and phase-specific summaries
   api/
-    router.py          # Mounts /system, /source-adapters, /cases under /api/v1/
-    security.py        # Header-based RBAC (X-CEP-User-{Id,Name,Email,Role})
+    router.py          # Mounts /auth, /admin, /system, /health, /source-adapters, /cases under /api/v1/
+    security.py        # JWT auth for prod + header-auth compatibility in dev/test
     routes/
-      health.py        # GET /health, /readiness, /overview
+      auth.py          # POST /auth/token
+      admin.py         # audit log + runtime control admin routes
+      health.py        # GET /system/* plus root /health/liveness, /health/readiness, /metrics
       cases.py         # All case CRUD + sub-resource endpoints
       source_adapters.py  # GET /source-adapters (read-only catalog)
   domain/
-    models.py          # 113 Pydantic schemas and StrEnums
+    models.py          # 126 Pydantic schemas and StrEnums
   db/
-    base.py            # UUID generation, TimestampedMixin
-    models.py          # 14 SQLAlchemy ORM models (CaseRecord is aggregate root, ChunkRecord for embeddings)
-    session.py         # AsyncSession factory
+    base.py            # UUID generation, TimestampedMixin, TenantScopedMixin
+    models.py          # 19 SQLAlchemy ORM models with org scoping, audit hooks, and runtime-control state
+    session.py         # AsyncSession factory + runtime bootstrap seeding
+  core/
+    logging.py         # structlog configuration and request-context helpers
+    telemetry.py       # Prometheus metrics + OpenTelemetry instrumentation
   services/
     case_service.py        # Case CRUD + sub-resource operations
     ingestion_service.py   # Document upload, parse, chunk, evidence extract
@@ -235,6 +299,9 @@ apps/api/src/crewai_enterprise_pipeline_api/
     report_markdown.py     # Markdown block parsing helpers for DOCX/PDF renderers
     docx_service.py        # DOCX rendering from markdown
     pdf_service.py         # PDF rendering from markdown
+    auth_service.py        # DB-backed client-credential JWT issuance
+    admin_service.py       # Admin audit-log querying
+    audit_service.py       # Shared manual audit-event writer
     document_signal_utils.py  # Shared artifact text snapshots for Phase 9 signal extraction
     financial_qoe_service.py  # Phase 8 QoE summary, ratios, flags, checklist automation
     legal_service.py          # Phase 9 legal structure and contract-clause analysis
@@ -256,6 +323,9 @@ apps/api/src/crewai_enterprise_pipeline_api/
     export_service.py      # ZIP export package creation
     search_service.py      # Hybrid BM25+cosine search, evidence conflict detection
     source_adapter_service.py # Adapter catalog and fetch orchestration
+    dependency_probe_service.py # Shared dependency probes and persisted snapshot support
+    runtime_control_service.py # LLM runtime resolution, OpenRouter catalog, org defaults
+    dependency_probe_service.py # Shared readiness evaluation for infra, LLM, and adapters
   ingestion/
     parsers.py         # PDF (tables), DOCX (headings+tables), XLSX (multi-sheet), CSV, JSON, TXT
     financial_parser.py # Structured financial workbook parser for QoE metrics and adjustments
@@ -313,6 +383,9 @@ apps/web/src/
 - **PostgreSQL 17** (:5432) — primary datastore
 - **Redis 7.4** (:6379) — arq job queue when background_mode=true
 - **MinIO** (:9000 API, :9001 console) — S3-compatible object storage
+- **Prometheus** (:9090) — metrics scraping and storage
+- **Grafana** (:3001) — dashboards and observability UI
+- **Tempo** (:3200 / OTLP 4317) — trace collection
 - All managed via `docker-compose.yml` with health checks and named volumes
 
 ## Pack Model
@@ -351,8 +424,6 @@ See `docs/MASTERPLAN.docx` for the 18-phase plan to reach full production state:
 - pgvector hybrid search for evidence intelligence
 - Interactive frontend with full CRUD + live SSE streaming
 - Deep domain engines (Financial QoE, Legal/Tax/Regulatory, Commercial/Forensic)
-- Additional Phase 15+ roadmap depth from `MASTERPLAN.docx` beyond the now-complete Phase 14 connector tranche
-- Enterprise Security (JWT + Multi-tenancy + Audit)
-- JWT auth, multi-tenancy, audit logging
+- No remaining canonical implementation phases beyond the current Phase 18 release-validation caveats
 - OpenTelemetry + Prometheus observability
 - Production Docker images with deployment runbook

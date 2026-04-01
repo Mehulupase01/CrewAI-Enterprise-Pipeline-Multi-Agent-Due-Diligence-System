@@ -102,6 +102,9 @@ from crewai_enterprise_pipeline_api.services.manufacturing_service import Manufa
 from crewai_enterprise_pipeline_api.services.operations_service import OperationsService
 from crewai_enterprise_pipeline_api.services.regulatory_service import RegulatoryService
 from crewai_enterprise_pipeline_api.services.report_service import ReportService
+from crewai_enterprise_pipeline_api.services.runtime_control_service import (
+    LlmRuntimeUnavailableError,
+)
 from crewai_enterprise_pipeline_api.services.search_service import SearchService
 from crewai_enterprise_pipeline_api.services.source_adapter_service import SourceAdapterService
 from crewai_enterprise_pipeline_api.services.tax_service import TaxService
@@ -1065,17 +1068,23 @@ async def execute_run(
     request: Request,
 ) -> WorkflowRunResult | WorkflowRunEnqueueResult:
     service = WorkflowService(session)
-    redis_pool = getattr(request.app.state, "redis_pool", None)
-    if redis_pool is not None:
-        result = await service.enqueue_run(case_id, payload, redis_pool)
+    try:
+        redis_pool = getattr(request.app.state, "redis_pool", None)
+        if redis_pool is not None:
+            result = await service.enqueue_run(case_id, payload, redis_pool)
+            if result is None:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
+            return result
+
+        result = await service.execute_run(case_id, payload)
         if result is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
         return result
-
-    result = await service.execute_run(case_id, payload)
-    if result is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
-    return result
+    except LlmRuntimeUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
 
 
 @router.get(

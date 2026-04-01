@@ -79,6 +79,16 @@ export default async function RunPage({ params }: PageProps) {
               <span className={styles.metaLabel}>Template</span>
               <strong>{labelize(run.report_template)}</strong>
             </div>
+            <div className={styles.metaCard}>
+              <span className={styles.metaLabel}>Runtime</span>
+              <strong>
+                {run.effective_llm_provider
+                  ? `${labelize(run.effective_llm_provider)}${
+                      run.effective_llm_model ? ` / ${run.effective_llm_model}` : ""
+                    }`
+                  : "Deterministic"}
+              </strong>
+            </div>
           </div>
         </section>
 

@@ -19,7 +19,7 @@ def production_client(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> TestCl
     monkeypatch.setenv("AUTO_CREATE_SCHEMA", "true")
     monkeypatch.setenv("STORAGE_BACKEND", "local")
     monkeypatch.setenv("LOCAL_STORAGE_ROOT", str((tmp_path / "storage").resolve()))
-    monkeypatch.setenv("JWT_SECRET", "phase15-secret")
+    monkeypatch.setenv("JWT_SECRET", "phase15-secret-0123456789-abcdef")
     get_settings.cache_clear()
 
     with TestClient(create_app()) as test_client:
@@ -40,7 +40,7 @@ def rate_limited_production_client(
     monkeypatch.setenv("AUTO_CREATE_SCHEMA", "true")
     monkeypatch.setenv("STORAGE_BACKEND", "local")
     monkeypatch.setenv("LOCAL_STORAGE_ROOT", str((tmp_path / "storage").resolve()))
-    monkeypatch.setenv("JWT_SECRET", "phase15-secret")
+    monkeypatch.setenv("JWT_SECRET", "phase15-secret-0123456789-abcdef")
     monkeypatch.setenv("RATE_LIMIT_AUTH_PER_MINUTE", "1")
     get_settings.cache_clear()
 

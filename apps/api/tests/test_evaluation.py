@@ -11,6 +11,7 @@ from crewai_enterprise_pipeline_api.evaluation.scenarios import (
     PHASE12_SECTOR_PACK_DEEPENING_SCENARIOS,
     PHASE13_RICH_REPORTING_SCENARIOS,
     PHASE14_INDIA_CONNECTOR_SCENARIOS,
+    PHASE17_EVALUATION_DEEPENING_SCENARIOS,
     VENDOR_ONBOARDING_EXPANSION_SCENARIOS,
 )
 
@@ -19,6 +20,7 @@ def test_evaluation_scenarios_are_unique_and_well_formed() -> None:
     scenario_codes: set[str] = set()
 
     for suite_key, scenarios in (
+        ("phase17_evaluation_deepening", PHASE17_EVALUATION_DEEPENING_SCENARIOS),
         ("phase14_india_connectors", PHASE14_INDIA_CONNECTOR_SCENARIOS),
         ("phase13_rich_reporting", PHASE13_RICH_REPORTING_SCENARIOS),
         ("phase5_first_slice", PHASE5_FIRST_SLICE_SCENARIOS),
@@ -83,6 +85,19 @@ def test_evaluation_scenarios_are_unique_and_well_formed() -> None:
                 assert scenario.source_adapter_expectation is not None
                 assert len(scenario.source_adapter_fetches) >= 1
                 assert "cibil" in scenario.source_adapter_expectation.required_adapter_keys
+            if suite_key == "phase17_evaluation_deepening":
+                assert scenario.satisfy_all_checklist_items is True
+                assert scenario.expectation.ready_for_export is True
+                assert (
+                    scenario.buy_side_analysis_expectation is not None
+                    or scenario.borrower_scorecard_expectation is not None
+                    or scenario.vendor_risk_tier_expectation is not None
+                )
+                assert (
+                    scenario.tech_saas_metrics_expectation is not None
+                    or scenario.manufacturing_metrics_expectation is not None
+                    or scenario.bfsi_nbfc_metrics_expectation is not None
+                )
             if suite_key == "credit_lending_expansion":
                 assert scenario.case_payload["motion_pack"] == "credit_lending"
             if suite_key == "vendor_onboarding_expansion":
@@ -95,3 +110,8 @@ def test_evaluation_scenarios_are_unique_and_well_formed() -> None:
                 assert upload.filename
                 assert upload.content_bytes is not None or upload.content.strip()
                 assert upload.source_kind == "uploaded_dataroom"
+
+
+def test_evaluation_suite_count_and_scenario_depth() -> None:
+    total_scenarios = sum(len(suite.scenarios) for suite in EVALUATION_SUITES.values())
+    assert total_scenarios >= 30

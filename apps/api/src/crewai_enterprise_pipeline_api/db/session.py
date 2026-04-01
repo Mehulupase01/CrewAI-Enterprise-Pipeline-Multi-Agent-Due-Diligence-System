@@ -8,8 +8,8 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-from crewai_enterprise_pipeline_api.core.settings import get_settings
 from crewai_enterprise_pipeline_api.core.security_utils import hash_client_secret
+from crewai_enterprise_pipeline_api.core.settings import get_settings
 from crewai_enterprise_pipeline_api.db.base import Base
 
 _database: "Database | None" = None
@@ -33,7 +33,11 @@ class Database:
         await self.ensure_runtime_defaults()
 
     async def ensure_runtime_defaults(self) -> None:
-        from crewai_enterprise_pipeline_api.db.models import ApiClientRecord, OrganizationRecord
+        from crewai_enterprise_pipeline_api.db.models import (
+            ApiClientRecord,
+            OrganizationRecord,
+            OrgRuntimeConfigRecord,
+        )
 
         settings = get_settings()
         async with self.session_factory() as session:
@@ -56,6 +60,20 @@ class Database:
                 organization.name = settings.default_org_name
                 organization.slug = settings.default_org_slug
                 organization.status = "active"
+
+            runtime_result = await session.execute(
+                select(OrgRuntimeConfigRecord)
+                .execution_options(skip_org_scope=True)
+                .where(OrgRuntimeConfigRecord.org_id == settings.default_org_id)
+            )
+            runtime_config = runtime_result.scalar_one_or_none()
+            if runtime_config is None:
+                runtime_config = OrgRuntimeConfigRecord(
+                    org_id=settings.default_org_id,
+                    llm_provider=None,
+                    llm_model=None,
+                )
+                session.add(runtime_config)
 
             result = await session.execute(
                 select(ApiClientRecord)

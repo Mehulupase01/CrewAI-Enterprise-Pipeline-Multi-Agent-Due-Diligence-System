@@ -161,6 +161,16 @@ export default async function Home() {
                   <p>{overview.workstream_domains.map(labelize).join(", ")}</p>
                 </div>
               </div>
+              <Link className={styles.rowLink} href="/status">
+                <div>
+                  <strong>Open runtime status center</strong>
+                  <p>
+                    Inspect dependency health, connector posture, and current LLM
+                    runtime defaults from the workbench.
+                  </p>
+                </div>
+                <span className={styles.note}>Go to status</span>
+              </Link>
             </article>
 
             <article className={styles.panel}>

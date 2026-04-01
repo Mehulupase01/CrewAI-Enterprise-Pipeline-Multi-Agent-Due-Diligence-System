@@ -36,4 +36,5 @@ def test_readiness_endpoint_reports_component_status(client) -> None:
     assert payload["status"] == "ready"
     component_names = {component["name"] for component in payload["components"]}
     assert "database" in component_names
+    assert "redis" in component_names
     assert "storage" in component_names

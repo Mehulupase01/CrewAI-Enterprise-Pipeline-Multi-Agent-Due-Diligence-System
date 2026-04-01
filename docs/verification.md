@@ -13,7 +13,7 @@ No phase is considered complete until all of the following exist together:
 
 ## Current Checks
 
-The current gate now covers the foundation plus the implemented canonical engine layers through Phase 14:
+The current gate now covers the foundation plus the implemented canonical engine layers through Phase 17, the completed custom Phase 19 runtime-control tranche, and the repo-side implementation of Phase 18 release packaging:
 
 - backend app boot and schema lifecycle
 - typed configuration loading
@@ -69,6 +69,33 @@ The current gate now covers the foundation plus the implemented canonical engine
 - shared fetch-and-ingest support for MCA21, GSTIN, SEBI SCORES, RoC filings, CIBIL stub, and sanctions/watchlist adapters
 - connector payload ingestion through the shared artifact storage, chunking, evidence extraction, and entity-extraction pipeline
 - dedicated Phase 14 India connector evaluation coverage
+- JWT bearer auth for non-dev environments plus dev/test header-auth compatibility
+- seeded organization and API-client bootstrap for fresh or migrated databases
+- session-scoped org isolation across tenant-scoped ORM models
+- admin audit-log access plus auth-failure and mutation audit coverage
+- rate limiting with Redis-first behavior and deterministic in-memory fallback
+- structured logging via `structlog` with production JSON mode and bound request context
+- OpenTelemetry initialization for FastAPI, SQLAlchemy, and HTTPX
+- Prometheus metrics exposure through `GET /api/v1/metrics`
+- root liveness/readiness endpoints through `GET /api/v1/health/liveness` and `GET /api/v1/health/readiness`
+- dependency readiness evaluation for database, Redis, storage, OpenRouter/provider state, and registered source adapters
+- observability Docker stack configuration for Prometheus, Grafana, and Tempo
+- persisted dependency snapshot refresh and retrieval for runtime-status surfaces
+- OpenRouter model-catalog discovery with capability filtering and cache behavior
+- org-scoped default LLM runtime config plus per-run provider/model overrides
+- workflow-run persistence of effective LLM provider/model across sync and queued execution paths
+- admin dependency refresh and runtime-control endpoints
+- `/status` workbench data wiring and run-detail runtime display
+- 30 end-to-end evaluation scenarios across 13 suites, including the Phase 17 matrix/red-team coverage
+- per-scenario quality scorecards plus suite-level and combined quality summaries
+- committed regression-baseline comparison against `artifacts/baselines/all-supported-suites-baseline.json`
+- in-process ASGI load benchmark for `GET /system/health`, `POST /issues/scan`, and `POST /search`
+- optional live OpenRouter benchmark and live connector validation suites with explicit skip-vs-fail behavior
+- generated API-reference docs from the live OpenAPI schema
+- backup dry-run automation and restore dry-run planning
+- production compose config validation for `docker-compose.prod.yml`
+- full Next.js production build in the standard repo gate
+- optional live production-stack validation through `scripts/validate-prod-stack.ps1`
 - deterministic end-to-end evaluation scenarios with saved JSON scorecards
 - repeat-scan regression checks for issue fingerprint reuse
 - enforced-auth and role-guard tests
@@ -157,12 +184,33 @@ The current gate now covers the foundation plus the implemented canonical engine
   `POST /api/v1/cases/{case_id}/source-adapters/{adapter_id}/fetch`.
 - Connector-fetched evidence lands in the same artifact, chunk, and evidence
   pipeline used for uploaded files so downstream domain engines can consume it.
+- The API can issue JWT bearer tokens through `POST /api/v1/auth/token` using
+  DB-backed API clients.
+- Tenant-scoped records are isolated by org, and callers from one org cannot
+  read or mutate another org's cases through standard non-admin paths.
+- The API records audit entries for successful mutations, token issuance, and
+  authorization failures, and exposes admin audit-log retrieval.
+- Rate limiting applies across auth, connector, mutating, and read routes
+  without making Redis a hard requirement for local verification.
 - The first-slice evaluation suite passes blocked, clean-approved, and
   approved-nonblocking-risk scenarios.
 - Every quality-gate run writes a machine-readable artifact under
   `artifacts/evaluations/`.
 - Secured routes reject missing or under-privileged callers when auth is enforced.
 - The API returns a request ID header on responses.
+- The API persists the latest dependency snapshot and exposes it through read and admin refresh surfaces without inventing a separate health model.
+- The API can resolve LLM runtime in a strict order: per-run override, org default, environment fallback, then deterministic fallback when no explicit live provider is requested.
+- Explicitly requested unavailable live runtimes fail fast with `503` instead of silently degrading to deterministic execution.
+- Queued workflow runs preserve the effective provider/model chosen at enqueue time so worker execution cannot drift from the initiating request.
+- The repo evaluation corpus covers at least 30 scenarios and every active `motion_pack x sector_pack` combination.
+- Evaluation output includes quality scorecards and a committed regression baseline that the repo gate compares automatically.
+- The load benchmark must pass the current local thresholds for core GET, issue scan, and search endpoints with zero request errors.
+- Optional live OpenRouter and connector validation suites must report honest skips when credentials are absent and hard failures when strict live validation is requested.
+- The repo must be able to regenerate `docs/api-reference.md` from the FastAPI OpenAPI schema without manual editing.
+- The backup and restore scripts must support dry-run planning without requiring live database access.
+- `docker compose -f docker-compose.prod.yml config` must succeed as part of the normal gate.
+- The Next.js workbench must complete a production `npm run build`.
+- Live production-stack validation must skip honestly when Docker is unavailable and become a hard failure when strict validation is required.
 - The repo includes deployment, runbook, smoke-check, and release-checklist assets.
 - The evaluation runner passes all supported suites, including credit lending,
   vendor onboarding, manufacturing / industrials, BFSI / NBFC, the dedicated

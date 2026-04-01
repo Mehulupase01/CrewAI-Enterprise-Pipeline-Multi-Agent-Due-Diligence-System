@@ -1,0 +1,285 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-crewai_pipeline}
+      POSTGRES_USER: ${POSTGRES_USER:-crewai}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-crewai}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-crewai} -d ${POSTGRES_DB:-crewai_pipeline}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    mem_limit: 512m
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: redis-server --save 60 1 --loglevel warning
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_prod_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    mem_limit: 256m
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_prod_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    mem_limit: 512m
+
+  tempo:
+    build:
+      context: .
+      dockerfile: ops/observability/tempo/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${TEMPO_UI_PORT:-3200}:3200"
+      - "${OTLP_GRPC_PORT:-4317}:4317"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3200/status/endpoints >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - tempo_prod_data:/tmp/tempo
+    mem_limit: 256m
+
+  prometheus:
+    build:
+      context: .
+      dockerfile: ops/observability/prometheus/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - prometheus_prod_data:/prometheus
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9090/-/healthy >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    mem_limit: 256m
+
+  grafana:
+    build:
+      context: .
+      dockerfile: ops/observability/grafana/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      prometheus:
+        condition: service_healthy
+      tempo:
+        condition: service_healthy
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports:
+      - "${GRAFANA_PORT:-3001}:3000"
+    volumes:
+      - grafana_prod_data:/var/lib/grafana
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/health >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    mem_limit: 256m
+
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      APP_ENV: production
+      AUTO_CREATE_SCHEMA: "false"
+      ENFORCE_AUTH: "true"
+      BACKGROUND_MODE: "true"
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-crewai}:${POSTGRES_PASSWORD:-crewai}@postgres:5432/${POSTGRES_DB:-crewai_pipeline}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      STORAGE_BACKEND: ${STORAGE_BACKEND:-s3}
+      LOCAL_STORAGE_ROOT: /var/lib/crewai/storage
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME:-crewai-pipeline}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://tempo:4317}
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-with-32-plus-bytes}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      JWT_ACCESS_TOKEN_EXPIRES_SECONDS: ${JWT_ACCESS_TOKEN_EXPIRES_SECONDS:-3600}
+      DEFAULT_API_CLIENT_SECRET: ${DEFAULT_API_CLIENT_SECRET:-local-admin-secret}
+      DEFAULT_API_CLIENT_ID: ${DEFAULT_API_CLIENT_ID:-local-admin-client}
+      DEFAULT_API_CLIENT_DISPLAY_NAME: ${DEFAULT_API_CLIENT_DISPLAY_NAME:-Local Admin Client}
+      DEFAULT_API_CLIENT_ROLE: ${DEFAULT_API_CLIENT_ROLE:-admin}
+      DEFAULT_API_CLIENT_EMAIL: ${DEFAULT_API_CLIENT_EMAIL:-platform-admin@local.invalid}
+      DEFAULT_ORG_ID: ${DEFAULT_ORG_ID:-00000000-0000-0000-0000-000000000001}
+      DEFAULT_ORG_NAME: ${DEFAULT_ORG_NAME:-Local Default Organization}
+      DEFAULT_ORG_SLUG: ${DEFAULT_ORG_SLUG:-local-default}
+    command: ["alembic", "upgrade", "head"]
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      APP_ENV: production
+      AUTO_CREATE_SCHEMA: "false"
+      ENFORCE_AUTH: "true"
+      BACKGROUND_MODE: "true"
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-crewai}:${POSTGRES_PASSWORD:-crewai}@postgres:5432/${POSTGRES_DB:-crewai_pipeline}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      STORAGE_BACKEND: ${STORAGE_BACKEND:-s3}
+      LOCAL_STORAGE_ROOT: /var/lib/crewai/storage
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME:-crewai-pipeline}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://tempo:4317}
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-with-32-plus-bytes}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      JWT_ACCESS_TOKEN_EXPIRES_SECONDS: ${JWT_ACCESS_TOKEN_EXPIRES_SECONDS:-3600}
+      DEFAULT_API_CLIENT_SECRET: ${DEFAULT_API_CLIENT_SECRET:-local-admin-secret}
+      DEFAULT_API_CLIENT_ID: ${DEFAULT_API_CLIENT_ID:-local-admin-client}
+      DEFAULT_API_CLIENT_DISPLAY_NAME: ${DEFAULT_API_CLIENT_DISPLAY_NAME:-Local Admin Client}
+      DEFAULT_API_CLIENT_ROLE: ${DEFAULT_API_CLIENT_ROLE:-admin}
+      DEFAULT_API_CLIENT_EMAIL: ${DEFAULT_API_CLIENT_EMAIL:-platform-admin@local.invalid}
+      DEFAULT_ORG_ID: ${DEFAULT_ORG_ID:-00000000-0000-0000-0000-000000000001}
+      DEFAULT_ORG_NAME: ${DEFAULT_ORG_NAME:-Local Default Organization}
+      DEFAULT_ORG_SLUG: ${DEFAULT_ORG_SLUG:-local-default}
+      LLM_PROVIDER: ${LLM_PROVIDER:-none}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+    ports:
+      - "${API_PORT:-8000}:8000"
+    volumes:
+      - api_prod_storage:/var/lib/crewai/storage
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/liveness', timeout=5).read()"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    mem_limit: 512m
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      APP_ENV: production
+      AUTO_CREATE_SCHEMA: "false"
+      ENFORCE_AUTH: "true"
+      BACKGROUND_MODE: "true"
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-crewai}:${POSTGRES_PASSWORD:-crewai}@postgres:5432/${POSTGRES_DB:-crewai_pipeline}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      STORAGE_BACKEND: ${STORAGE_BACKEND:-s3}
+      LOCAL_STORAGE_ROOT: /var/lib/crewai/storage
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME:-crewai-pipeline}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://tempo:4317}
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-with-32-plus-bytes}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      JWT_ACCESS_TOKEN_EXPIRES_SECONDS: ${JWT_ACCESS_TOKEN_EXPIRES_SECONDS:-3600}
+      DEFAULT_API_CLIENT_SECRET: ${DEFAULT_API_CLIENT_SECRET:-local-admin-secret}
+      DEFAULT_API_CLIENT_ID: ${DEFAULT_API_CLIENT_ID:-local-admin-client}
+      DEFAULT_API_CLIENT_DISPLAY_NAME: ${DEFAULT_API_CLIENT_DISPLAY_NAME:-Local Admin Client}
+      DEFAULT_API_CLIENT_ROLE: ${DEFAULT_API_CLIENT_ROLE:-admin}
+      DEFAULT_API_CLIENT_EMAIL: ${DEFAULT_API_CLIENT_EMAIL:-platform-admin@local.invalid}
+      DEFAULT_ORG_ID: ${DEFAULT_ORG_ID:-00000000-0000-0000-0000-000000000001}
+      DEFAULT_ORG_NAME: ${DEFAULT_ORG_NAME:-Local Default Organization}
+      DEFAULT_ORG_SLUG: ${DEFAULT_ORG_SLUG:-local-default}
+      LLM_PROVIDER: ${LLM_PROVIDER:-none}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+    command: ["arq", "crewai_enterprise_pipeline_api.worker.WorkerSettings"]
+    volumes:
+      - api_prod_storage:/var/lib/crewai/storage
+    mem_limit: 1g
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+      API_BASE_URL: http://api:8000
+      NEXT_PUBLIC_API_BASE_URL: http://api:8000/api/v1
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    mem_limit: 256m
+
+volumes:
+  postgres_prod_data:
+  redis_prod_data:
+  minio_prod_data:
+  api_prod_storage:
+  prometheus_prod_data:
+  tempo_prod_data:
+  grafana_prod_data:

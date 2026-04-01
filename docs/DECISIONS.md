@@ -552,6 +552,176 @@ name-based).
 
 ---
 
+## AD-050: Production auth uses JWT, while header auth remains dev/test-only (2026-04-01)
+
+**Decision:** Outside `development` and `test`, authenticated API access must use bearer JWTs issued through DB-backed API clients. Header-based auth (`X-CEP-User-*`) remains available only in `development` and `test` for compatibility.
+
+**Why:** The repo needed a real production-oriented auth surface without destroying the existing local workflow, smoke path, and test harness. JWT provides a clear production contract, while dev/test header auth preserves the existing verification infrastructure and rapid iteration flow.
+
+**Impact:** `api/security.py`, `core/security_utils.py`, `api/routes/auth.py`, and `.env.example` now define the canonical Phase 15 auth contract. Future phases should extend the JWT path, not add new production-only auth mechanisms in parallel.
+
+---
+
+## AD-051: Org isolation is enforced centrally at the ORM/session layer (2026-04-01)
+
+**Decision:** Tenant isolation is implemented through session-scoped org context, central ORM query filtering, and automatic org stamping on new tenant-scoped records rather than through scattered ad hoc filters in every route.
+
+**Why:** The repo already had dozens of service queries and record-creation paths. Per-route or per-service auth checks would have been fragile and easy to bypass. Central enforcement reduces drift and ensures newly added queries inherit the same tenant boundary by default.
+
+**Impact:** `db/base.py`, `db/models.py`, `api/dependencies.py`, `db/session.py`, and `workflow_service.py` form the Phase 15 tenancy boundary. Future service code should rely on this shared session context and only bypass it intentionally via explicit admin or maintenance flows.
+
+---
+
+## AD-052: Rate limiting is Redis-first but must fall back to in-memory automatically (2026-04-01)
+
+**Decision:** API rate limiting uses Redis when available, but after the first Redis connectivity failure it must switch to in-memory mode automatically for the remainder of the process lifetime until shutdown.
+
+**Why:** Phase 15 requires production-shaped rate limiting, but test and local environments often run without Redis. Retrying Redis on every request created severe slowdown and made the quality gate impractical. Automatic fallback preserves the contract while keeping local execution deterministic and fast.
+
+**Impact:** `core/rate_limit.py` and `main.py` now treat Redis as the preferred backend, not a hard dependency. Future observability or security phases can add telemetry around the fallback state, but they should not remove the deterministic fallback without replacing it with an equally reliable local path.
+
+---
+
+## AD-053: Structured logging is environment-shaped, with JSON in production and readable console logs elsewhere (2026-04-01)
+
+**Decision:** Phase 16 uses `structlog` as the canonical logging layer. `production` emits JSON logs, while `development` and `test` use readable console logs with bound request context such as `request_id`, `org_id`, and `actor_id`.
+
+**Why:** The platform needs production-grade machine-readable logs without making local development or pytest output unusable. Environment-shaped rendering preserves operational structure in production while still supporting developer speed locally.
+
+**Impact:** `core/logging.py` and `main.py` now define the canonical logging contract. Future phases should bind more context into the existing `structlog` pipeline rather than reintroducing ad hoc logger formatting.
+
+---
+
+## AD-054: Readiness is modeled as state plus mode, not a naive binary up/down health check (2026-04-01)
+
+**Decision:** Phase 16 readiness uses both a dependency `status` (`ok`, `degraded`, `failed`) and a dependency `mode` (`live`, `stub`, `unconfigured`, `disabled`) so non-production fallback states are reported honestly without pretending they are equivalent to hard outages.
+
+**Why:** The platform intentionally supports stub connectors, deterministic local fallback, and Redis-free local operation. A binary health model would either hide those distinctions or create false failures in development and test.
+
+**Impact:** `dependency_probe_service.py`, `domain/models.py`, and `api/routes/health.py` now define the readiness contract. Future operational phases and the planned status screen should reuse these enums and semantics rather than inventing a parallel health vocabulary.
+
+---
+
+## AD-055: Dependency probing is centralized so health endpoints, future status UI, and later operational phases share one source of truth (2026-04-01)
+
+**Decision:** All Phase 16 readiness checks flow through a single dependency-probe service that evaluates the database, Redis, storage, LLM provider state, and registered source adapters.
+
+**Why:** The remaining roadmap includes a runtime status screen, live connector validation, and release-grade operational gates. Splitting dependency checks across routers, workers, and frontend-specific endpoints would create drift and make later phases harder to trust.
+
+**Impact:** `services/dependency_probe_service.py` is now the canonical dependency-status layer. Phase 19 and later operational phases should consume it directly for manual refresh, persisted snapshots, and UI rendering.
+
+---
+
+## AD-056: Phase 19 persists only the latest dependency snapshot, not a time-series uptime history (2026-04-01)
+
+**Decision:** The runtime status layer stores the latest known dependency state plus `last_checked_at` and `last_success_at`, but does not introduce historical uptime charts or time-series state in Phase 19.
+
+**Why:** The product needed an honest operator-facing dependency screen quickly without dragging in a second operational data model before the evaluation, red-team, and release phases. Phase 16 already established shared readiness semantics; Phase 19's job is to surface that truth in the product, not to become a parallel observability database.
+
+**Impact:** `DependencyStatusRecord`, `dependency_probe_service.py`, the admin refresh APIs, and the `/status` screen are built around a latest-snapshot contract. Future uptime history should extend this model deliberately rather than overloading the Phase 19 table with time-series responsibilities.
+
+---
+
+## AD-057: LLM runtime choice resolves in a strict precedence order, with deterministic fallback only when no explicit live runtime is requested (2026-04-01)
+
+**Decision:** Workflow runtime selection now follows one fixed order: per-run override, then org-scoped admin default, then environment fallback, then deterministic fallback if no explicit live provider/model was requested.
+
+**Why:** Once Phase 19 introduced an operator-visible status screen and org-level runtime control, the platform needed a single explainable rule for why a given run used a given model. Without strict precedence, runs would become hard to audit and queued worker behavior could drift from the initiating API call.
+
+**Impact:** `runtime_control_service.py`, `workflow_service.py`, `worker.py`, and the workbench run trigger all follow the same resolution rule. Future providers must plug into this precedence order rather than inventing special-case selection logic.
+
+---
+
+## AD-058: OpenRouter is the first live model-catalog provider and must be filtered before surfacing options to users (2026-04-01)
+
+**Decision:** Phase 19 uses OpenRouter as the first live provider for selectable LLM models. The catalog is fetched from OpenRouter, cached in memory/Redis, and filtered down to tool-capable text-output models before the UI can present it.
+
+**Why:** The no-loose-ends plan needs a real live-provider path for later benchmarking, but raw model catalogs include models that are irrelevant or unsafe for the platform's agentic workflows. Filtering protects the workbench from presenting unusable choices while still keeping the provider integration honest.
+
+**Impact:** `runtime_control_service.py`, `/system/llm/providers`, `/admin/system/llm/providers`, and the `/status` screen now treat OpenRouter as the canonical live-catalog source for Phase 19. Future providers should expose the same normalized `LlmProviderSummary` / `LlmModelOption` contract and apply equivalent capability filtering.
+
+---
+
+## AD-059: Queued runs persist the effective provider/model at enqueue time so worker execution cannot drift (2026-04-01)
+
+**Decision:** When a workflow run is queued, the effective LLM provider/model is resolved and stored on the run record immediately. The worker later executes that existing run record instead of creating or re-resolving a separate runtime context.
+
+**Why:** Phase 19 added org defaults, per-run overrides, and live model catalogs. If worker execution re-resolved runtime later, a config change or transient provider state could cause the actual model used to differ from the one the analyst chose when queueing the run.
+
+**Impact:** `WorkflowRunRecord` now carries requested and effective runtime fields, `worker.py` executes queued runs by `run_id`, and the run viewer can display what actually ran. Future scheduling or retry logic should preserve this persisted-runtime pattern instead of recomputing provider choice on every worker hop.
+
+---
+
+## AD-060: Phase 17 evaluation uses explicit quality scorecards and a committed regression baseline, not only pass/fail scenario counts (2026-04-01)
+
+**Decision:** The evaluation system now computes a `QualityScorecard` for every scenario and aggregates those into suite-level quality summaries. `check.ps1` also compares the latest all-suites report to a committed baseline under `artifacts/baselines/`.
+
+**Why:** By Phase 16 the platform had enough breadth that pass/fail alone was too coarse. The repo needed a stable way to detect quality drift across future phases even when every scenario still technically passes.
+
+**Impact:** `evaluation/runner.py`, `evaluation/regression.py`, `scripts/check.ps1`, and `artifacts/baselines/all-supported-suites-baseline.json` are now part of the core quality gate. Future phases that materially change evaluation behavior should update the committed baseline intentionally rather than letting it drift implicitly.
+
+---
+
+## AD-061: Live OpenRouter and live connector validation are optional by default and become hard failures only when explicitly required (2026-04-01)
+
+**Decision:** Phase 17 introduces live validation suites for OpenRouter and external connectors, but the default repo gate treats missing live credentials or identifiers as explicit skips. They become hard failures only when `PHASE17_REQUIRE_LIVE_VALIDATION=true` or an equivalent release gate requires them.
+
+**Why:** The repo needs a truthful live-validation path without pretending that credentials and provider-specific identifiers are always available in local development or CI. Optional-by-default validation keeps the suite runnable everywhere while still supporting strict release-time enforcement.
+
+**Impact:** `evaluation/live_validation.py` and `scripts/check.ps1` now distinguish between skipped live checks and failed live checks. Future release work should tighten these from optional to required at the Phase 18 packaging gate rather than forking the validation logic.
+
+---
+
+## AD-062: The Phase 17 load benchmark uses a repeatable in-process ASGI benchmark as the repo regression guardrail (2026-04-01)
+
+**Decision:** The load/performance gate is implemented as an in-process ASGI benchmark over the real FastAPI app using isolated test infrastructure, rather than introducing an external load-testing harness as part of the default repo gate.
+
+**Why:** The project needed a deterministic performance regression signal that works reliably in local development and the existing verification flow. A full external load rig would add more operational variability than signal at this stage of the roadmap.
+
+**Impact:** `evaluation/performance.py` is now part of the phase gate and measures p95 latency plus error counts for key endpoints. Future large-scale or staging-specific performance work can add heavier tools later, but should preserve this repeatable local benchmark as the fast regression signal.
+
+---
+
+## AD-063: Production packaging uses multi-stage non-root images and a dedicated migration service instead of schema auto-create at runtime (2026-04-01)
+
+**Decision:** Phase 18 introduces multi-stage Dockerfiles for the API and web apps, bakes observability configs into image builds, and uses a dedicated `migrate` service in `docker-compose.prod.yml` rather than relying on runtime schema auto-creation in the long-lived API and worker containers.
+
+**Why:** The project needed a production-shaped container story that is closer to real deployment behavior than the earlier local-first stack. Separating migrations from the steady-state services reduces startup ambiguity, keeps the app images non-root, and avoids conflating runtime safety with schema bootstrap shortcuts.
+
+**Impact:** `apps/api/Dockerfile`, `apps/web/Dockerfile`, `ops/observability/*/Dockerfile`, and `docker-compose.prod.yml` are now part of the canonical release path. Future release work should preserve the migration-service pattern instead of reverting to app-start schema creation in production.
+
+---
+
+## AD-064: API reference documentation is generated from the live FastAPI OpenAPI schema and refreshed by the repo gate (2026-04-01)
+
+**Decision:** The committed API contract lives in `docs/api-reference.md`, and it is generated directly from the application's OpenAPI schema via `scripts/generate_api_reference.py` and `scripts/generate-api-reference.ps1`.
+
+**Why:** By Phase 18 the API surface had grown too large to document manually without drift. Generating the reference from the running application contract keeps the docs aligned with the real routes, tags, request bodies, and responses while still fitting the repo's deterministic verification workflow.
+
+**Impact:** `scripts/check.ps1` now regenerates the API reference as part of the normal gate. Future route changes should update the OpenAPI contract in code and let the generator refresh the docs instead of hand-editing the API reference file.
+
+---
+
+## AD-065: Production-stack validation is optional by default and becomes strict only when the environment can actually run it (2026-04-01)
+
+**Decision:** `scripts/validate-prod-stack.ps1` is part of the Phase 18 release path, but it skips cleanly when the Docker daemon is unavailable unless `PHASE18_REQUIRE_PROD_STACK_VALIDATION=true` or `-RequireLive` is explicitly used.
+
+**Why:** The repo needed an honest live-production validation path without turning local development or restricted shells into false failures. The project already uses the same pattern for live OpenRouter and connector validation in Phase 17, so Phase 18 extends that contract to the full production-compose boot and smoke path.
+
+**Impact:** The codebase now distinguishes between repo-complete release packaging and externally blocked live stack validation. Future release environments should enable the strict flag rather than replacing the skip/fail behavior with a silent no-op.
+
+---
+
+## AD-066: Backup and restore automation prefers direct database tooling and falls back to Docker-based execution only when necessary (2026-04-01)
+
+**Decision:** The backup and restore scripts use local `pg_dump` / `psql` first when available, and only fall back to Docker Compose execution when direct tooling is unavailable.
+
+**Why:** Operators may run the scripts either on hosts with direct PostgreSQL tooling or on machines that only have Docker access to the stack. This dual-path design keeps the scripts broadly usable without hard-coding one operational model.
+
+**Impact:** `scripts/backup-db.ps1` and `scripts/restore-db.ps1` now define the operational contract for database recovery. Future backup automation should extend these scripts rather than introducing a second unrelated path.
+
+---
+
 <!--
 Template for future decisions:
 

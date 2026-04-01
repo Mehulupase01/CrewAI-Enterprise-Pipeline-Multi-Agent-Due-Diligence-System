@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from crewai_enterprise_pipeline_api.core.settings import get_settings
+from crewai_enterprise_pipeline_api.core.telemetry import observe_workflow_run
 from crewai_enterprise_pipeline_api.db.models import (
     ReportBundleRecord,
     RunTraceEventRecord,
@@ -41,6 +42,10 @@ from crewai_enterprise_pipeline_api.services.manufacturing_service import Manufa
 from crewai_enterprise_pipeline_api.services.operations_service import OperationsService
 from crewai_enterprise_pipeline_api.services.regulatory_service import RegulatoryService
 from crewai_enterprise_pipeline_api.services.report_service import ReportService
+from crewai_enterprise_pipeline_api.services.runtime_control_service import (
+    ResolvedLlmRuntime,
+    RuntimeControlService,
+)
 from crewai_enterprise_pipeline_api.services.synthesis_service import SynthesisService
 from crewai_enterprise_pipeline_api.services.tax_service import TaxService
 from crewai_enterprise_pipeline_api.services.tech_saas_service import TechSaaSService
@@ -69,9 +74,45 @@ class WorkflowService:
         self.tech_saas_service = TechSaaSService(session)
         self.regulatory_service = RegulatoryService(session)
         self.report_service = ReportService(session)
+        self.runtime_control_service = RuntimeControlService(session)
         self.synthesis_service = SynthesisService()
         self.storage_service = DocumentStorageService()
         self.vendor_service = VendorService(session)
+
+    def _crew_available(self) -> bool:
+        """Return whether a live CrewAI runtime is configured in environment settings."""
+        settings = get_settings()
+        provider = (settings.llm_provider or "none").strip().lower()
+        if provider in {"", "none"}:
+            return False
+        return bool(settings.llm_api_key)
+
+    def _apply_legacy_crew_fallback(
+        self,
+        runtime: ResolvedLlmRuntime,
+    ) -> ResolvedLlmRuntime:
+        """Preserve older CrewAI runtime behavior for legacy call sites and tests.
+
+        Before Phase 19, some execution paths and tests used `_crew_available()` as the
+        sole switch for agentic execution. Phase 19 introduced explicit runtime
+        resolution, but we keep this narrow bridge so older phases remain valid
+        consumers when no explicit live provider was selected.
+        """
+        if runtime.execution_mode != "deterministic" or not self._crew_available():
+            return runtime
+
+        settings = get_settings()
+        provider = settings.llm_provider.strip().lower()
+        if provider in {"", "none"}:
+            provider = "openai"
+        return ResolvedLlmRuntime(
+            execution_mode="crew",
+            effective_provider=provider,
+            effective_model=settings.llm_model,
+            live_provider=provider,
+            live_model=settings.llm_model,
+            source="legacy_helper",
+        )
 
     async def list_runs(self, case_id: str) -> list[WorkflowRunSummary]:
         result = await self.session.execute(
@@ -109,11 +150,22 @@ class WorkflowService:
             return None
         self.session.info.setdefault("org_id", case.org_id)
 
+        runtime = await self.runtime_control_service.resolve_run_runtime(
+            org_id=case.org_id,
+            llm_provider_override=payload.llm_provider_override,
+            llm_model_override=payload.llm_model_override,
+        )
+        runtime = self._apply_legacy_crew_fallback(runtime)
+
         run = WorkflowRunRecord(
             case_id=case_id,
             requested_by=payload.requested_by,
             note=payload.note,
             report_template=payload.report_template.value,
+            requested_llm_provider_override=payload.llm_provider_override,
+            requested_llm_model_override=payload.llm_model_override,
+            effective_llm_provider=runtime.effective_provider,
+            effective_llm_model=runtime.effective_model,
             status=WorkflowRunStatus.QUEUED.value,
         )
         self.session.add(run)
@@ -124,18 +176,16 @@ class WorkflowService:
         await redis_pool.enqueue_job(
             run_workflow_job.__name__,
             case_id,
+            run.id,
             payload.requested_by,
             payload.note,
             payload.report_template.value,
+            runtime.live_provider,
+            runtime.live_model,
         )
         logger.info("Enqueued workflow run %s for case %s", run.id, case_id)
 
         return WorkflowRunEnqueueResult(run_id=run.id, case_id=case_id)
-
-    def _crew_available(self) -> bool:
-        """Check if CrewAI agents should be activated (AD-001 deterministic fallback)."""
-        settings = get_settings()
-        return settings.llm_provider != "none" and bool(settings.llm_api_key)
 
     async def execute_run(
         self,
@@ -149,22 +199,83 @@ class WorkflowService:
         self.session.info.setdefault("actor_id", payload.requested_by)
         self.session.info.setdefault("actor_email", None)
 
+        runtime = await self.runtime_control_service.resolve_run_runtime(
+            org_id=case.org_id,
+            llm_provider_override=payload.llm_provider_override,
+            llm_model_override=payload.llm_model_override,
+        )
+        runtime = self._apply_legacy_crew_fallback(runtime)
+
         run = WorkflowRunRecord(
             case_id=case_id,
             requested_by=payload.requested_by,
             note=payload.note,
             report_template=payload.report_template.value,
+            requested_llm_provider_override=payload.llm_provider_override,
+            requested_llm_model_override=payload.llm_model_override,
+            effective_llm_provider=runtime.effective_provider,
+            effective_llm_model=runtime.effective_model,
             status=WorkflowRunStatus.RUNNING.value,
             started_at=datetime.now(UTC),
         )
         self.session.add(run)
         await self.session.flush()
+
+        return await self._execute_run_record(case=case, run=run, case_id=case_id, runtime=runtime)
+
+    async def execute_enqueued_run(
+        self,
+        *,
+        case_id: str,
+        run_id: str,
+        live_provider: str | None,
+        live_model: str | None,
+    ) -> WorkflowRunResult | None:
+        case = await self.case_service._get_case_record(case_id)
+        if case is None:
+            return None
+
+        result = await self.session.execute(
+            select(WorkflowRunRecord).where(
+                WorkflowRunRecord.case_id == case_id,
+                WorkflowRunRecord.id == run_id,
+            )
+        )
+        run = result.scalar_one_or_none()
+        if run is None:
+            return None
+
+        runtime = ResolvedLlmRuntime(
+            execution_mode="crew" if live_provider else "deterministic",
+            effective_provider=live_provider or "deterministic",
+            effective_model=live_model,
+            live_provider=live_provider,
+            live_model=live_model,
+            source="worker",
+        )
+        run.status = WorkflowRunStatus.RUNNING.value
+        run.started_at = run.started_at or datetime.now(UTC)
+        run.effective_llm_provider = runtime.effective_provider
+        run.effective_llm_model = runtime.effective_model
+
+        return await self._execute_run_record(case=case, run=run, case_id=case_id, runtime=runtime)
+
+    async def _execute_run_record(
+        self,
+        *,
+        case,
+        run: WorkflowRunRecord,
+        case_id: str,
+        runtime: ResolvedLlmRuntime,
+    ) -> WorkflowRunResult | None:
         run_id = run.id
+        execution_mode = runtime.execution_mode
 
         try:
-            if self._crew_available():
-                return await self._execute_crew_run(case, run, run_id, case_id)
-            return await self._execute_deterministic_run(case, run, run_id, case_id)
+            with observe_workflow_run(execution_mode=execution_mode):
+                if execution_mode == "crew":
+                    return await self._execute_crew_run(case, run, run_id, case_id, runtime)
+                return await self._execute_deterministic_run(case, run, run_id, case_id)
         except Exception as exc:
             logger.exception("Workflow run %s failed", run_id)
             run.status = WorkflowRunStatus.FAILED.value
@@ -339,7 +450,8 @@ class WorkflowService:
             f"{len(case.issues)} issues and "
             f"{coverage.open_mandatory_items} open mandatory checklist items. "
             f"Motion pack: {case.motion_pack}. Sector pack: {case.sector_pack}. "
-            f"Report template: {run.report_template}."
+            f"Execution: {run.effective_llm_provider or 'deterministic'}/"
+            f"{run.effective_llm_model or 'n/a'}. Report template: {run.report_template}."
         )
 
         await self.session.commit()
@@ -356,6 +468,7 @@ class WorkflowService:
         run: WorkflowRunRecord,
         run_id: str,
         case_id: str,
+        runtime: ResolvedLlmRuntime,
     ) -> WorkflowRunResult | None:
         """CrewAI-powered workflow — LLM agents analyze each workstream."""
         from crewai_enterprise_pipeline_api.agents.crew import (
@@ -533,6 +646,8 @@ class WorkflowService:
         crew, task_map, tool_map = build_due_diligence_crew(
             case_ctx,
             settings,
+            llm_provider=runtime.live_provider or settings.llm_provider,
+            llm_model=runtime.live_model or settings.llm_model,
             financial_summary=financial_summary,
             legal_summary=legal_summary,
             tax_summary=tax_summary,
@@ -556,9 +671,10 @@ class WorkflowService:
                 step_key="crew_initialized",
                 title="CrewAI crew initialized",
                 message=(
-            f"Built crew with {len(case_ctx.workstreams)} workstream agents "
-            f"and 1 coordinator. LLM: {settings.llm_provider}/{settings.llm_model}. "
-            f"Scoped tools attached: {total_tools}."
+                    f"Built crew with {len(case_ctx.workstreams)} workstream agents "
+                    f"and 1 coordinator. LLM: {runtime.effective_provider}/"
+                    f"{runtime.effective_model or 'n/a'}. "
+                    f"Scoped tools attached: {total_tools}."
                 ),
                 level=RunEventLevel.INFO.value,
             )
@@ -572,7 +688,11 @@ class WorkflowService:
             case_id,
             len(case_ctx.workstreams),
         )
-        crew_output = await run_crew(crew)
+        crew_output = await run_crew(
+            crew,
+            provider=runtime.live_provider or runtime.effective_provider,
+            model=runtime.live_model or runtime.effective_model or settings.llm_model,
+        )
 
         # 3. Parse workstream task outputs → syntheses + trace events
         syntheses: list[WorkstreamSynthesisRecord] = []
@@ -742,7 +862,8 @@ class WorkflowService:
         run.summary = (
             f"CrewAI run: {len(syntheses)} workstream analyses, "
             f"{len(report_bundles)} report bundles. "
-            f"LLM: {settings.llm_provider}/{settings.llm_model}. "
+            f"LLM: {run.effective_llm_provider or 'deterministic'}/"
+            f"{run.effective_llm_model or 'n/a'}. "
             f"Tool calls: {total_tool_calls(tool_map)}. Motion pack: {case.motion_pack}. "
             f"Sector pack: {case.sector_pack}. Report template: {run.report_template}."
         )

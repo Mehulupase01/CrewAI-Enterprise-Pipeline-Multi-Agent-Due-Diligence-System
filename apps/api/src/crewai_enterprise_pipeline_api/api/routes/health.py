@@ -1,15 +1,22 @@
 from datetime import UTC, datetime
-from pathlib import Path
+from typing import Annotated
 
-from fastapi import APIRouter
-from sqlalchemy import text
+from fastapi import APIRouter, Depends
+from fastapi.responses import Response
 
-from crewai_enterprise_pipeline_api.api.dependencies import DbSession
+from crewai_enterprise_pipeline_api.api.dependencies import DbSession, RawDbSession
+from crewai_enterprise_pipeline_api.api.security import require_read_access
 from crewai_enterprise_pipeline_api.core.settings import get_settings
+from crewai_enterprise_pipeline_api.core.telemetry import render_metrics_payload
 from crewai_enterprise_pipeline_api.domain.models import (
     AppHealth,
+    AuthenticatedPrincipal,
+    DependencyStatusReport,
     FlagSeverity,
+    LivenessReport,
+    LlmProviderSummary,
     MotionPack,
+    OrgLlmRuntimeConfig,
     PlatformOverview,
     ReadinessComponent,
     ReadinessReport,
@@ -17,12 +24,14 @@ from crewai_enterprise_pipeline_api.domain.models import (
     UserRole,
     WorkstreamDomain,
 )
+from crewai_enterprise_pipeline_api.services.dependency_probe_service import DependencyProbeService
+from crewai_enterprise_pipeline_api.services.runtime_control_service import RuntimeControlService
 
-router = APIRouter()
-EVALUATION_ROOT = Path(__file__).resolve().parents[6] / "artifacts" / "evaluations"
+system_router = APIRouter()
+health_router = APIRouter()
 
 
-@router.get("/health", response_model=AppHealth)
+@system_router.get("/health", response_model=AppHealth)
 def health() -> AppHealth:
     settings = get_settings()
     return AppHealth(
@@ -42,70 +51,81 @@ def health() -> AppHealth:
     )
 
 
-@router.get("/readiness", response_model=ReadinessReport)
-async def readiness(session: DbSession) -> ReadinessReport:
+@health_router.get("/health/liveness", response_model=LivenessReport)
+def liveness() -> LivenessReport:
     settings = get_settings()
-    components: list[ReadinessComponent] = []
-
-    database_status = "ok"
-    database_detail = "Database connection succeeded."
-    try:
-        await session.execute(text("SELECT 1"))
-    except Exception as exc:  # noqa: BLE001
-        database_status = "failed"
-        database_detail = f"Database check failed: {exc}"
-    components.append(
-        ReadinessComponent(
-            name="database",
-            status=database_status,
-            detail=database_detail,
-        )
-    )
-
-    if settings.storage_backend == "local":
-        storage_detail = f"Local storage root: {Path(settings.local_storage_root).resolve()}"
-    else:
-        storage_detail = f"Object storage endpoint: {settings.minio_endpoint}"
-    components.append(
-        ReadinessComponent(
-            name="storage",
-            status="ok",
-            detail=storage_detail,
-        )
-    )
-
-    artifacts = sorted(EVALUATION_ROOT.glob("*.json"))
-    if artifacts:
-        latest_artifact = artifacts[-1]
-        evaluation_status = "ok"
-        evaluation_detail = f"Latest evaluation artifact: {latest_artifact.name}"
-    else:
-        evaluation_status = "warning"
-        evaluation_detail = "No evaluation artifact has been generated yet."
-    components.append(
-        ReadinessComponent(
-            name="evaluation_baseline",
-            status=evaluation_status,
-            detail=evaluation_detail,
-        )
-    )
-
-    overall_status = (
-        "ready"
-        if all(component.status in {"ok", "warning"} for component in components)
-        and database_status == "ok"
-        else "degraded"
-    )
-    return ReadinessReport(
-        status=overall_status,
+    return LivenessReport(
+        status="alive",
         environment=settings.app_env,
         timestamp=datetime.now(UTC),
-        auth_required=settings.auth_required,
+    )
+
+
+@health_router.get("/health/readiness", response_model=DependencyStatusReport)
+async def readiness_snapshot(session: RawDbSession) -> DependencyStatusReport:
+    return await DependencyProbeService(session).build_report()
+
+
+@system_router.get("/readiness", response_model=ReadinessReport)
+async def readiness(session: RawDbSession) -> ReadinessReport:
+    report = await DependencyProbeService(session).build_report()
+    components = [
+        ReadinessComponent(
+            name=dependency.name,
+            status=dependency.status.value,
+            detail=(
+                f"[{dependency.category.value}/{dependency.mode.value}] {dependency.detail} "
+                f"(latency_ms={dependency.latency_ms})"
+            ),
+        )
+        for dependency in report.dependencies
+    ]
+    return ReadinessReport(
+        status="ready" if report.status == "ok" else "degraded",
+        environment=report.environment,
+        timestamp=report.timestamp,
+        auth_required=report.auth_required,
         components=components,
     )
 
 
-@router.get("/overview", response_model=PlatformOverview)
+@system_router.get(
+    "/dependencies",
+    response_model=DependencyStatusReport,
+    dependencies=[Depends(require_read_access)],
+)
+async def list_system_dependencies(session: DbSession) -> DependencyStatusReport:
+    return await DependencyProbeService(session).get_latest_report()
+
+
+@system_router.get(
+    "/llm/providers",
+    response_model=list[LlmProviderSummary],
+    dependencies=[Depends(require_read_access)],
+)
+async def list_llm_providers(session: DbSession) -> list[LlmProviderSummary]:
+    return await RuntimeControlService(session).list_llm_providers()
+
+
+@system_router.get(
+    "/llm/default",
+    response_model=OrgLlmRuntimeConfig,
+    dependencies=[Depends(require_read_access)],
+)
+async def get_llm_default(
+    session: DbSession,
+    principal: Annotated[AuthenticatedPrincipal, Depends(require_read_access)],
+) -> OrgLlmRuntimeConfig:
+    return await RuntimeControlService(session).get_org_llm_default(principal.org_id)
+
+
+@health_router.get("/metrics")
+def metrics() -> Response:
+    payload, media_type = render_metrics_payload()
+    return Response(content=payload, media_type=media_type)
+
+
+@system_router.get("/overview", response_model=PlatformOverview)
 def overview() -> PlatformOverview:
     settings = get_settings()
     return PlatformOverview(

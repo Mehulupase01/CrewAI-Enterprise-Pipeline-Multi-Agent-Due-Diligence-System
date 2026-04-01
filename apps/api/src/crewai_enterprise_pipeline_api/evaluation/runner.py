@@ -9,12 +9,14 @@ from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from time import perf_counter
 from typing import Any
 
 from fastapi.testclient import TestClient
 
 from crewai_enterprise_pipeline_api.core.settings import get_settings
 from crewai_enterprise_pipeline_api.db.session import close_database
+from crewai_enterprise_pipeline_api.domain.models import QualityScorecard
 from crewai_enterprise_pipeline_api.evaluation.scenarios import (
     EVALUATION_SUITES,
     ChecklistUpdateFixture,
@@ -62,6 +64,82 @@ def _append_check(
             "detail": detail,
         }
     )
+
+
+def _clamp_score(value: float) -> float:
+    return round(max(0.0, min(1.0, value)), 4)
+
+
+def _check_quality_category(name: str) -> str:
+    lowered = name.lower()
+    completeness_markers = (
+        "document_count",
+        "evidence_count",
+        "trace_event_count",
+        "report_bundle_count",
+        "workstream_synthesis_count",
+        "open_request_count",
+        "open_mandatory_items",
+        "checklist_updates",
+        "source_adapter",
+        "export_files",
+        "bundle_kinds",
+    )
+    if any(marker in lowered for marker in completeness_markers):
+        return "completeness"
+    return "accuracy"
+
+
+def _build_quality_scorecard(
+    *,
+    checks: list[dict[str, Any]],
+    metrics: dict[str, Any],
+    case_detail: dict[str, Any],
+) -> dict[str, Any]:
+    total_checks = len(checks)
+    passed_checks = sum(1 for check in checks if check["passed"])
+    accuracy = _clamp_score((passed_checks / total_checks) if total_checks else 1.0)
+
+    completeness_checks = [
+        check for check in checks if _check_quality_category(check["name"]) == "completeness"
+    ]
+    completeness_passed = sum(1 for check in completeness_checks if check["passed"])
+    completeness = _clamp_score(
+        (completeness_passed / len(completeness_checks))
+        if completeness_checks
+        else accuracy
+    )
+
+    factual_checks = [
+        check for check in checks if _check_quality_category(check["name"]) == "accuracy"
+    ]
+    factual_failures = sum(1 for check in factual_checks if not check["passed"])
+    hallucination_rate = _clamp_score(
+        (factual_failures / len(factual_checks)) if factual_checks else 0.0
+    )
+
+    evidence_items = case_detail.get("evidence_items", [])
+    cited_evidence_count = sum(1 for item in evidence_items if item.get("citation"))
+    citation_coverage = _clamp_score(
+        (cited_evidence_count / len(evidence_items)) if evidence_items else 1.0
+    )
+    metrics["cited_evidence_count"] = cited_evidence_count
+    metrics["citation_coverage"] = citation_coverage
+
+    overall_score = _clamp_score(
+        (0.35 * completeness)
+        + (0.35 * accuracy)
+        + (0.15 * (1.0 - hallucination_rate))
+        + (0.15 * citation_coverage)
+    )
+
+    return QualityScorecard(
+        completeness=completeness,
+        accuracy=accuracy,
+        hallucination_rate=hallucination_rate,
+        citation_coverage=citation_coverage,
+        overall_score=overall_score,
+    ).model_dump()
 
 
 @contextmanager
@@ -133,6 +211,7 @@ def _update_checklist_item(
 
 
 def _evaluate_scenario(scenario: EvaluationScenario) -> dict[str, Any]:
+    started_at = perf_counter()
     with TemporaryDirectory(prefix=f"{scenario.code}-") as temp_dir:
         with _isolated_client(Path(temp_dir)) as client:
             case_payload = _ensure_success(
@@ -417,6 +496,7 @@ def _evaluate_scenario(scenario: EvaluationScenario) -> dict[str, Any]:
         "report_bundle_count": len(run_detail["report_bundles"]),
         "workstream_synthesis_count": len(run_detail["workstream_syntheses"]),
         "bundle_kinds": bundle_kinds,
+        "scenario_duration_ms": round((perf_counter() - started_at) * 1000, 2),
     }
     if source_adapter_catalog is not None:
         metrics["source_adapter_keys"] = sorted(
@@ -1586,6 +1666,12 @@ def _evaluate_scenario(scenario: EvaluationScenario) -> dict[str, Any]:
             detail="BFSI engine should auto-satisfy the expected minimum checklist items.",
         )
 
+    quality_scorecard = _build_quality_scorecard(
+        checks=checks,
+        metrics=metrics,
+        case_detail=case_detail,
+    )
+
     return {
         "code": scenario.code,
         "name": scenario.name,
@@ -1593,6 +1679,7 @@ def _evaluate_scenario(scenario: EvaluationScenario) -> dict[str, Any]:
         "passed": all(check["passed"] for check in checks),
         "checks": checks,
         "metrics": metrics,
+        "quality_scorecard": quality_scorecard,
         "issue_scan": {
             "first": issue_scan_first,
             "second": issue_scan_second,
@@ -1636,6 +1723,49 @@ def _aggregate_metrics(results: list[dict[str, Any]]) -> dict[str, Any]:
             if results
             else 0
         ),
+        "average_scenario_duration_ms": (
+            sum(result["metrics"].get("scenario_duration_ms", 0.0) for result in results)
+            / len(results)
+            if results
+            else 0.0
+        ),
+    }
+
+
+def _aggregate_quality(results: list[dict[str, Any]]) -> dict[str, Any]:
+    scorecards = [
+        result.get("quality_scorecard")
+        for result in results
+        if result.get("quality_scorecard")
+    ]
+    if not scorecards:
+        empty = QualityScorecard(
+            completeness=0.0,
+            accuracy=0.0,
+            hallucination_rate=1.0,
+            citation_coverage=0.0,
+            overall_score=0.0,
+        ).model_dump()
+        return {
+            "average": empty,
+            "minimum_overall_score": 0.0,
+            "scenario_count": 0,
+        }
+
+    def _avg(field: str) -> float:
+        return _clamp_score(sum(card[field] for card in scorecards) / len(scorecards))
+
+    average = QualityScorecard(
+        completeness=_avg("completeness"),
+        accuracy=_avg("accuracy"),
+        hallucination_rate=_avg("hallucination_rate"),
+        citation_coverage=_avg("citation_coverage"),
+        overall_score=_avg("overall_score"),
+    ).model_dump()
+    return {
+        "average": average,
+        "minimum_overall_score": round(min(card["overall_score"] for card in scorecards), 4),
+        "scenario_count": len(scorecards),
     }
 
 
@@ -1661,6 +1791,13 @@ def _run_suite_definition(suite: EvaluationSuiteDefinition) -> dict[str, Any]:
                         }
                     ],
                     "metrics": {},
+                    "quality_scorecard": QualityScorecard(
+                        completeness=0.0,
+                        accuracy=0.0,
+                        hallucination_rate=1.0,
+                        citation_coverage=0.0,
+                        overall_score=0.0,
+                    ).model_dump(),
                     "issue_scan": {"first": None, "second": None},
                     "scenario": {
                         "case_payload": scenario.case_payload,
@@ -1682,6 +1819,7 @@ def _run_suite_definition(suite: EvaluationSuiteDefinition) -> dict[str, Any]:
         "success_rate": round((passed_count / len(results)) if results else 0.0, 4),
         "bundle_kinds_required": sorted(DEFAULT_BUNDLE_KINDS),
         "aggregate_metrics": _aggregate_metrics(results),
+        "quality_summary": _aggregate_quality(results),
         "scenarios": results,
     }
 
@@ -1723,6 +1861,9 @@ def run_evaluation_suite(
         "passed_count": passed_scenarios,
         "failed_count": total_scenarios - passed_scenarios,
         "success_rate": round((passed_scenarios / total_scenarios) if total_scenarios else 0.0, 4),
+        "quality_summary": _aggregate_quality(
+            [scenario for report in suite_reports for scenario in report["scenarios"]]
+        ),
         "suites": suite_reports,
     }
     return _write_report(output_root, "all-supported-suites", combined_report), combined_report

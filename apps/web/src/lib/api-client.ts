@@ -8,7 +8,10 @@ import type {
   CaseDetail,
   CaseSummary,
   ChecklistItemSummary,
+  DependencyStatusReport,
   IssueRegisterItemSummary,
+  LlmProviderSummary,
+  OrgLlmRuntimeConfig,
   QaItemSummary,
   RunExportPackageSummary,
   RequestItemSummary,
@@ -20,11 +23,11 @@ const DEFAULT_HEADERS: Record<string, string> = {
   "X-CEP-User-Id": "analyst-1",
   "X-CEP-User-Name": "Workbench Analyst",
   "X-CEP-User-Email": "analyst@crew.ai",
-  "X-CEP-User-Role": "ANALYST",
+  "X-CEP-User-Role": "analyst",
 };
 
 type MutationOptions = {
-  role?: "ANALYST" | "REVIEWER" | "ADMIN";
+  role?: "analyst" | "reviewer" | "admin";
 };
 
 function authHeaders(opts?: MutationOptions): Record<string, string> {
@@ -73,6 +76,18 @@ async function mutateFormData<T>(
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`POST ${path} failed (${res.status}): ${text}`);
+  }
+  return res.json() as Promise<T>;
+}
+
+async function fetchProtectedJson<T>(path: string, opts?: MutationOptions): Promise<T> {
+  const res = await fetch(`/api/v1${path}`, {
+    method: "GET",
+    headers: authHeaders(opts),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`GET ${path} failed (${res.status}): ${text}`);
   }
   return res.json() as Promise<T>;
 }
@@ -227,7 +242,7 @@ export async function reviewCase(
   caseId: string,
   data: ApprovalReviewPayload,
 ): Promise<ApprovalDecisionSummary> {
-  return mutateJson(`/cases/${caseId}/approvals/review`, "POST", data, { role: "REVIEWER" });
+  return mutateJson(`/cases/${caseId}/approvals/review`, "POST", data, { role: "reviewer" });
 }
 
 // ── Workflow Runs ───────────────────────────────────────────────────
@@ -236,6 +251,8 @@ export type RunCreatePayload = {
   requested_by: string;
   note?: string;
   report_template?: "standard" | "lender" | "board_memo" | "one_pager";
+  llm_provider_override?: string;
+  llm_model_override?: string;
 };
 
 export async function createRun(
@@ -243,6 +260,31 @@ export async function createRun(
   data: RunCreatePayload,
 ): Promise<WorkflowRunDetail | WorkflowRunSummary> {
   return mutateJson(`/cases/${caseId}/runs`, "POST", data);
+}
+
+export async function getLlmProviders(): Promise<LlmProviderSummary[]> {
+  return fetchProtectedJson("/system/llm/providers");
+}
+
+export async function getOrgLlmDefault(): Promise<OrgLlmRuntimeConfig> {
+  return fetchProtectedJson("/admin/system/llm/default", { role: "admin" });
+}
+
+export async function updateOrgLlmDefault(payload: {
+  llm_provider: string | null;
+  llm_model: string | null;
+}): Promise<OrgLlmRuntimeConfig> {
+  return mutateJson("/admin/system/llm/default", "PATCH", payload, { role: "admin" });
+}
+
+export async function getDependencyStatuses(): Promise<DependencyStatusReport> {
+  return fetchProtectedJson("/system/dependencies");
+}
+
+export async function refreshDependencyStatuses(): Promise<DependencyStatusReport> {
+  return mutateJson("/admin/system/dependencies/refresh", "POST", undefined, {
+    role: "admin",
+  });
 }
 
 // ── Export Packages ─────────────────────────────────────────────────

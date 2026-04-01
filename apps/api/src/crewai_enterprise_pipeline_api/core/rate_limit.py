@@ -13,17 +13,25 @@ class RateLimiter:
     def __init__(self) -> None:
         self.settings = get_settings()
         self._redis: Redis | None = None
+        self._use_memory_only = False
         self._memory_windows: dict[str, tuple[float, int]] = {}
         self._lock = asyncio.Lock()
 
     def _get_redis(self) -> Redis:
         if self._redis is None:
-            self._redis = Redis.from_url(self.settings.redis_url, encoding="utf-8", decode_responses=True)
+            self._redis = Redis.from_url(
+                self.settings.redis_url,
+                encoding="utf-8",
+                decode_responses=True,
+            )
         return self._redis
 
     async def hit(self, key: str, *, limit: int, window_seconds: int = 60) -> tuple[bool, int]:
         if not self.settings.rate_limit_enabled:
             return True, limit
+
+        if self._use_memory_only:
+            return await self._memory_hit(key, limit=limit, window_seconds=window_seconds)
 
         try:
             redis = self._get_redis()
@@ -33,6 +41,8 @@ class RateLimiter:
             remaining = max(limit - int(current_value), 0)
             return current_value <= limit, remaining
         except Exception:
+            self._use_memory_only = True
+            self._redis = None
             return await self._memory_hit(key, limit=limit, window_seconds=window_seconds)
 
     async def _memory_hit(
@@ -54,6 +64,7 @@ class RateLimiter:
 
     async def close(self) -> None:
         self._memory_windows.clear()
+        self._use_memory_only = False
         if self._redis is not None:
             await self._redis.aclose()
             self._redis = None

@@ -40,6 +40,7 @@ from crewai_enterprise_pipeline_api.agents.tools import (
     build_case_tools,
     build_workstream_tools,
 )
+from crewai_enterprise_pipeline_api.core.telemetry import observe_llm_run
 from crewai_enterprise_pipeline_api.domain.models import WorkstreamDomain
 
 
@@ -265,23 +266,30 @@ def _phase12_snapshot_block(
     return f"## Sector Pack Deepening Snapshot\n{phase12_snapshot}\n\n"
 
 
-def _build_llm(settings) -> LLM:
+def _build_llm(*, provider: str, model: str, api_key: str | None, base_url: str | None) -> LLM:
     """Create a CrewAI LLM instance from application settings."""
     model_prefix = {
         "openai": "openai",
         "anthropic": "anthropic",
+        "openrouter": "openrouter",
     }
-    prefix = model_prefix.get(settings.llm_provider, "openai")
-    return LLM(
-        model=f"{prefix}/{settings.llm_model}",
-        api_key=settings.llm_api_key,
-        temperature=0.2,
-    )
+    prefix = model_prefix.get(provider, "openai")
+    llm_kwargs = {
+        "model": f"{prefix}/{model}",
+        "api_key": api_key,
+        "temperature": 0.2,
+    }
+    if provider == "openrouter":
+        llm_kwargs["base_url"] = base_url or "https://openrouter.ai/api/v1"
+    return LLM(**llm_kwargs)
 
 
 def build_due_diligence_crew(
     case_ctx: CaseContext,
     settings,
+    *,
+    llm_provider: str | None = None,
+    llm_model: str | None = None,
     financial_summary=None,
     legal_summary=None,
     tax_summary=None,
@@ -298,7 +306,14 @@ def build_due_diligence_crew(
     bfsi_nbfc_metrics=None,
 ) -> tuple[Crew, dict[str, str], dict[str, list[Any]]]:
     """Build a CrewAI crew for the given case context."""
-    llm = _build_llm(settings)
+    resolved_provider = llm_provider or settings.llm_provider
+    resolved_model = llm_model or settings.llm_model
+    llm = _build_llm(
+        provider=resolved_provider,
+        model=resolved_model,
+        api_key=settings.llm_api_key,
+        base_url=settings.llm_base_url,
+    )
     motion_ctx = motion_pack_context(case_ctx.motion_pack)
     sector_ctx = sector_pack_context(case_ctx.sector_pack)
 
@@ -651,6 +666,7 @@ def build_due_diligence_crew(
     return crew, task_map, tool_map
 
 
-async def run_crew(crew: Crew) -> Any:
+async def run_crew(crew: Crew, *, provider: str, model: str) -> Any:
     """Run crew.kickoff() in a thread to avoid blocking the async event loop."""
-    return await asyncio.to_thread(crew.kickoff)
+    with observe_llm_run(provider=provider, model=model):
+        return await asyncio.to_thread(crew.kickoff)

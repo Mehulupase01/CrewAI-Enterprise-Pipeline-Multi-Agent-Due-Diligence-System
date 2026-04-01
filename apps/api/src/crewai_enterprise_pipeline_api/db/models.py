@@ -2,7 +2,17 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, ForeignKey, LargeBinary, String, Text, UniqueConstraint, event, inspect
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    ForeignKey,
+    LargeBinary,
+    String,
+    Text,
+    UniqueConstraint,
+    event,
+    inspect,
+)
 from sqlalchemy.orm import Mapped, Session, mapped_column, relationship, with_loader_criteria
 
 from crewai_enterprise_pipeline_api.db.base import Base, TenantScopedMixin, TimestampedMixin
@@ -46,6 +56,28 @@ class AuditLogRecord(TimestampedMixin, Base):
     ip_address: Mapped[str | None] = mapped_column(String(120), nullable=True)
     request_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
     status_code: Mapped[int | None] = mapped_column(nullable=True)
+
+
+class OrgRuntimeConfigRecord(TenantScopedMixin, TimestampedMixin, Base):
+    __tablename__ = "org_runtime_configs"
+    __table_args__ = (UniqueConstraint("org_id"),)
+
+    llm_provider: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    llm_model: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+
+class DependencyStatusRecord(TimestampedMixin, Base):
+    __tablename__ = "dependency_statuses"
+
+    dependency_name: Mapped[str] = mapped_column(String(120), unique=True)
+    category: Mapped[str] = mapped_column(String(40))
+    mode: Mapped[str] = mapped_column(String(40))
+    status: Mapped[str] = mapped_column(String(40))
+    detail: Mapped[str] = mapped_column(Text)
+    latency_ms: Mapped[float] = mapped_column(default=0.0)
+    last_checked_at: Mapped[datetime] = mapped_column()
+    last_success_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    failure_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class CaseRecord(TenantScopedMixin, TimestampedMixin, Base):
@@ -254,6 +286,10 @@ class WorkflowRunRecord(TenantScopedMixin, TimestampedMixin, Base):
     requested_by: Mapped[str] = mapped_column(String(255))
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
     report_template: Mapped[str] = mapped_column(String(80), default="standard")
+    requested_llm_provider_override: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    requested_llm_model_override: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    effective_llm_provider: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    effective_llm_model: Mapped[str | None] = mapped_column(String(255), nullable=True)
     status: Mapped[str] = mapped_column(String(40), default="queued")
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     started_at: Mapped[datetime | None] = mapped_column(nullable=True)
@@ -369,6 +405,7 @@ TENANT_SCOPED_MODELS = (
     RunExportPackageRecord,
     WorkstreamSynthesisRecord,
     ApiClientRecord,
+    OrgRuntimeConfigRecord,
 )
 
 
@@ -430,7 +467,7 @@ def _apply_org_scope(execute_state) -> None:
         statement = statement.options(
             with_loader_criteria(
                 model,
-                lambda cls, scoped_org_id=org_id: cls.org_id == scoped_org_id,
+                model.org_id == org_id,
                 include_aliases=True,
             )
         )

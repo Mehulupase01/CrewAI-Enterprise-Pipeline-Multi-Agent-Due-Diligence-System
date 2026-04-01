@@ -46,8 +46,9 @@ docker-compose.yml
 
 ## Current Phase
 
-The repository has completed Phases 0-14 from the current master-plan execution
-sequence. After Phase 7, the repo also received an additional CrewAI depth
+The repository has completed Phases 0-17 from the current master-plan execution
+sequence plus the custom Phase 19 runtime-control tranche. Phase 18
+implementation is now in place and is in final live validation. After Phase 7, the repo also received an additional CrewAI depth
 enhancement: tool-grounded evidence access for the LLM path. Phase 8 is closed
 as the canonical Financial Quality of Earnings (QoE) engine, Phase 9 is closed
 as the canonical Legal / Tax / Regulatory engine, Phase 10 is closed as the
@@ -55,7 +56,17 @@ canonical Commercial / Operations / Cyber / Forensic engine, Phase 11 is
 closed as the canonical Motion Pack Deepening layer, and Phase 12 is closed as
 the canonical Sector Pack Deepening layer. Phase 13 is closed as the
 canonical Rich Reporting + DOCX/PDF Export layer. Phase 14 is closed as the
-canonical India Data Connectors layer. The current build includes
+canonical India Data Connectors layer, and Phase 15 is closed as the
+canonical Enterprise Security layer with JWT auth, org isolation, audit logs,
+and rate limiting. Phase 16 is closed as the canonical Platform Observability
+layer with structured logging, OpenTelemetry bootstrapping, Prometheus metrics,
+and dependency readiness probes. Custom Phase 19 is closed as the Runtime
+Status + LLM Control Center layer with persisted dependency snapshots, admin
+dependency refresh, OpenRouter model-catalog discovery, org-scoped default LLM
+settings, per-run runtime overrides, and a dedicated `/status` operator screen.
+Phase 18 adds the production packaging layer with multi-stage Dockerfiles,
+`docker-compose.prod.yml`, generated API-reference docs, backup/restore
+automation, and release-oriented smoke validation. The current build includes
 the first flagship buy-side slice, all planned motion and sector expansions,
 analyst-ready export archives, scoped CrewAI evidence tools, and workflow-integrated
 financial, legal/compliance, Phase 10 domain-analysis, Phase 11 motion-pack
@@ -129,9 +140,44 @@ hardened platform spine:
 - `POST /api/v1/cases/{case_id}/source-adapters/{adapter_id}/fetch` for
   connector-backed evidence ingestion from MCA21, GSTIN, SEBI SCORES, RoC,
   CIBIL stub, and sanctions/watchlist screening
+- `POST /api/v1/auth/token` for DB-backed client-credential JWT issuance in
+  non-dev environments plus `GET /api/v1/admin/audit-log` for admin audit-log access
+- session-level org isolation, mutation auditing, auth-failure auditing, and
+  Redis-first rate limiting with deterministic local fallback
+- `GET /api/v1/health/liveness`, `GET /api/v1/health/readiness`, and
+  `GET /api/v1/metrics` for platform health, dependency readiness, and Prometheus scraping
+- shared dependency probes for database, Redis, storage, OpenRouter/provider
+  state, and the registered India source adapters
+- persisted latest dependency snapshots with manual admin refresh plus worker
+  refresh every five minutes
+- `GET /api/v1/system/dependencies`, `GET /api/v1/system/llm/providers`, and
+  `GET /api/v1/system/llm/default` for analyst-visible runtime state
+- `GET /api/v1/admin/system/dependencies`,
+  `POST /api/v1/admin/system/dependencies/refresh`,
+  `GET /api/v1/admin/system/llm/providers`,
+  `GET /api/v1/admin/system/llm/default`, and
+  `PATCH /api/v1/admin/system/llm/default` for admin runtime control
+- OpenRouter-compatible model-catalog discovery with capability filtering and
+  cache-backed reuse
+- org-level default LLM runtime configuration plus per-run provider/model
+  overrides persisted on workflow runs
+- workbench `/status` screen and run-detail runtime metadata so operators can
+  see current dependency state and what model/provider each run actually used
+- structured request logging with `request_id`, org, actor, route, latency, and
+  status-code context
+- OpenTelemetry instrumentation for FastAPI, SQLAlchemy, and HTTPX plus an
+  observability Docker stack shape for Prometheus, Grafana, and Tempo
 - deterministic evaluation scenarios with saved JSON scorecards
 - a repeatable quality gate that exercises blocked, approved-clean, and
   approved-nonblocking-risk diligence runs
+- generated API-reference docs in `docs/api-reference.md`
+- multi-stage production Dockerfiles for the API and web apps plus baked-config
+  observability images
+- `docker-compose.prod.yml` with named volumes, migration service, health
+  checks, and production-shaped API/worker/web wiring
+- backup and restore automation with dry-run support and optional S3/MinIO upload
+- JWT-aware smoke testing and a production-stack validator that skips honestly
+  when Docker Desktop is unavailable
 - run-level export-package generation that writes zip archives with markdown
   reports, manifest metadata, execution trace data, and JSON case snapshots
 - report-template-aware workflow runs with `standard`, `lender`,
@@ -184,6 +230,9 @@ The project uses a dedicated Conda environment named
 ./scripts/dev-stack.ps1
 ```
 
+`dev-stack.ps1` now targets PostgreSQL, Redis, MinIO, Prometheus, Grafana, and
+Tempo through `docker-compose.yml`.
+
 ### 3. Run the API
 
 ```powershell
@@ -205,7 +254,9 @@ Run the current platform checks with:
 ```
 
 `check.ps1` now also writes a fresh evaluation artifact under
-`artifacts/evaluations/`.
+`artifacts/evaluations/`, performs a full web production build, refreshes
+`docs/api-reference.md`, validates `docker-compose.prod.yml`, and dry-runs the
+backup plan.
 
 To run the evaluation suite directly:
 
@@ -283,6 +334,30 @@ To run a live API smoke check after the stack is up:
 
 ```powershell
 ./scripts/smoke.ps1
+```
+
+To run the JWT-based smoke path used by the production validator:
+
+```powershell
+./scripts/smoke.ps1 -UseJwt
+```
+
+To refresh the generated API reference:
+
+```powershell
+./scripts/generate-api-reference.ps1
+```
+
+To dry-run the production backup plan:
+
+```powershell
+./scripts/backup-db.ps1 -DryRun
+```
+
+To validate the production compose stack when Docker is available:
+
+```powershell
+./scripts/validate-prod-stack.ps1 -RequireLive
 ```
 
 Workflow runs can now also produce durable export packages through the API at:
