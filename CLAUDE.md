@@ -3,7 +3,7 @@
 ## Current State
 
 **Completed phases:** 0-17, 19 | **Active:** Phase 18 final release validation
-**Tests:** 145 pytest, 30 eval scenarios (13 suites) | **Blockers:** live production-stack validation is blocked by an unavailable Docker Desktop daemon in this shell, and live OpenRouter / connector validation remains environment-dependent until real credentials and identifiers are configured
+**Tests:** 147 pytest, 30 eval scenarios (13 suites) | **Blockers:** live production-stack validation is blocked by an unavailable Docker Desktop daemon in this shell, and live OpenRouter / connector validation remains environment-dependent until real credentials and identifiers are configured
 
 ## Project Overview
 

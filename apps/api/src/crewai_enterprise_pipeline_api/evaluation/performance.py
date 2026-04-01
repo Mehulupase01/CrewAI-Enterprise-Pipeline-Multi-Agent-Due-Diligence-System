@@ -24,6 +24,7 @@ ENV_KEYS = (
     "AUTO_CREATE_SCHEMA",
     "STORAGE_BACKEND",
     "LOCAL_STORAGE_ROOT",
+    "RATE_LIMIT_ENABLED",
 )
 
 
@@ -47,6 +48,7 @@ def _isolated_runtime_root(runtime_root: Path):
     os.environ["AUTO_CREATE_SCHEMA"] = "true"
     os.environ["STORAGE_BACKEND"] = "local"
     os.environ["LOCAL_STORAGE_ROOT"] = str(storage_root.resolve())
+    os.environ["RATE_LIMIT_ENABLED"] = "false"
     get_settings.cache_clear()
 
     try:
@@ -128,25 +130,37 @@ async def _run_request_benchmark(
     client: httpx.AsyncClient,
     *,
     method: str,
-    path: str,
+    path: str | None = None,
+    paths: list[str] | None = None,
     total_requests: int,
     concurrency: int,
     json_payload: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    if path is None and not paths:
+        raise ValueError("Either path or paths must be provided.")
     semaphore = asyncio.Semaphore(concurrency)
     durations: list[float] = []
     errors: list[str] = []
 
-    async def _single_request() -> None:
+    resolved_paths = paths or [path] * total_requests
+    if len(resolved_paths) < total_requests:
+        raise ValueError("Not enough request paths were provided for the benchmark.")
+
+    async def _single_request(request_path: str) -> None:
         async with semaphore:
             started_at = perf_counter()
-            response = await client.request(method, path, json=json_payload)
+            response = await client.request(method, request_path, json=json_payload)
             duration_ms = round((perf_counter() - started_at) * 1000, 2)
             durations.append(duration_ms)
             if response.status_code >= 400:
-                errors.append(f"{response.status_code}: {response.text}")
+                errors.append(f"{request_path} -> {response.status_code}: {response.text}")
 
-    await asyncio.gather(*[_single_request() for _ in range(total_requests)])
+    await asyncio.gather(
+        *[
+            _single_request(request_path)
+            for request_path in resolved_paths[:total_requests]
+        ]
+    )
     return {
         "request_count": total_requests,
         "concurrency": concurrency,
@@ -170,6 +184,11 @@ async def _build_performance_report(
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
             case_id = await _seed_case(client)
+            issue_scan_request_count = max(10, total_requests // 2)
+            issue_scan_paths = [
+                f"/api/v1/cases/{await _seed_case(client)}/issues/scan"
+                for _ in range(issue_scan_request_count)
+            ]
             health = await _run_request_benchmark(
                 client,
                 method="GET",
@@ -180,8 +199,8 @@ async def _build_performance_report(
             issue_scan = await _run_request_benchmark(
                 client,
                 method="POST",
-                path=f"/api/v1/cases/{case_id}/issues/scan",
-                total_requests=max(10, total_requests // 2),
+                paths=issue_scan_paths,
+                total_requests=issue_scan_request_count,
                 concurrency=max(5, concurrency // 2),
             )
             search = await _run_request_benchmark(

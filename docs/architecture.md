@@ -39,7 +39,7 @@ See `docs/MASTERPLAN.docx` (preferred) or `docs/MASTERPLAN.pdf` for the roadmap 
 - SHA256 document dedup (same content returns existing artifact)
 - JWT bearer auth for non-dev environments plus dev/test header-auth compatibility, 4 roles, org isolation, audit logging, and rate limiting
 - Evaluation harness with 13 suites, 30 scenarios, quality scorecards, and a committed regression baseline
-- 145 pytest unit tests
+- 147 pytest unit tests
 - Export ZIP packages (markdown, DOCX, PDF, plus JSON metadata / snapshots)
 - Docker Compose stack (PostgreSQL 17, Redis 7.4, MinIO, Prometheus, Grafana, Tempo)
 - Multi-stage production Dockerfiles for API, web, Prometheus, Grafana, and Tempo plus a production compose stack with named volumes, migration service, health checks, and resource limits

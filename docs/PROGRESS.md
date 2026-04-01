@@ -1177,9 +1177,9 @@
 - Strict OpenRouter and connector live validation is still environment-dependent and needs real credentials / identifiers to move from skip mode to required mode
 
 **Test results:**
-- pytest: 145/145 pass
+- pytest: 147/147 pass
 - eval suites: 30/30 pass (all 13 suites at 100%)
-- load benchmark: passed (`system_health_p95=20.71ms`, `issues_scan_p95=198.75ms`, `search_p95=27.43ms`)
+- load benchmark: passed (`system_health_p95=20.9ms`, `issues_scan_p95=223.51ms`, `search_p95=38.24ms`)
 - regression baseline: passed against `artifacts/baselines/all-supported-suites-baseline.json`
 - npm lint: clean
 - npm typecheck: clean
@@ -1189,8 +1189,8 @@
 - backup dry-run: `./scripts/backup-db.ps1 -DryRun` passed
 - live prod-stack validation: `./scripts/validate-prod-stack.ps1` skipped cleanly because Docker Desktop was unavailable
 - check gate: `./scripts/check.ps1` passed
-- latest full-gate eval artifact: `artifacts/evaluations/all-supported-suites-20260401T054350Z.json`
-- latest load artifact: `artifacts/evaluations/phase17-load-benchmark-20260401T054408Z.json`
+- latest full-gate eval artifact: `artifacts/evaluations/all-supported-suites-20260401T063655Z.json`
+- latest load artifact: `artifacts/evaluations/phase17-load-benchmark-20260401T063713Z.json`
 
 **Notes for next phase:**
 - No canonical implementation phases remain
