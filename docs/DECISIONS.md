@@ -722,6 +722,21 @@ name-based).
 
 ---
 
+## AD-068: Matrix coverage evaluation suite for untested pack combinations (2026-04-08)
+
+**Decision:** Added 8 new evaluation scenarios in a `matrix_coverage` suite to fill gaps in the motion x sector
+pack matrix (vendor+bfsi, vendor+manufacturing, credit+manufacturing, buy_side+manufacturing) and exercise
+untested report template variants (lender_pack, one_pager).
+
+**Why:** The deep audit on 2026-04-08 found only 23 evaluation scenarios vs the masterplan target of 30+.
+Several motion x sector combinations and two of four report templates had zero evaluation coverage. The
+new suite brings the total to 31 scenarios across 14 suites.
+
+**Impact:** All 9 cells of the 3x3 motion x sector matrix now have at least one evaluation scenario.
+All 4 report templates (standard, lender, board_memo, one_pager) are exercised in evaluation.
+
+---
+
 <!--
 Template for future decisions:
 

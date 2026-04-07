@@ -2746,6 +2746,567 @@ PHASE17_EVALUATION_DEEPENING_SCENARIOS: tuple[EvaluationScenario, ...] = (
 )
 
 
+# ---------------------------------------------------------------------------
+# Cross-cutting matrix-coverage and template-variant scenarios
+# ---------------------------------------------------------------------------
+
+MATRIX_COVERAGE_SCENARIOS: tuple[EvaluationScenario, ...] = (
+    # --- 1. buy_side + manufacturing: financial QoE with manufacturing signals ---
+    EvaluationScenario(
+        code="matrix_buy_side_manufacturing_qoe",
+        name="Buy-side manufacturing QoE cross-coverage",
+        description=(
+            "Validates financial QoE engine operating under buy_side + manufacturing "
+            "pack combination, ensuring ratio flags, asset-register metrics, and "
+            "manufacturing checklist automation fire correctly."
+        ),
+        case_payload={
+            "name": "Project Matrix BuySide Mfg",
+            "target_name": "Matrix Precision Engineering Private Limited",
+            "summary": "Cross-coverage scenario: buy_side x manufacturing.",
+            "motion_pack": "buy_side_diligence",
+            "sector_pack": "manufacturing_industrials",
+            "country": "India",
+        },
+        upload_documents=(
+            UploadDocumentFixture(
+                title="Borrower financial workbook",
+                filename="matrix_mfg_financials.xlsx",
+                content="",
+                content_bytes=build_financial_workbook_bytes(),
+                mime_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                document_kind="financial_workbook",
+                source_kind="uploaded_dataroom",
+                workstream_domain="financial_qoe",
+                evidence_kind="metric",
+            ),
+            UploadDocumentFixture(
+                title="Plant metrics summary",
+                filename="matrix_plant_metrics.txt",
+                content=(
+                    "Capacity utilization 65%. DIO 82 days. DSO 55 days. DPO 44 days. "
+                    "Asset turnover 1.42. Press Line WDV 6.0 replacement cost 9.5."
+                ),
+                mime_type="text/plain",
+                document_kind="plant_operating_review",
+                source_kind="uploaded_dataroom",
+                workstream_domain="operations",
+                evidence_kind="metric",
+            ),
+        ),
+        satisfy_all_checklist_items=True,
+        financial_summary_expectation=FinancialSummaryExpectation(
+            min_periods=4,
+            min_checklist_updates=0,
+        ),
+        manufacturing_metrics_expectation=ManufacturingMetricsExpectation(
+            expected_capacity_utilization=0.65,
+            expected_dio=82.0,
+            expected_dso=55.0,
+            min_asset_register_items=1,
+            min_checklist_updates=0,
+        ),
+        expectation=ScenarioExpectation(
+            approval_decision="approved",
+            ready_for_export=True,
+            report_status="ready_for_export",
+            report_title="Executive Memo",
+            open_mandatory_items=0,
+            min_blocking_issue_count=0,
+            max_blocking_issue_count=0,
+            min_evidence_count=2,
+        ),
+    ),
+    # --- 2. credit + manufacturing: legal/tax with industrial context ---
+    EvaluationScenario(
+        code="matrix_credit_manufacturing_legal",
+        name="Credit manufacturing legal-tax cross-coverage",
+        description=(
+            "Validates legal/tax/regulatory engines operating under credit_lending + "
+            "manufacturing combination with factory compliance and GST signals."
+        ),
+        case_payload={
+            "name": "Project Matrix Credit Mfg",
+            "target_name": "Matrix Industrial Components Private Limited",
+            "summary": "Cross-coverage scenario: credit_lending x manufacturing.",
+            "motion_pack": "credit_lending",
+            "sector_pack": "manufacturing_industrials",
+            "country": "India",
+        },
+        upload_documents=(
+            UploadDocumentFixture(
+                title="MCA secretarial extract",
+                filename="matrix_mca_extract.txt",
+                content=(
+                    "MCA annual return filed. Director Ravi Kumar DIN 04567890. "
+                    "Promoter shareholding 71.0% and institutional shareholding 29.0%. "
+                    "A charge in favour of State Bank of India remains registered."
+                ),
+                mime_type="text/plain",
+                document_kind="mca_secretarial_summary",
+                source_kind="uploaded_dataroom",
+                workstream_domain="legal_corporate",
+                evidence_kind="fact",
+            ),
+            UploadDocumentFixture(
+                title="Tax compliance note",
+                filename="matrix_tax_note.txt",
+                content=(
+                    "GSTIN 29FGHIJ5678K1Z3 active. GST returns filed on time. "
+                    "Factory licence renewal pending. Environmental clearance current."
+                ),
+                mime_type="text/plain",
+                document_kind="tax_compliance_note",
+                source_kind="uploaded_dataroom",
+                workstream_domain="tax",
+                evidence_kind="fact",
+            ),
+        ),
+        satisfy_all_checklist_items=True,
+        legal_summary_expectation=LegalSummaryExpectation(
+            min_directors=1,
+            min_checklist_updates=0,
+        ),
+        tax_summary_expectation=TaxSummaryExpectation(
+            min_gstins=1,
+            min_checklist_updates=0,
+        ),
+        compliance_matrix_expectation=ComplianceMatrixExpectation(
+            min_known_statuses=1,
+            min_checklist_updates=0,
+        ),
+        expectation=ScenarioExpectation(
+            approval_decision="approved",
+            ready_for_export=True,
+            report_status="ready_for_export",
+            report_title="Credit Memo",
+            open_mandatory_items=0,
+            min_blocking_issue_count=0,
+            max_blocking_issue_count=0,
+            min_evidence_count=2,
+        ),
+    ),
+    # --- 3. vendor + bfsi: commercial/forensic with NBFC vendor risk ---
+    EvaluationScenario(
+        code="matrix_vendor_bfsi_forensic",
+        name="Vendor BFSI forensic cross-coverage",
+        description=(
+            "Validates vendor risk tiering and forensic detection under vendor_onboarding "
+            "+ bfsi_nbfc combination with related-party signals."
+        ),
+        case_payload={
+            "name": "Project Matrix Vendor BFSI",
+            "target_name": "Matrix Finserv Vendor Private Limited",
+            "summary": "Cross-coverage scenario: vendor_onboarding x bfsi_nbfc.",
+            "motion_pack": "vendor_onboarding",
+            "sector_pack": "bfsi_nbfc",
+            "country": "India",
+        },
+        upload_documents=(
+            UploadDocumentFixture(
+                title="Vendor integrity review",
+                filename="matrix_vendor_integrity.txt",
+                content=(
+                    "Related party transaction noted between the vendor entity and a "
+                    "promoter-linked NBFC subsidiary. Connected lending arrangement "
+                    "detected in the loan portfolio. A common director sits on both boards."
+                ),
+                mime_type="text/plain",
+                document_kind="vendor_integrity_note",
+                source_kind="uploaded_dataroom",
+                workstream_domain="forensic_compliance",
+                evidence_kind="risk",
+            ),
+            UploadDocumentFixture(
+                title="NBFC metrics brief",
+                filename="matrix_nbfc_brief.txt",
+                content=(
+                    "GNPA 4.2%. NNPA 2.8%. CRAR 16.5%. ALM mismatch 12%. "
+                    "PSL target met."
+                ),
+                mime_type="text/plain",
+                document_kind="nbfc_metrics_brief",
+                source_kind="uploaded_dataroom",
+                workstream_domain="financial_qoe",
+                evidence_kind="metric",
+            ),
+        ),
+        satisfy_all_checklist_items=True,
+        forensic_summary_expectation=ForensicSummaryExpectation(
+            required_flag_types=("RELATED_PARTY",),
+            min_flag_count=1,
+        ),
+        bfsi_nbfc_metrics_expectation=BfsiNbfcMetricsExpectation(
+            expected_gnpa=4.2,
+            expected_nnpa=2.8,
+            expected_crar=16.5,
+            flag_substrings=("NPA",),
+            min_checklist_updates=0,
+        ),
+        vendor_risk_tier_expectation=VendorRiskTierExpectation(
+            min_overall_score=0,
+            min_checklist_updates=0,
+        ),
+        expectation=ScenarioExpectation(
+            approval_decision="approved",
+            ready_for_export=True,
+            report_status="ready_for_export",
+            report_title="Vendor Due Diligence Summary",
+            open_mandatory_items=0,
+            min_blocking_issue_count=0,
+            max_blocking_issue_count=0,
+            min_evidence_count=2,
+        ),
+    ),
+    # --- 4. vendor + manufacturing: vendor risk + manufacturing ops ---
+    EvaluationScenario(
+        code="matrix_vendor_manufacturing_ops",
+        name="Vendor manufacturing operations cross-coverage",
+        description=(
+            "Validates vendor risk tiering with manufacturing sector metrics and "
+            "operations dependency signals."
+        ),
+        case_payload={
+            "name": "Project Matrix Vendor Mfg",
+            "target_name": "Matrix Supply Parts Private Limited",
+            "summary": "Cross-coverage scenario: vendor_onboarding x manufacturing.",
+            "motion_pack": "vendor_onboarding",
+            "sector_pack": "manufacturing_industrials",
+            "country": "India",
+        },
+        upload_documents=(
+            UploadDocumentFixture(
+                title="Vendor plant assessment",
+                filename="matrix_vendor_plant.txt",
+                content=(
+                    "Capacity utilization 72%. DIO 90 days. DSO 65 days. DPO 35 days. "
+                    "Asset turnover 1.30. Single site dependency noted."
+                ),
+                mime_type="text/plain",
+                document_kind="plant_operating_review",
+                source_kind="uploaded_dataroom",
+                workstream_domain="operations",
+                evidence_kind="metric",
+            ),
+            UploadDocumentFixture(
+                title="Vendor statutory profile",
+                filename="matrix_vendor_statutory.txt",
+                content=(
+                    "GSTIN 33KLMNO6789P1Z7 active. Factory licence current. "
+                    "Vendor supplies 35 crore annually in machined components."
+                ),
+                mime_type="text/plain",
+                document_kind="vendor_statutory_profile",
+                source_kind="uploaded_dataroom",
+                workstream_domain="regulatory",
+                evidence_kind="fact",
+            ),
+        ),
+        satisfy_all_checklist_items=True,
+        manufacturing_metrics_expectation=ManufacturingMetricsExpectation(
+            expected_capacity_utilization=0.72,
+            expected_dio=90.0,
+            min_checklist_updates=0,
+        ),
+        vendor_risk_tier_expectation=VendorRiskTierExpectation(
+            min_overall_score=0,
+            min_checklist_updates=0,
+        ),
+        expectation=ScenarioExpectation(
+            approval_decision="approved",
+            ready_for_export=True,
+            report_status="ready_for_export",
+            report_title="Vendor Due Diligence Summary",
+            open_mandatory_items=0,
+            min_blocking_issue_count=0,
+            max_blocking_issue_count=0,
+            min_evidence_count=2,
+        ),
+    ),
+    # --- 5. Lender report template variant ---
+    EvaluationScenario(
+        code="matrix_credit_lender_report",
+        name="Credit lending lender-pack report template",
+        description=(
+            "Validates the lender_pack report template variant produces "
+            "correct DOCX/PDF bundles alongside financial annex."
+        ),
+        case_payload={
+            "name": "Project Matrix Credit Lender Report",
+            "target_name": "Matrix Lending Report Private Limited",
+            "summary": "Cross-coverage scenario: lender_pack report template.",
+            "motion_pack": "credit_lending",
+            "sector_pack": "tech_saas_services",
+            "country": "India",
+        },
+        upload_documents=(
+            UploadDocumentFixture(
+                title="Financial workbook",
+                filename="matrix_lender_financials.xlsx",
+                content="",
+                content_bytes=build_financial_workbook_bytes(bridge_variant="credit"),
+                mime_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                document_kind="borrower_financial_pack",
+                source_kind="uploaded_dataroom",
+                workstream_domain="financial_qoe",
+                evidence_kind="metric",
+            ),
+        ),
+        satisfy_all_checklist_items=True,
+        financial_summary_expectation=FinancialSummaryExpectation(
+            min_periods=4,
+            min_checklist_updates=0,
+        ),
+        rich_reporting_expectation=RichReportingExpectation(
+            report_template="lender_pack",
+            required_export_files=(
+                "reports/full_report_lender_pack.md",
+                "reports/full_report_lender_pack.docx",
+                "reports/full_report_lender_pack.pdf",
+                "reports/financial_annex.md",
+            ),
+        ),
+        run_payload={
+            "requested_by": "Evaluation Runner",
+            "note": "Automated run for lender-pack report evaluation.",
+            "report_template": "lender_pack",
+        },
+        expectation=ScenarioExpectation(
+            approval_decision="approved",
+            ready_for_export=True,
+            report_status="ready_for_export",
+            report_title="Credit Memo",
+            open_mandatory_items=0,
+            min_blocking_issue_count=0,
+            max_blocking_issue_count=0,
+            min_evidence_count=1,
+            min_report_bundles=7,
+            expected_bundle_kinds=(
+                "executive_memo_markdown",
+                "issue_register_markdown",
+                "workstream_synthesis_markdown",
+                "full_report_markdown",
+                "financial_annex_markdown",
+                "full_report_docx",
+                "full_report_pdf",
+            ),
+        ),
+    ),
+    # --- 6. One-pager report template variant ---
+    EvaluationScenario(
+        code="matrix_buy_side_one_pager_report",
+        name="Buy-side one-pager report template",
+        description=(
+            "Validates the one_pager report template variant produces "
+            "correct DOCX/PDF bundles with minimal structure."
+        ),
+        case_payload={
+            "name": "Project Matrix OnePager Report",
+            "target_name": "Matrix OnePager Private Limited",
+            "summary": "Cross-coverage scenario: one_pager report template.",
+            "motion_pack": "buy_side_diligence",
+            "sector_pack": "bfsi_nbfc",
+            "country": "India",
+        },
+        upload_documents=(
+            UploadDocumentFixture(
+                title="NBFC portfolio summary",
+                filename="matrix_one_pager_nbfc.txt",
+                content=(
+                    "GNPA 2.1%. NNPA 1.4%. CRAR 18.0%. ALM mismatch 8%. "
+                    "PSL priority sector lending compliant."
+                ),
+                mime_type="text/plain",
+                document_kind="nbfc_metrics_brief",
+                source_kind="uploaded_dataroom",
+                workstream_domain="financial_qoe",
+                evidence_kind="metric",
+            ),
+        ),
+        satisfy_all_checklist_items=True,
+        bfsi_nbfc_metrics_expectation=BfsiNbfcMetricsExpectation(
+            expected_gnpa=2.1,
+            expected_crar=18.0,
+            min_checklist_updates=0,
+        ),
+        rich_reporting_expectation=RichReportingExpectation(
+            report_template="one_pager",
+            required_export_files=(
+                "reports/full_report_one_pager.md",
+                "reports/full_report_one_pager.docx",
+                "reports/full_report_one_pager.pdf",
+            ),
+        ),
+        run_payload={
+            "requested_by": "Evaluation Runner",
+            "note": "Automated run for one-pager report evaluation.",
+            "report_template": "one_pager",
+        },
+        expectation=ScenarioExpectation(
+            approval_decision="approved",
+            ready_for_export=True,
+            report_status="ready_for_export",
+            report_title="Executive Memo",
+            open_mandatory_items=0,
+            min_blocking_issue_count=0,
+            max_blocking_issue_count=0,
+            min_evidence_count=1,
+            min_report_bundles=7,
+            expected_bundle_kinds=(
+                "executive_memo_markdown",
+                "issue_register_markdown",
+                "workstream_synthesis_markdown",
+                "full_report_markdown",
+                "financial_annex_markdown",
+                "full_report_docx",
+                "full_report_pdf",
+            ),
+        ),
+    ),
+    # --- 7. buy_side + bfsi: commercial with NBFC cyber review ---
+    EvaluationScenario(
+        code="matrix_buy_side_bfsi_cyber",
+        name="Buy-side BFSI cyber-commercial cross-coverage",
+        description=(
+            "Validates commercial concentration and cyber/DPDP engines operating "
+            "under buy_side + bfsi_nbfc combination with NBFC-specific signals."
+        ),
+        case_payload={
+            "name": "Project Matrix BuySide BFSI Cyber",
+            "target_name": "Matrix Digital Finance Private Limited",
+            "summary": "Cross-coverage scenario: buy_side x bfsi_nbfc cyber/commercial.",
+            "motion_pack": "buy_side_diligence",
+            "sector_pack": "bfsi_nbfc",
+            "country": "India",
+        },
+        upload_documents=(
+            UploadDocumentFixture(
+                title="Customer and retention memo",
+                filename="matrix_customer_memo.txt",
+                content=(
+                    "Top 3 customers contribute 68% of lending revenue. "
+                    "Net revenue retention 105%. Gross churn 8%. "
+                    "Pricing pressure from new fintech entrants noted."
+                ),
+                mime_type="text/plain",
+                document_kind="customer_concentration_memo",
+                source_kind="uploaded_dataroom",
+                workstream_domain="commercial",
+                evidence_kind="metric",
+            ),
+            UploadDocumentFixture(
+                title="Information security review",
+                filename="matrix_infosec_review.txt",
+                content=(
+                    "Consent mechanism implemented under DPDP 2025. "
+                    "Data localization compliant for financial data. "
+                    "ISO 27001 certified. SOC 2 Type II report available. "
+                    "No data breach incidents reported in the past three years."
+                ),
+                mime_type="text/plain",
+                document_kind="infosec_review",
+                source_kind="uploaded_dataroom",
+                workstream_domain="cyber_privacy",
+                evidence_kind="fact",
+            ),
+        ),
+        satisfy_all_checklist_items=True,
+        commercial_summary_expectation=CommercialSummaryExpectation(
+            min_concentration_signals=1,
+            flag_substrings=("concentration",),
+            min_checklist_updates=0,
+        ),
+        cyber_summary_expectation=CyberSummaryExpectation(
+            required_certifications=("ISO 27001",),
+            min_checklist_updates=0,
+        ),
+        buy_side_analysis_expectation=BuySideAnalysisExpectation(
+            min_checklist_updates=0,
+        ),
+        expectation=ScenarioExpectation(
+            approval_decision="approved",
+            ready_for_export=True,
+            report_status="ready_for_export",
+            report_title="Executive Memo",
+            open_mandatory_items=0,
+            min_blocking_issue_count=0,
+            max_blocking_issue_count=0,
+            min_evidence_count=2,
+        ),
+    ),
+    # --- 8. credit + bfsi: borrower scorecard with NBFC capital stress ---
+    EvaluationScenario(
+        code="matrix_credit_bfsi_scorecard_stress",
+        name="Credit BFSI borrower scorecard capital stress",
+        description=(
+            "Validates borrower scorecard and BFSI sector metrics under credit_lending + "
+            "bfsi_nbfc combination with capital adequacy near regulatory threshold."
+        ),
+        case_payload={
+            "name": "Project Matrix Credit BFSI Stress",
+            "target_name": "Matrix Capital NBFC Private Limited",
+            "summary": "Cross-coverage scenario: credit_lending x bfsi_nbfc stress.",
+            "motion_pack": "credit_lending",
+            "sector_pack": "bfsi_nbfc",
+            "country": "India",
+        },
+        upload_documents=(
+            UploadDocumentFixture(
+                title="NBFC capital and asset quality",
+                filename="matrix_nbfc_capital_stress.txt",
+                content=(
+                    "GNPA 5.5%. NNPA 3.8%. CRAR 15.2%. ALM mismatch 18%. "
+                    "PSL compliance under remediation. "
+                    "Interest coverage 2.1. Debt to EBITDA 3.9. Cash conversion 0.65."
+                ),
+                mime_type="text/plain",
+                document_kind="nbfc_metrics_brief",
+                source_kind="uploaded_dataroom",
+                workstream_domain="financial_qoe",
+                evidence_kind="metric",
+            ),
+            UploadDocumentFixture(
+                title="Covenant structure memo",
+                filename="matrix_covenant_memo.txt",
+                content=(
+                    "DSCR covenant threshold 1.5x. Current DSCR 1.8x. "
+                    "Interest coverage covenant 2.0x. Debt to EBITDA limit 4.0x. "
+                    "No covenant waiver requested."
+                ),
+                mime_type="text/plain",
+                document_kind="covenant_structure_memo",
+                source_kind="uploaded_dataroom",
+                workstream_domain="financial_qoe",
+                evidence_kind="fact",
+            ),
+        ),
+        satisfy_all_checklist_items=True,
+        bfsi_nbfc_metrics_expectation=BfsiNbfcMetricsExpectation(
+            expected_gnpa=5.5,
+            expected_nnpa=3.8,
+            expected_crar=15.2,
+            flag_substrings=("NPA",),
+            min_checklist_updates=0,
+        ),
+        borrower_scorecard_expectation=BorrowerScorecardExpectation(
+            min_overall_score=0,
+            min_covenant_items=1,
+            min_checklist_updates=0,
+        ),
+        expectation=ScenarioExpectation(
+            approval_decision="approved",
+            ready_for_export=True,
+            report_status="ready_for_export",
+            report_title="Credit Memo",
+            open_mandatory_items=0,
+            min_blocking_issue_count=0,
+            max_blocking_issue_count=0,
+            min_evidence_count=2,
+        ),
+    ),
+)
+
+
 EVALUATION_SUITES: dict[str, EvaluationSuiteDefinition] = {
     "phase17_evaluation_deepening": EvaluationSuiteDefinition(
         key="phase17_evaluation_deepening",
@@ -2824,5 +3385,11 @@ EVALUATION_SUITES: dict[str, EvaluationSuiteDefinition] = {
         title="BFSI NBFC Expansion Evaluation",
         artifact_prefix="bfsi-nbfc-expansion",
         scenarios=BFSI_NBFC_EXPANSION_SCENARIOS,
+    ),
+    "matrix_coverage": EvaluationSuiteDefinition(
+        key="matrix_coverage",
+        title="Cross-Cutting Matrix Coverage and Template Variants",
+        artifact_prefix="matrix-coverage",
+        scenarios=MATRIX_COVERAGE_SCENARIOS,
     ),
 }

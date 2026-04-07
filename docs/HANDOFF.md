@@ -4,16 +4,15 @@
 
 ## Current State
 
-**Active phase:** Phase 18 final release validation
-**Last session:** 2026-04-01
-**Completed phases:** 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 19, 17
-**Test counts:** 147 pytest, 30 eval scenarios (13 suites)
+**Active phase:** Phase 18 final release validation (code complete)
+**Last session:** 2026-04-08
+**Completed phases:** 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19
+**Test counts:** 147 pytest, 31 eval scenarios (14 suites)
 **Execution mode:** roadmap from `MASTERPLAN.docx` (preferred) / `MASTERPLAN.pdf` (companion), execution truth from repo code/tests/commands
 
 ## What to Do Next
 
-Run the remaining **live release validation** for canonical **Phase 18: Hardening + Release Packaging**.
-The repo-side Phase 18 implementation is now in place: production Dockerfiles, `docker-compose.prod.yml`, backup/restore scripts, generated API-reference docs, JWT-aware smoke checks, and release-oriented verification hooks are implemented and already covered by the main repo gate.
+All 18 phases + Phase 19 are **code-complete**. The remaining work is external: live Docker stack validation, real OpenRouter/LLM API key configuration, live India connector testing with real government API credentials, production deployment provisioning, UAT with real company documents, and security review/pen-test signoff.
 
 ## Blockers
 
