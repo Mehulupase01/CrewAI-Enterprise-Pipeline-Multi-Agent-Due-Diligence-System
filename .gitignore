@@ -38,6 +38,9 @@ Thumbs.db
 .claude/
 CLAUDE.md
 
+# Internal docs (development artifacts)
+docs/
+
 # Temp and scratch files
 .tmp/
 tmp/
