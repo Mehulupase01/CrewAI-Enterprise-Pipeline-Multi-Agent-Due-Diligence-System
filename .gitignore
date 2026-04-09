@@ -37,9 +37,13 @@ Thumbs.db
 # Claude Code (development tooling)
 .claude/
 CLAUDE.md
+AGENTS.md
 
 # Internal docs (development artifacts)
 docs/
+
+# Evaluation artifacts and baselines (regenerated on demand)
+artifacts/
 
 # Temp and scratch files
 .tmp/
@@ -51,10 +55,6 @@ tmp/
 # Data and storage (runtime)
 data/
 storage/
-
-# Evaluation artifacts (regenerated on demand)
-artifacts/evaluations/*.json
-!artifacts/evaluations/.gitkeep
 
 # Docker volumes
 postgres-data/
