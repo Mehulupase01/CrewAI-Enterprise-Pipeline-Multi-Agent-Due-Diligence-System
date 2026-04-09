@@ -1,10 +1,19 @@
+# Environment and secrets
 .env
 .env.local
+.env.production
+
+# Python
 .python-version
 .venv/
 __pycache__/
 *.py[cod]
 *.egg-info/
+dist/
+build/
+*.egg
+
+# Testing and linting caches
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
@@ -12,17 +21,39 @@ __pycache__/
 coverage.xml
 htmlcov/
 
+# Node.js / Next.js
 node_modules/
 .next/
 out/
 
+# OS files
 .DS_Store
 Thumbs.db
+
+# IDE / Editor
 .idea/
 .vscode/
 
+# Claude Code (development tooling)
+.claude/
+CLAUDE.md
+
+# Temp and scratch files
+.tmp/
+tmp/
+*.db
+*.sqlite
+*.sqlite3
+
+# Data and storage (runtime)
 data/
 storage/
-tmp/
+
+# Evaluation artifacts (regenerated on demand)
 artifacts/evaluations/*.json
 !artifacts/evaluations/.gitkeep
+
+# Docker volumes
+postgres-data/
+redis-data/
+minio-data/
